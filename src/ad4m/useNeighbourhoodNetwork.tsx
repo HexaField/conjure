@@ -15,6 +15,8 @@ import {
   useMutableState
 } from '@ir-engine/hyperflux'
 import {
+  DataChannelRegistryState,
+  DataChannelType,
   MessageTypes,
   NetworkActions,
   NetworkState,
@@ -28,6 +30,7 @@ import {
   removeNetwork,
   useWebRTCPeerConnection
 } from '@ir-engine/network'
+import { decode } from 'msgpackr'
 import React, { useEffect } from 'react'
 import { useBasicScene } from '../world/BasicScene'
 import { AgentState } from './useADAM'
@@ -323,6 +326,58 @@ const PeerReactor = (props: {
       }
     }
   }, [isready])
+
+  const dataChannelRegistry = useMutableState(DataChannelRegistryState).value
+
+  if (!peerConnectionState?.ready) return null
+
+  return (
+    <>
+      {network.topic === NetworkTopics.world &&
+        Object.keys(dataChannelRegistry).map((dataChannelType: DataChannelType) => (
+          <DataChannelReactor
+            key={dataChannelType}
+            networkID={props.networkID}
+            peerID={props.peerID}
+            dataChannelType={dataChannelType}
+          />
+        ))}
+    </>
+  )
+}
+const DataChannelReactor = (props: { networkID: NetworkID; peerID: PeerID; dataChannelType: DataChannelType }) => {
+  const peerConnectionState = useMutableState(RTCPeerConnectionState)[props.networkID][props.peerID].value
+  const dataChannel = peerConnectionState?.dataChannels?.[props.dataChannelType] as RTCDataChannel | undefined
+
+  useEffect(() => {
+    const isInitiator = Engine.instance.store.peerID < props.peerID
+    if (!isInitiator) return
+
+    WebRTCTransportFunctions.createDataChannel(props.networkID, props.peerID, props.dataChannelType)
+    return () => {
+      WebRTCTransportFunctions.closeDataChannel(props.networkID, props.peerID, props.dataChannelType)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!dataChannel) return
+
+    const network = getState(NetworkState).networks[props.networkID]
+
+    const onBuffer = (e: MessageEvent) => {
+      const message = e.data
+      const [fromPeerIndex, data] = decode(message)
+      const fromPeerID = network.peerIndexToPeerID[fromPeerIndex]
+      const dataBuffer = new Uint8Array(data).buffer
+      network.onBuffer(dataChannel.label as DataChannelType, fromPeerID, dataBuffer)
+    }
+
+    dataChannel.addEventListener('message', onBuffer)
+
+    return () => {
+      dataChannel.removeEventListener('message', onBuffer)
+    }
+  }, [dataChannel])
 
   return null
 }
