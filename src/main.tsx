@@ -23,14 +23,18 @@ All portions of the code written by the Infinite Reality Engine team are Copyrig
 Infinite Reality Engine. All Rights Reserved.
 */
 
-import React, { lazy } from 'react'
+import React, { lazy, Suspense } from 'react'
+import { Route, Router, Routes } from 'react-router-dom'
 import { createRoot } from 'react-dom/client'
 
 import '@ir-engine/client/src/themes/base.css'
 import '@ir-engine/client/src/themes/components.css'
 import '@ir-engine/client/src/themes/utilities.css'
 
-import { createHyperStore } from '@ir-engine/hyperflux'
+import { createHyperStore, getMutableState } from '@ir-engine/hyperflux'
+
+import ClientErrorBoundary from '@ir-engine/client-core/src/common/components/ClientErrorBoundary'
+import { BrowserRouter, history } from '@ir-engine/client-core/src/common/services/RouterService'
 
 // tslint:disable:ordered-imports
 /** @ts-ignore */
@@ -38,13 +42,33 @@ globalThis.process = { env: { ...(import.meta as any).env, APP_ENV: (import.meta
 
 // ensure config is imported
 import '@ir-engine/common/src/config'
-
 createHyperStore()
+
+import { API } from '@ir-engine/common/src/API'
+import { createAd4mAPIAdapter } from './ad4m/createAd4mAPIAdapter'
+
+API.instance = createAd4mAPIAdapter()
 
 const CustomLocationPage = lazy(() => import('./CustomLocationPage'))
 
 const App = () => {
-  return <CustomLocationPage />
+  return (
+    <ClientErrorBoundary>
+      <BrowserRouter history={history}>
+        <Routes>
+          <Route
+            key="default"
+            path="/*"
+            element={
+              <Suspense>
+                <CustomLocationPage />
+              </Suspense>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </ClientErrorBoundary>
+  )
 }
 
 const container = document.getElementById('root')

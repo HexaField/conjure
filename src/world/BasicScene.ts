@@ -7,7 +7,6 @@ import { SceneComponent } from '@ir-engine/spatial/src/renderer/components/Scene
 import { RendererComponent } from '@ir-engine/spatial/src/renderer/WebGLRendererSystem'
 import { useEffect } from 'react'
 import { Cache } from 'three'
-import { useSpawnAvatar } from './useSpawnAvatar'
 
 // create scene with a rigidbody loaded offset from the origin
 const createSceneGLTF = (): GLTF.IGLTF => ({
@@ -129,8 +128,6 @@ export const useBasicScene = (sceneID: string) => {
       getMutableState(SceneState)[sceneURL].set(gltfEntity)
     }
   }, [viewerEntity, originEntity])
-
-  useSpawnAvatar(sceneID)
 
   return gltfEntityState.value
 }

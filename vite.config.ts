@@ -33,7 +33,8 @@ import packageJson from './package.json'
 const assets = [
   'projects/ir-engine/default-project/assets/avatars/irRobot.vrm',
   'projects/ir-engine/default-project/assets/animations/emotes.glb',
-  'projects/ir-engine/default-project/assets/animations/locomotion.glb'
+  'projects/ir-engine/default-project/assets/animations/locomotion.glb',
+  'projects/ir-engine/default-project/assets/default-silhouette.svg'
 ]
 
 const currentDirectory = process.cwd()
