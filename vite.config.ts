@@ -28,6 +28,7 @@ import dotenv from 'dotenv'
 import fs from 'fs'
 import path from 'path'
 import { UserConfig, defineConfig } from 'vite'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import packageJson from './package.json'
 
 const assets = [
@@ -110,7 +111,7 @@ export default defineConfig(async ({ command, mode }) => {
         target: 'es2020'
       }
     },
-    plugins: [],
+    plugins: [nodePolyfills()],
     build: {
       target: 'esnext',
       sourcemap: process.env.VITE_SOURCEMAPS === 'true' ? true : false,
