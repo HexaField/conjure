@@ -28,6 +28,7 @@ import {
   createNetwork,
   removeNetwork
 } from '@ir-engine/network'
+import { NetworkPeerState } from '@ir-engine/network/src/NetworkPeerState'
 import React, { useEffect } from 'react'
 import { AgentState } from './useADAM'
 import { PerspectivesState } from './usePerspectives'
@@ -44,14 +45,6 @@ type SignalData = {
   fromPeerID: PeerID
   message: MessageTypes
 }
-
-const PeerDIDState = defineState({
-  name: 'hexafield.adam-template.PeerDIDState',
-  initial: {
-    peersToDID: {} as Record<PeerID, string>,
-    DIDToPeers: {} as Record<string, PeerID[]>
-  }
-})
 
 export const NeighbourhoodNetworkState = defineState({
   name: 'hexafield.adam-template.NeighbourhoodNetworkState',
@@ -97,7 +90,7 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
 
   const sendMessage: SendMessageType = (networkID: NetworkID, toPeerID: PeerID, message: MessageTypes) => {
     // console.log('sendMessage', networkID, toPeerID, message)
-    const toAgentDID = getState(PeerDIDState).peersToDID[toPeerID]
+    const toAgentDID = getState(NetworkPeerState)[networkID]?.peers?.[toPeerID]?.userId
     /** @todo use sendSignalU when it is fixed */
     neighbourhood.sendBroadcastU({
       links: [
@@ -155,9 +148,6 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
 
     const addConnection = (userID: UserID, peerID: PeerID, peerIndex: number) => {
       otherPeers.merge([{ peerID, peerIndex, userID }])
-      getMutableState(PeerDIDState).peersToDID[peerID].set(userID)
-      if (!getState(PeerDIDState).DIDToPeers[userID]) getMutableState(PeerDIDState).DIDToPeers[userID].set([peerID])
-      else getMutableState(PeerDIDState).DIDToPeers[userID].merge([peerID])
     }
 
     const broadcastArrivalResponse = (toAgentID: string) => {
@@ -219,7 +209,7 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
       if (link.data.predicate === PEER_SIGNAL) {
         const data = getExpressionData(link.data.target) as SignalData
 
-        const fromAgentpeers = getState(PeerDIDState).DIDToPeers?.[link.author] ?? []
+        const fromAgentpeers = getState(NetworkPeerState)[networkID].users?.[link.author] ?? []
         if (!fromAgentpeers.includes(data.fromPeerID))
           console.warn('Received message from an agent about a peer who does not control it!')
 
@@ -236,13 +226,6 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
           return peers.filter((p) => p.peerID !== data.peerID)
         })
         const userID = link.author as UserID
-        getMutableState(PeerDIDState).peersToDID[data.peerID].set(none)
-        getMutableState(PeerDIDState).DIDToPeers[userID].set((peers) => {
-          return peers.filter((p) => p !== data.peerID)
-        })
-        if (!getState(PeerDIDState).DIDToPeers[userID].length) {
-          getMutableState(PeerDIDState).DIDToPeers[userID].set(none)
-        }
       }
     }
 
@@ -317,13 +300,6 @@ const PeerReactor = (props: {
       props.otherPeers.set((peers) => {
         return peers.filter((p) => p.peerID !== props.peerID)
       })
-      getMutableState(PeerDIDState).peersToDID[props.peerID].set(none)
-      getMutableState(PeerDIDState).DIDToPeers[props.userID].set((peers) => {
-        return peers.filter((p) => p !== props.peerID)
-      })
-      if (!getState(PeerDIDState).DIDToPeers[props.userID].length) {
-        getMutableState(PeerDIDState).DIDToPeers[props.userID].set(none)
-      }
     }
   }, [isready])
 

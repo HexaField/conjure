@@ -66,6 +66,10 @@ export default defineConfig(async ({ command, mode }) => {
     'globalThis.process.env': {}
   }
 
+  process.env.VITE_FILE_SERVER = isDev
+    ? 'https://' + process.env.VITE_APP_HOST + ':' + process.env.VITE_APP_PORT
+    : 'https://' + process.env.VITE_APP_HOST
+
   for (const [key, value] of Object.entries(process.env)) {
     const val = JSON.stringify(value)
     if (!isValidIdentifier.test(key)) continue
