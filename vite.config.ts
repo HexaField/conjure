@@ -33,7 +33,8 @@ import packageJson from './package.json'
 const assets = [
   'projects/ir-engine/default-project/assets/avatars/irRobot.vrm',
   'projects/ir-engine/default-project/assets/animations/emotes.glb',
-  'projects/ir-engine/default-project/assets/animations/locomotion.glb'
+  'projects/ir-engine/default-project/assets/animations/locomotion.glb',
+  'projects/ir-engine/default-project/assets/default-silhouette.svg'
 ]
 
 const currentDirectory = process.cwd()
@@ -64,6 +65,10 @@ export default defineConfig(async ({ command, mode }) => {
     __IR_ENGINE_VERSION__: JSON.stringify(packageJson.version),
     'globalThis.process.env': {}
   }
+
+  process.env.VITE_FILE_SERVER = isDev
+    ? 'https://' + process.env.VITE_APP_HOST + ':' + process.env.VITE_APP_PORT
+    : 'https://' + process.env.VITE_APP_HOST
 
   for (const [key, value] of Object.entries(process.env)) {
     const val = JSON.stringify(value)
