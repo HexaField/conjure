@@ -12,15 +12,15 @@ import config from '@ir-engine/common/src/config'
 import { EngineState } from '@ir-engine/ecs'
 import { DomainConfigState } from '@ir-engine/engine/src/assets/state/DomainConfigState'
 import { MediaSettingsState } from '@ir-engine/engine/src/audio/MediaSettingsState'
-import { NetworkState, NetworkTopics } from '@ir-engine/network'
+import { NetworkState } from '@ir-engine/network'
 import React, { useEffect } from 'react'
 import { AgentState } from './ad4m/useADAM'
 import { NeighbourhoodNetworkState } from './ad4m/useNeighbourhoodNetwork'
-import { PerspectivesState } from './ad4m/usePerspectives'
 
 import { LocationState } from '@ir-engine/client-core/src/social/services/LocationService'
 import '@ir-engine/client-core/src/systems/AvatarUISystem'
 import { AudioState } from '@ir-engine/engine/src/audio/AudioState'
+import NeighbourhoodBubbles from './world/NeighbourhoodBubbles'
 import './world/NeighbourhoodWorldSystem'
 
 //@ts-ignore
@@ -64,37 +64,9 @@ export default function Template() {
     <>
       <div ref={setRef} style={{ width: '100%', height: '100%', position: 'absolute' }} />
       <Debug />
-      {activeNeightbourhood ? null : agent ? <NeighbourhoodSelector /> : <h1>Connecting...</h1>}
+      {activeNeightbourhood ? null : agent ? <NeighbourhoodBubbles /> : <h1>Connecting...</h1>}
       {activeNeightbourhood && <Media />}
     </>
-  )
-}
-
-const NeighbourhoodSelector = () => {
-  const { neighbourhoods } = useMutableState(PerspectivesState).value
-
-  const onJoinNeighbourhood = (sharedURL: string) => {
-    getMutableState(NeighbourhoodNetworkState).set([{ topic: NetworkTopics.world, sharedUrl: sharedURL }])
-
-    /**
-     * @todo to get around the pubsub subscription race condition,
-     * use a significant delay to connect to the media server a few seconds late
-     */
-    setTimeout(() => {
-      getMutableState(NeighbourhoodNetworkState).merge([{ topic: NetworkTopics.media, sharedUrl: sharedURL }])
-    }, 3000)
-  }
-
-  return (
-    <div style={{ display: 'flex', width: '30%', height: 'auto', flexDirection: 'column', pointerEvents: 'all' }}>
-      <h1>Neighbourhood Selector</h1>
-      <p>Choose a neighbourhood to join</p>
-      {Object.values(neighbourhoods).map((n) => (
-        <button key={n.sharedUrl} onClick={() => onJoinNeighbourhood(n.sharedUrl!)}>
-          - {n.name}
-        </button>
-      ))}
-    </div>
   )
 }
 
@@ -108,7 +80,29 @@ const Media = () => {
         <div className="pointer-events-auto absolute left-0 top-0 pl-[inherit] pt-[inherit]">
           <VideoWindows />
         </div>
+        <div className="pointer-events-auto absolute right-0 top-0 h-fit w-1/4">
+          <LeaveWorldButton />
+        </div>
       </div>
     </>
+  )
+}
+
+const LeaveWorldButton = () => {
+  const leaveWorld = () => {
+    const url = new URL(window.location.href)
+    url.searchParams.delete('neighbourhood')
+    url.search = url.searchParams.toString()
+    window.history.replaceState({}, '', url.toString())
+    getMutableState(NeighbourhoodNetworkState).set([])
+  }
+
+  return (
+    <button
+      onClick={leaveWorld}
+      className="pointer-events-auto absolute right-2.5 top-2.5 flex h-auto w-auto cursor-pointer items-center justify-center rounded-full border-none bg-red-500 px-4 py-2 text-white"
+    >
+      Leave World
+    </button>
   )
 }

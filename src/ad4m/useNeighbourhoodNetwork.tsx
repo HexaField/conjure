@@ -78,6 +78,13 @@ const myPeerIndex = array[0]
 const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
   const { sharedUrl, topic } = props
 
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('neighbourhood', sharedUrl)
+    url.search = url.searchParams.toString()
+    window.history.replaceState({}, '', url.toString())
+  }, [])
+
   const networkID = (sharedUrl + '_' + topic) as NetworkID
 
   const perspective = getState(PerspectivesState).neighbourhoods[sharedUrl]
