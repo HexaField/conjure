@@ -33,11 +33,11 @@ import React, { useEffect } from 'react'
 import { AgentState } from './useADAM'
 import { PerspectivesState } from './usePerspectives'
 
-const IS_ANYONE_HERE = 'is-anyone-here'
-const I_AM_HERE = 'i-am-here'
-const PEER_SIGNAL = 'peer-signal'
-const LEAVE = 'leave'
-const HEARTBEAT = 'heartbeat'
+const IS_ANYONE_HERE = 'conjure://is-anyone-here'
+const I_AM_HERE = 'conjure://i-am-here'
+const PEER_SIGNAL = 'conjure://peer-signal'
+const LEAVE = 'conjure://leave'
+const HEARTBEAT = 'conjure://heartbeat'
 
 type SignalData = {
   networkID: NetworkID
@@ -99,20 +99,23 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
     // console.log('sendMessage', networkID, toPeerID, message)
     const toAgentDID = getState(NetworkPeerState)[networkID]?.peers?.[toPeerID]?.userId
     /** @todo use sendSignalU when it is fixed */
-    neighbourhood.sendBroadcastU({
-      links: [
-        {
-          source,
-          predicate: PEER_SIGNAL,
-          target: Literal.from({
-            networkID,
-            fromPeerID: Engine.instance.store.peerID,
-            targetPeerID: toPeerID,
-            message
-          }).toUrl()
-        }
-      ]
-    })
+    neighbourhood.sendBroadcastU(
+      {
+        links: [
+          {
+            source,
+            predicate: PEER_SIGNAL,
+            target: Literal.from({
+              networkID,
+              fromPeerID: Engine.instance.store.peerID,
+              targetPeerID: toPeerID,
+              message
+            }).toUrl()
+          }
+        ]
+      },
+      true
+    )
   }
 
   useEffect(() => {
@@ -136,19 +139,22 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
 
     const agent = getState(AgentState)!
 
-    neighbourhood.sendBroadcastU({
-      links: [
-        {
-          source,
-          predicate: IS_ANYONE_HERE,
-          target: Literal.from({
-            networkID,
-            peerID: Engine.instance.store.peerID,
-            peerIndex: myPeerIndex
-          }).toUrl()
-        }
-      ]
-    })
+    neighbourhood.sendBroadcastU(
+      {
+        links: [
+          {
+            source,
+            predicate: IS_ANYONE_HERE,
+            target: Literal.from({
+              networkID,
+              peerID: Engine.instance.store.peerID,
+              peerIndex: myPeerIndex
+            }).toUrl()
+          }
+        ]
+      },
+      true
+    )
 
     /** @todo because of a bug in the event listener, we need to dedupe events */
     const seenMessages = new Set<string>()
@@ -159,43 +165,54 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
 
     const broadcastArrivalResponse = (toAgentID: string) => {
       /** @todo use sendSignalU when it is fixed */
-      neighbourhood.sendBroadcastU({
-        links: [
-          {
-            source: source,
-            predicate: I_AM_HERE,
-            target: Literal.from({
-              networkID,
-              peerID: Engine.instance.store.peerID,
-              peerIndex: myPeerIndex
-            }).toUrl()
-          }
-        ]
-      })
+      neighbourhood.sendBroadcastU(
+        {
+          links: [
+            {
+              source: source,
+              predicate: I_AM_HERE,
+              target: Literal.from({
+                networkID,
+                peerID: Engine.instance.store.peerID,
+                peerIndex: myPeerIndex
+              }).toUrl()
+            }
+          ]
+        },
+        true
+      )
     }
 
     const onBroadcastReceived = (expression: PerspectiveExpression) => {
       if (seenMessages.has(expression.proof.signature)) return
       seenMessages.add(expression.proof.signature)
 
-      if (expression.author === agent.did) return // ignore messages from self
-      // console.log('onBroadcastReceived', topic, expression)
-
       const link = expression.data.links[0]
       if (link.data.source !== source) return
 
-      const data = getExpressionData(link.data.target) as SignalData
+      const data = getExpressionData(link.data.target) as
+        | SignalData
+        | { peerID: PeerID; peerIndex: number; networkID: NetworkID }
       if (data.networkID && data.networkID !== networkID) return
+
+      /** @todo use links properly to have proper type safety */
+      // ignore messages from self peer, still allowing other peers for my agent
+      if (
+        ((data as any).peerID && (data as any).peerID === Engine.instance.store.peerID) ||
+        ((data as any).fromPeerID && (data as any).fromPeerID === Engine.instance.store.peerID) ||
+        (!(data as any).peerID && !(data as any).fromPeerID)
+      )
+        return
 
       if (link.data.predicate === IS_ANYONE_HERE) {
         // Check if the remote host should create the offer
         // -> If so, create passive connection
-        if (link.author.localeCompare(agent.did) < 1) {
-          const data = getExpressionData(link.data.target) as {
-            peerID: PeerID
-            peerIndex: number
-            networkID: NetworkID
-          }
+        const data = getExpressionData(link.data.target) as {
+          peerID: PeerID
+          peerIndex: number
+          networkID: NetworkID
+        }
+        if (data.peerIndex < myPeerIndex) {
           addConnection(link.author, data.peerID, data.peerIndex)
         }
         broadcastArrivalResponse(link.author)
@@ -205,7 +222,7 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
         const data = getExpressionData(link.data.target) as { peerID: PeerID; peerIndex: number; networkID: NetworkID }
         // Check if we should create the offer
         // -> If so, create active connection
-        if (link.author.localeCompare(agent.did) > 0) {
+        if (data.peerIndex > myPeerIndex) {
           addConnection(link.author, data.peerID, data.peerIndex)
         } else {
           addConnection(link.author, data.peerID, data.peerIndex)
@@ -232,7 +249,6 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
         otherPeers.set((peers) => {
           return peers.filter((p) => p.peerID !== data.peerID)
         })
-        const userID = link.author as UserID
       }
     }
 
@@ -256,7 +272,6 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
   }, [])
 
   const otherPeers = useHookstate<{ peerID: PeerID; peerIndex: number; userID: UserID }[]>([])
-  console.log('otherPeers', ...otherPeers.value)
 
   useEffect(() => {
     const interval = setInterval(() => {

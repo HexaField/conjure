@@ -18,8 +18,8 @@
   },
   "peerDependencies": {},
   "dependencies": {
-    "@coasys/ad4m": "0.10.1-rc8",
-    "@coasys/ad4m-connect": "0.10.1-rc8",
+    "@coasys/ad4m": "0.10.1-release-candidate-1",
+    "@coasys/ad4m-connect": "0.10.1-release-candidate-1",
     "d3": "7.9.0"
   },
   "devDependencies": {},
