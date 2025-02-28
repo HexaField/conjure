@@ -14,7 +14,7 @@ const createSceneGLTF = (): GLTF.IGLTF => ({
     version: '2.0',
     generator: 'iR Engine'
   },
-  scenes: [{ nodes: [0, 1, 2, 3] }],
+  scenes: [{ nodes: [0, 1, 2, 3, 4] }],
   scene: 0,
   nodes: [
     {
@@ -45,13 +45,20 @@ const createSceneGLTF = (): GLTF.IGLTF => ({
       name: 'Rigidbody',
       extensions: {
         EE_uuid: '685c48da-e2a0-4a9a-af7c-c5a3c187c99a',
-        EE_visible: true,
         EE_rigidbody: {
           type: 'fixed'
         },
         EE_collider: {
           shape: 'box'
-        },
+        }
+      }
+    },
+    {
+      matrix: [100, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 100, 0, 0, 0, 0, 1],
+      name: 'Ground',
+      extensions: {
+        EE_uuid: '60a01f0b-52ce-4c14-9fcf-7f23aa459c71',
+        EE_visible: true,
         EE_shadow: {
           cast: true,
           receive: true
