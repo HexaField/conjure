@@ -1,10 +1,10 @@
 import { getMutableState, getState, NO_PROXY_STEALTH, useHookstate } from '@ir-engine/hyperflux'
 import { NetworkTopics } from '@ir-engine/network'
 import * as d3 from 'd3'
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import { AgentState } from '../ad4m/useADAM'
 import { NeighbourhoodNetworkState } from '../ad4m/useNeighbourhoodNetwork'
-import { usePerspectives } from '../ad4m/usePerspectives'
+import { PerspectivesState } from '../ad4m/usePerspectives'
 
 interface Circle {
   id: string
@@ -24,7 +24,7 @@ type Node = {
   y: number
 }
 
-const size = d3.scaleLinear().domain([0, 100]).range([10, 50]) // circle will be between 7 and 55 px wide
+const size = d3.scaleLinear().domain([1, 20]).range([20, 50]) // circle will be between 20 and 50 px wide
 
 const BubbleLayout = (props: {
   circlesData: Array<Circle>
@@ -114,7 +114,6 @@ const BubbleLayout = (props: {
       name: d.name,
       value: d.diameter,
       radius: size(d.diameter / 2),
-      diameter: size(d.diameter / 2) * 2,
       x: 50 * ((i % countSqrt) - countSqrt / 2) + width / 2,
       y: 50 * (Math.floor(i / countSqrt) - countSqrt / 2) + height / 2
     }))
@@ -140,7 +139,7 @@ const BubbleLayout = (props: {
     circle
       .enter()
       .append('circle')
-      .attr('r', (d) => d.diameter / 2)
+      .attr('r', (d) => d.radius)
       .attr('cx', width / 2)
       .attr('cy', height / 2)
       .style('fill', (d) => d.color)
@@ -154,8 +153,7 @@ const BubbleLayout = (props: {
         props.onClick(d.id)
       })
 
-    circle.transition()
-    // .attr('r', function(d) { return d; });
+    circle.transition().attr('r', (d) => d.radius)
 
     circle.exit().remove()
 
@@ -188,27 +186,32 @@ const circlesData = Array.from({ length: 30 }, (_, i) => ({
 }))
 
 const NeighbourhoodBubbles = () => {
-  const neighbourhoods = usePerspectives().neighbourhoods
+  const neighbourhoodsState = useHookstate(getMutableState(PerspectivesState).neighbourhoods)
 
   const memberState = useHookstate({} as Record<string, string[]>)
 
   useEffect(() => {
     const me = getState(AgentState)!
-    Object.keys(neighbourhoods).forEach((key) => {
-      const neighbourhood = neighbourhoods[key].getNeighbourhoodProxy()
+    Object.keys(neighbourhoodsState).forEach((key) => {
+      const neighbourhood = neighbourhoodsState.value[key].getNeighbourhoodProxy()
       neighbourhood.otherAgents().then((others) => {
         const members = [...others, me.did] //.map((did) => getProfile(did))
         memberState[key].set(members)
       })
     })
-  }, [neighbourhoods])
+  }, [neighbourhoodsState.keys])
 
-  const neighbourhoodCircles = Object.keys(neighbourhoods).map((key, i) => ({
-    id: key,
-    name: neighbourhoods[key].name,
-    color: 'blue', //`#${Math.floor(Math.random() * 16777215).toString(16)}`,
-    diameter: memberState[key].value?.length ?? 1
-  }))
+  const neighbourhoodCircles = useMemo(
+    () =>
+      neighbourhoodsState.keys.map((key, i) => ({
+        id: key,
+        name: neighbourhoodsState.value[key].name,
+        // create a color based on the hash of the name
+        color: randomColor(key),
+        diameter: memberState.value[key]?.length ?? 1
+      })),
+    [neighbourhoodsState.keys, memberState]
+  )
 
   const addCommunity = () => {
     console.log('TODO: add community')
@@ -218,10 +221,10 @@ const NeighbourhoodBubbles = () => {
     const url = new URL(window.location.href)
     const neighbourhood = url.searchParams.get('neighbourhood')
     url.search = url.searchParams.toString()
-    if (neighbourhood && neighbourhoods[neighbourhood]) {
+    if (neighbourhood && neighbourhoodsState.value[neighbourhood]) {
       onJoinNeighbourhood(neighbourhood)
     }
-  }, [neighbourhoods])
+  }, [neighbourhoodsState])
 
   const onJoinNeighbourhood = (sharedURL: string) => {
     getMutableState(NeighbourhoodNetworkState).set([{ topic: NetworkTopics.world, sharedUrl: sharedURL }])
@@ -239,14 +242,41 @@ const NeighbourhoodBubbles = () => {
     <div>
       <h1 className="my-4 text-center text-2xl">My Neighbourhoods</h1>
       <BubbleLayout circlesData={neighbourhoodCircles} width={800} height={600} onClick={onJoinNeighbourhood} />
-      <button
+      {/* <button
         onClick={addCommunity}
         className="pointer-events-auto absolute right-2.5 top-2.5 flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border-none bg-blue-500 text-2xl text-white"
       >
         +
-      </button>
+      </button> */}
     </div>
   )
 }
 
 export default NeighbourhoodBubbles
+
+/**
+ * Convert a string to a hex string
+ */
+function toHex(str: string) {
+  let result = ''
+  for (let i = 0; i < str.length; i++) {
+    result += str.charCodeAt(i).toString(10)
+  }
+  return result
+}
+
+/**
+ * Creates a deterministic color based on a seed string
+ */
+function randomColor(seed: string, rangeSize = 100) {
+  const base10Str = toHex(seed.slice(-6))
+  const [num0, num1, num2, num3] = base10Str.split('').map((n) => parseInt(n, 10) / 10)
+
+  const parts = [
+    Math.floor(num0 * 256),
+    Math.floor(num1 * rangeSize),
+    Math.floor(num2 * rangeSize) + 256 - rangeSize
+  ].sort(() => num3 % 2)
+
+  return '#' + parts.map((p) => p.toString(16).padStart(2, '0')).join('')
+}
