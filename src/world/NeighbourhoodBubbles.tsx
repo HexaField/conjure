@@ -241,7 +241,13 @@ const NeighbourhoodBubbles = () => {
   return (
     <div>
       <h1 className="my-4 text-center text-2xl">My Neighbourhoods</h1>
-      <BubbleLayout circlesData={neighbourhoodCircles} width={800} height={600} onClick={onJoinNeighbourhood} />
+      {neighbourhoodsState.keys.length === 0 ? (
+        <p className="text-center">No neighbourhoods found</p>
+      ) : memberState.keys.length === 0 ? (
+        <p className="text-center">Loading...</p>
+      ) : (
+        <BubbleLayout circlesData={neighbourhoodCircles} width={800} height={600} onClick={onJoinNeighbourhood} />
+      )}
       {/* <button
         onClick={addCommunity}
         className="pointer-events-auto absolute right-2.5 top-2.5 flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border-none bg-blue-500 text-2xl text-white"
