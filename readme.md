@@ -9,6 +9,6 @@ https://conjure.world
 - [x] Retrieve list of perspectives & neighbourhoods
 - [x] implement p2p signalling
 - [x] realtime media support
-- [ ] create and leave neighbourhoods & persist to search params / localstorage
+- [ ] create and leave neighbourhoods
 - [ ] spawn and persist world objects in the neighbourhood
 - [ ] package reusable hooks to npm
