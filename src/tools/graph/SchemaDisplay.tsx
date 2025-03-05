@@ -2,6 +2,7 @@ import { useHookstate } from '@hookstate/core'
 import { getNestedObject, NO_PROXY, setNestedObject } from '@ir-engine/hyperflux'
 import { Button } from '@ir-engine/ui'
 import React, { useEffect } from 'react'
+import { useSearchParam } from '../../utils/useSearchParam'
 import { JSONPreview } from './components/JSONPreview'
 import { JSONSchema } from './functions/generateJsonSchema'
 
@@ -226,7 +227,7 @@ const GraphMappingSettings: React.FC<GraphMappingSettingsProps> = ({
   onConfirm
 }) => {
   // Global visualization type state.
-  const visualizationType = useHookstate(0)
+  const visualizationType = useHookstate(0) // todo put in search params once we have multiple
   const currentSchema = targetSchemas[visualizationType.get()].value
   // Our flattened schema.
   const flattenedFields = jsonSchema?.items?.properties ? flattenSchema(jsonSchema.items, '', data) : {}
@@ -240,7 +241,25 @@ const GraphMappingSettings: React.FC<GraphMappingSettingsProps> = ({
   fieldOptions.unshift({ value: '', label: 'None' })
 
   // Graph mapping state.
-  const graphMappingState = useHookstate<any>(() => buildEmptyStructureFromSchema(currentSchema))
+  const graphMappingState = useHookstate<any>(() => {
+    try {
+      const fromURL = new URLSearchParams(window.location.search).get('mapping')
+      if (fromURL) {
+        return JSON.parse(fromURL)
+      }
+    } catch (e) {
+      //
+    }
+    return buildEmptyStructureFromSchema(currentSchema)
+  })
+
+  useEffect(() => {
+    // upon mount, if a mapping exists and all requirements are met, call onConfirm
+    if (allRequirementsMet(currentSchema, graphMappingState.get(NO_PROXY))) {
+      onChange(graphMappingState.get(NO_PROXY))
+      onConfirm()
+    }
+  }, [])
 
   useEffect(() => {
     onChange(graphMappingState.get(NO_PROXY))
@@ -251,6 +270,8 @@ const GraphMappingSettings: React.FC<GraphMappingSettingsProps> = ({
     setNestedObject(currentState, path, newValue)
     graphMappingState.merge(currentState)
   }
+
+  useSearchParam('mapping', graphMappingState.value)
 
   return (
     <div className="6xl mx-auto p-4">

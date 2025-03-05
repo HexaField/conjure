@@ -5,6 +5,7 @@ import { Button, Input } from '@ir-engine/ui'
 import React, { useEffect } from 'react'
 import { useDrop } from 'react-dnd'
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
+import { useSearchParam } from '../../utils/useSearchParam'
 import { JSONPreview } from './components/JSONPreview'
 import { d3State } from './ForceGraph'
 import { generateJsonSchema, JSONSchema } from './functions/generateJsonSchema'
@@ -34,7 +35,7 @@ export const MappingUI = () => {
       edge.weight = edge.weight || 1
     }
     getMutableState(d3State).dataset.set(transformedDataState.get(NO_PROXY))
-    showMappingUI.set(true)
+    showMappingUI.set(false)
   }
 
   const showMappingUI = useHookstate(true)
@@ -83,7 +84,7 @@ export const MappingUI = () => {
 const InputData = (props: { onNewData: (data: { schema: JSONSchema; data: unknown }) => void }) => {
   const rawData = useHookstate<{ schema: JSONSchema; data: unknown } | null>(null)
 
-  const selectedURL = useHookstate('')
+  const selectedURL = useHookstate(new URLSearchParams(window.location.search).get('url') || '')
   const loadingData = useHookstate(false)
 
   useEffect(() => {
@@ -117,12 +118,14 @@ const InputData = (props: { onNewData: (data: { schema: JSONSchema; data: unknow
     }
   }, [selectedURL])
 
+  useSearchParam('url', selectedURL.value.startsWith('blob://') ? '' : selectedURL.value)
+
   useEffect(() => {
     if (!rawData.value) return
     props.onNewData(rawData.get(NO_PROXY)!)
   }, [rawData])
 
-  const inputField = useHookstate('')
+  const inputField = useHookstate(selectedURL.value)
 
   return (
     <>

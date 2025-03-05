@@ -7,7 +7,7 @@ import { useEngineCanvas } from '@ir-engine/spatial/src/renderer/functions/useEn
 import React, { useEffect } from 'react'
 
 import Debug from '@ir-engine/client-core/src/components/Debug'
-import { createEntity, setComponent } from '@ir-engine/ecs'
+import { createEntity, removeEntity, setComponent } from '@ir-engine/ecs'
 import { AmbientLightComponent, ReferenceSpaceState, TransformComponent } from '@ir-engine/spatial'
 import { CameraOrbitComponent } from '@ir-engine/spatial/src/camera/components/CameraOrbitComponent'
 import { NameComponent } from '@ir-engine/spatial/src/common/NameComponent'
@@ -39,6 +39,11 @@ export default function Template() {
     setComponent(ambientLightEntity, NameComponent, 'Ambient Light')
     setComponent(ambientLightEntity, AmbientLightComponent)
     setVisibleComponent(ambientLightEntity, true)
+
+    return () => {
+      document.body.style.backgroundColor = 'white'
+      removeEntity(ambientLightEntity)
+    }
   }, [originEntity, viewerEntity])
 
   return (

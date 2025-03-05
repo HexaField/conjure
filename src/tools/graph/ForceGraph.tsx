@@ -4,6 +4,7 @@ import '@ir-engine/engine'
 import '@ir-engine/spatial/src/camera/systems/CameraOrbitSystem'
 
 import {
+  EngineState,
   Entity,
   EntityTreeComponent,
   SimulationSystemGroup,
@@ -17,6 +18,7 @@ import {
 import { InstancingComponent } from '@ir-engine/engine/src/scene/components/InstancingComponent'
 import { defineState, getMutableState, getState, useHookstate, useMutableState } from '@ir-engine/hyperflux'
 import { ReferenceSpaceState, TransformComponent } from '@ir-engine/spatial'
+import { CameraOrbitComponent } from '@ir-engine/spatial/src/camera/components/CameraOrbitComponent'
 import { NameComponent } from '@ir-engine/spatial/src/common/NameComponent'
 import { MeshComponent } from '@ir-engine/spatial/src/renderer/components/MeshComponent'
 import { ObjectComponent } from '@ir-engine/spatial/src/renderer/components/ObjectComponent'
@@ -374,6 +376,14 @@ const reactor = () => {
     setComponent(lineEntity, EntityTreeComponent, { parentEntity: originEntity })
 
     getMutableState(d3State).lineEntity.set(lineEntity)
+
+    // this is ridiculous
+    getMutableState(EngineState).isEditing.set(true)
+    setComponent(viewerEntity, CameraOrbitComponent, {
+      focusedEntities: [entity]
+      // refocus: true,
+      // isOrbiting: true
+    })
 
     return () => {
       gui.destroy()
