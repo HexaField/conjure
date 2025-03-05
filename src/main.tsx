@@ -44,18 +44,28 @@ globalThis.process = { env: { ...(import.meta as any).env, APP_ENV: (import.meta
 import '@ir-engine/common/src/config'
 createHyperStore()
 
-import { API } from '@ir-engine/common/src/API'
-import { createAd4mAPIAdapter } from './ad4m/createAd4mAPIAdapter'
+// import { API } from '@ir-engine/common/src/API'
+// import { createAd4mAPIAdapter } from './ad4m/createAd4mAPIAdapter'
 
-API.instance = createAd4mAPIAdapter()
+// API.instance = createAd4mAPIAdapter()
 
 const CustomLocationPage = lazy(() => import('./CustomLocationPage'))
+const DataGrapher = lazy(() => import('./tools/graph/DataGrapher'))
 
 const App = () => {
   return (
     <ClientErrorBoundary>
       <BrowserRouter history={history}>
         <Routes>
+          <Route
+            key="default"
+            path="/graph"
+            element={
+              <Suspense>
+                <DataGrapher />
+              </Suspense>
+            }
+          />
           <Route
             key="default"
             path="/*"
