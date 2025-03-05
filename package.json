@@ -4,7 +4,7 @@
   "description": "",
   "main": "",
   "scripts": {
-    "test": "exit 0",
+    "test": "vitest run",
     "check-errors": "tsc --noemit",
     "dev": "cross-env APP_ENV=development NODE_OPTIONS=--max_old_space_size=20480 vite",
     "build": "cross-env NODE_OPTIONS=--max_old_space_size=10240 vite build",
@@ -20,7 +20,11 @@
   "dependencies": {
     "@coasys/ad4m": "0.10.1-release-candidate-1",
     "@coasys/ad4m-connect": "0.10.1-release-candidate-1",
-    "d3": "7.9.0"
+    "d3": "7.9.0",
+    "d3-force-3d": "^3.0.5",
+    "dat.gui": "^0.7.9",
+    "json-transforms": "1.1.2",
+    "maxrects-packer": "2.7.3"
   },
   "devDependencies": {},
   "license": "ISC",
