@@ -69,11 +69,11 @@ jobs:
         uses: jsmrcaga/action-netlify-deploy@v2.4.0
         with:
           build_directory: './packages/projects/projects/${{ env.REPO_NAME }}/dist'
-          build_command: exit 0 # No build command needed
-        env:
+          install_command: "echo Skipping installing the dependencies"
+          build_command: "echo Skipping building the web files"
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-          NETLIFY_DEPLOY_MESSAGE: "Prod deploy v${{ github.ref }}"
+          NETLIFY_DEPLOY_MESSAGE: "Deployed from GitHub action"
           NETLIFY_DEPLOY_TO_PROD: true
-        timeout-minutes: 1
+
 
