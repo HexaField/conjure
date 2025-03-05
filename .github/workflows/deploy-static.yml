@@ -62,19 +62,13 @@ jobs:
       - run: mkdir -p packages/projects/projects/ir-engine/default-project && cp -r packages/projects/default-project/. packages/projects/projects/ir-engine/default-project
       - run: npm install --production=false --loglevel notice --legacy-peer-deps
       - run: cd './packages/projects/projects/${{ env.REPO_NAME }}' && npx cross-env STATIC_BUILD_HOST=${{ secrets.STATIC_BUILD_HOST }} npm run build
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './packages/projects/projects/${{ env.REPO_NAME }}/dist/'
       - name: Sleep for 15 seconds
         run: sleep 15s
         shell: bash
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0
         with:
-          publish-dir: './packages/projects/projects/hexafield/dist'
+          publish-dir: './packages/projects/projects/${{ env.REPO_NAME }}/dist'
           production-branch: master
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: "Deploy from GitHub Actions"
