@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { useSearchParam } from '../../utils/useSearchParam'
 import { JSONPreview } from './components/JSONPreview'
 import { d3State } from './ForceGraph'
+import { flattenSchema } from './functions/flattenSchema'
 import { generateJsonSchema, JSONSchema } from './functions/generateJsonSchema'
 import { transformData } from './functions/transformData'
 import SchemaDisplay from './SchemaDisplay'
@@ -42,27 +43,65 @@ export const MappingUI = () => {
     mapSources[source].set(none)
   }
 
-  const mapSourceResults = useHookstate({} as Record<string, {}>)
-  useSearchParam('sources', mapSourceResults.keys.join(','))
+  const sourceMappingAndData = useHookstate(
+    {} as Record<
+      string,
+      {
+        schema: JSONSchema
+        mapping: any
+        data: any
+      }
+    >
+  )
+  useSearchParam('sources', sourceMappingAndData.keys.join(','))
 
-  const onSourceChanged = (sourceID: string, data: any) => {
-    mapSourceResults.merge({ [sourceID]: data })
+  const onSourceChanged = (
+    sourceID: string,
+    data: {
+      schema: JSONSchema
+      mapping: any
+      data: any
+    }
+  ) => {
+    sourceMappingAndData.merge({ [sourceID]: data })
   }
 
   const transformedDataState = useHookstate<any | null>(null)
+  const preProcessing = useHookstate([] as Array<any>)
 
   useEffect(() => {
-    const data = Object.fromEntries(Object.entries(mapSourceResults.get(NO_PROXY)).filter(([_, v]) => !!v)) as Record<
+    const data = Object.fromEntries(
+      Object.entries(sourceMappingAndData.get(NO_PROXY))
+        .map(([k, v]) => [
+          k,
+          {
+            ...v,
+            data: transformData(v.mapping, v.data)
+          }
+        ])
+        .filter((v) => !!v)
+    ) as Record<
       string,
-      any
+      {
+        schema: JSONSchema
+        mapping: any
+        data: any
+      }
     >
     try {
-      const transformedData = data ? targetSchemas[visualizationType.get()].onData(data) : null
+      const transformedData = data
+        ? targetSchemas[visualizationType.get()].onData(data, preProcessing.get(NO_PROXY) as any[])
+        : null
       transformedDataState.set(transformedData)
     } catch (e) {
       console.error(e)
     }
-  }, [mapSourceResults])
+  }, [sourceMappingAndData, preProcessing])
+
+  const onChangePreProcessing = (preProcessingTransformations: Array<any>) => {
+    console.log({ preProcessingTransformations: preProcessingTransformations })
+    preProcessing.set(preProcessingTransformations)
+  }
 
   return (
     <div className="pointer-events-auto z-[10] h-fit w-fit overflow-auto overflow-x-auto overflow-y-auto rounded-lg bg-white p-4">
@@ -115,6 +154,14 @@ export const MappingUI = () => {
           <Button className="pointer-events-auto z-10 mb-1 p-4" variant="tertiary" onClick={addSource}>
             Add Source
           </Button>
+          {sourceMappingAndData.keys.length && (
+            <PreProcessData
+              sourceMappingAndData={sourceMappingAndData.get(NO_PROXY)}
+              mapSources={mapSources.get(NO_PROXY)}
+              targetSchema={targetSchema}
+              onChangePreProcessing={onChangePreProcessing}
+            />
+          )}
           <Button className="pointer-events-auto z-10 mb-1 p-4" variant="tertiary" onClick={onConfirm}>
             Confirm
           </Button>
@@ -125,10 +172,293 @@ export const MappingUI = () => {
   )
 }
 
+const PreProcessData = (props: {
+  sourceMappingAndData: Record<
+    string,
+    {
+      schema: JSONSchema
+      mapping: any
+      data: any
+    }
+  >
+  mapSources: Record<string, {} | null>
+  targetSchema: JSONSchema
+  onChangePreProcessing: (data: Array<CorrelationType>) => void
+}) => {
+  // const preProcessingTransformations = useHookstate([] as Array<CorrelationType>)
+
+  return (
+    <>
+      {/* @todo add other kinds of postprocessing transformations to data */}
+      {Object.keys(props.sourceMappingAndData).length > 1 && (
+        <SourceCorrelation
+          sources={props.mapSources}
+          sourceResults={props.sourceMappingAndData}
+          onChange={props.onChangePreProcessing}
+          targetSchema={props.targetSchema}
+        />
+      )}
+    </>
+  )
+}
+
+type CorrelationType = {
+  source: string
+  sourceField: string[]
+  target: string
+  targetField: string[]
+}
+
+/**
+ * Correlate fields betwen sources to deduplicate and merge data.
+ */
+const SourceCorrelation = (
+  props: {
+    sources: Record<string, {} | null>
+    sourceResults: Record<
+      string,
+      {
+        schema: JSONSchema
+        mapping: any
+        data: any
+      }
+    >
+    onChange: (data: Array<CorrelationType>) => void
+    targetSchema: JSONSchema
+  } = {} as any
+) => {
+  const correlations = useHookstate<Array<CorrelationType>>(() => {
+    try {
+      const fromURL = new URLSearchParams(window.location.search).get('correlations')
+      console.log(fromURL)
+      if (fromURL) {
+        console.log(fromURL, JSON.parse(fromURL))
+        return JSON.parse(fromURL)
+      }
+    } catch (e) {
+      //
+    }
+
+    return []
+  })
+
+  useSearchParam('correlations', correlations.value)
+
+  useEffect(() => {
+    props.onChange(correlations.get(NO_PROXY) as Array<CorrelationType>)
+  }, [correlations])
+
+  const setCorrelation = (index: number, args: CorrelationType) => {
+    correlations[index].set(args)
+  }
+
+  const removeCorrelation = (index: number) => {
+    correlations[index].set(none)
+  }
+
+  console.log({ correlations })
+
+  return (
+    <div className="mb-6">
+      <h2 className="mb-4 text-2xl font-semibold">Source Correlation</h2>
+      {correlations.get(NO_PROXY).map((correlation: CorrelationType, index) => (
+        <Correlation
+          key={index}
+          correlation={correlation}
+          sourceResults={props.sourceResults}
+          targetSchema={props.targetSchema}
+          onChange={(args) => setCorrelation(index, args)}
+          onRemove={() => removeCorrelation(index)}
+        />
+      ))}
+      <Button
+        className="pointer-events-auto z-10 mb-1 p-4"
+        variant="tertiary"
+        onClick={() =>
+          setCorrelation(correlations.length, {
+            source: Object.keys(props.sourceResults)[0],
+            sourceField: [],
+            target: Object.keys(props.sourceResults)[1],
+            targetField: []
+          })
+        }
+      >
+        Add Correlation
+      </Button>
+      {correlations.value && <JSONPreview json={correlations.get(NO_PROXY)} title="Correlations" />}
+    </div>
+  )
+}
+
+/**
+ * Correlation between two fields across two sources.
+ * - uses a dropdown to select the source and field
+ * - uses a dropdown to select the target and field
+ * - uses a button to remove the correlation
+ * - uses the transformedData of the sources to populate the dropdowns using flattenSchema
+ */
+const Correlation = (props: {
+  correlation: CorrelationType
+  sourceResults: Record<
+    string,
+    {
+      schema: JSONSchema
+      mapping: any
+      data: any
+    }
+  >
+  targetSchema: JSONSchema
+  onChange: (args: CorrelationType) => void
+  onRemove: (index: number) => void
+}) => {
+  const { correlation, sourceResults, targetSchema, onChange, onRemove } = props
+
+  const flattenedFields = useHookstate({} as Record<string, string[]>)
+
+  useEffect(() => {
+    if (!correlation.source || !correlation.target) return
+    const sourceData = sourceResults[correlation.source]
+    const targetData = sourceResults[correlation.target]
+    if (!sourceData || !targetData) return
+    const sourceFields = Object.keys(flattenSchema(sourceData.schema, '', sourceData.data))
+    const targetFields = Object.keys(flattenSchema(targetData.schema, '', targetData.data))
+    flattenedFields.set({
+      [correlation.source]: sourceFields,
+      [correlation.target]: targetFields
+    })
+  }, [correlation.source, correlation.target])
+
+  const sourceOptions = Object.keys(sourceResults).map((source) => ({
+    value: source,
+    label: source
+  }))
+  const sourceFieldOptions = flattenedFields.get(NO_PROXY)[correlation.source]?.map((field) => ({
+    value: field,
+    label: field
+  }))
+  const targetFieldOptions = flattenedFields.get(NO_PROXY)[correlation.target]?.map((field) => ({
+    value: field,
+    label: field
+  }))
+
+  return (
+    <div className="mb-4 flex flex-col">
+      <select
+        className="rounded border p-2"
+        value={correlation.source}
+        onChange={(e) => onChange({ ...correlation, source: e.target.value })}
+      >
+        {sourceOptions?.map((option, i) => (
+          <option key={i} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <MultiFieldPatternCreator
+        value={correlation.sourceField}
+        options={sourceFieldOptions || []}
+        onChange={(patterns) => onChange({ ...correlation, sourceField: patterns })}
+      />
+      <select
+        className="rounded border p-2"
+        value={correlation.target}
+        onChange={(e) => onChange({ ...correlation, target: e.target.value })}
+      >
+        {sourceOptions?.map((option, i) => (
+          <option key={i} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <MultiFieldPatternCreator
+        value={correlation.targetField}
+        options={targetFieldOptions || []}
+        onChange={(patterns) => onChange({ ...correlation, targetField: patterns })}
+      />
+      <Button className="rounded" variant="tertiary" onClick={() => onRemove(0)}>
+        Remove
+      </Button>
+    </div>
+  )
+}
+
+const JoinKinds = [
+  { value: '', label: 'None' },
+  { value: ' ', label: ' ' },
+  { value: ',', label: ',' },
+  { value: '-', label: '-' },
+  { value: ':', label: ':' },
+  { value: '_', label: '_' }
+]
+
+/**
+ * From a list of options, create a pattern to match combinations of fields.
+ * - For now just a simple select dropdown with a join kind select.
+ */
+const MultiFieldPatternCreator = (props: {
+  value: string[]
+  options: Array<{ value: string; label: string }>
+  onChange: (args: string[]) => void
+}) => {
+  const patterns = useHookstate<string[]>([])
+  const joinKind = useHookstate(' ')
+  const patternValue = props.value.filter((v) => v !== joinKind.value)
+
+  useEffect(() => {
+    // if a join kind is selected, between each pattern, add the join kind
+    if (joinKind.value !== '') {
+      const newPatterns = [] as string[]
+      for (let i = 0; i < patterns.length; i++) {
+        newPatterns.push(patterns.value[i])
+        if (i < patterns.length - 1) {
+          newPatterns.push(joinKind.value)
+        }
+      }
+      props.onChange(newPatterns)
+    } else {
+      props.onChange(patterns.get(NO_PROXY) as string[])
+    }
+  }, [patterns, joinKind])
+
+  return (
+    <div className="mb-4 flex flex-row">
+      {patternValue.map((pattern, i) => (
+        <select
+          key={i}
+          className="rounded border p-2"
+          value={pattern}
+          onChange={(e) => patterns[i].set(e.target.value)}
+        >
+          {props.options.map((option, i) => (
+            <>
+              <option key={i} value={option.value}>
+                {option.label}
+              </option>
+            </>
+          ))}
+        </select>
+      ))}
+      <Button className="rounded" variant="tertiary" size="xs" onClick={() => patterns[patterns.length - 1].set(none)}>
+        -
+      </Button>
+      <Button className="rounded" variant="tertiary" size="xs" onClick={() => patterns.merge([''])}>
+        +
+      </Button>
+      <select className="rounded border p-2" value={joinKind.value} onChange={(e) => joinKind.set(e.target.value)}>
+        {JoinKinds.map((option, i) => (
+          <option key={i} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 const MappingSource = (props: {
   sourceID: string
   targetSchema: JSONSchema
-  onChange: (data: any) => void
+  onChange: (args: { mapping: any; data: any; schema: JSONSchema }) => void
   onRemove: () => void
 }) => {
   const currentInputData = useHookstate<{ schema: JSONSchema; data: unknown } | null>(null)
@@ -140,10 +470,9 @@ const MappingSource = (props: {
   const onMappingChanged = (mapping: any) => {
     if (!mapping || !currentInputData.value?.data) return
 
-    const { data } = currentInputData.get(NO_PROXY)!
+    const { data, schema } = currentInputData.get(NO_PROXY)!
 
-    const transformedData = transformData(mapping, data)
-    props.onChange(transformedData)
+    props.onChange({ mapping, data, schema })
   }
 
   const openUI = useHookstate(false)
@@ -163,6 +492,7 @@ const MappingSource = (props: {
             <HiChevronRight className="text-theme-primary pointer-events-none place-self-center" />
           )}
         </Button>
+        {props.sourceID}
         <Button className="pointer-events-auto z-10 mb-1 p-4" variant="tertiary" onClick={props.onRemove}>
           Remove Source
         </Button>
@@ -358,7 +688,7 @@ type ForceGraphShape = {
 type TargetSchema<T> = {
   label: string
   value: JSONSchema
-  onData: (data: Record<string, Partial<T>>) => T
+  onData: (data: Record<string, Partial<T>>, processing: Array<any>) => T
   onConfirm: (data: T) => void
 }
 
@@ -366,7 +696,10 @@ const targetSchemas: Array<TargetSchema<any>> = [
   {
     label: 'Force Graph',
     value: forcegraphSchema,
-    onData: (data: Record<string, ForceGraphShape>) => {
+    // our only pre-processing step is to merge the data from the various sources, deduplicating by the source and target fields specified in the correlations
+    // we want to use our mapping to get the fields in common between the sources, to be used to merge nodes in our graph
+
+    onData: (data: Record<string, ForceGraphShape>, mappings: Record<string, any>, processing: Array<any>) => {
       const finalData: ForceGraphShape = { nodes: [], edges: [] }
       for (const sourceID in data) {
         const source = data[sourceID]

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-export const useSearchParam = (key: string, value: string) => {
+export const useSearchParam = (key: string, value: string | object) => {
   useEffect(() => {
     if (!key || !value) return
     const parsed = new URL(window.location.href)
