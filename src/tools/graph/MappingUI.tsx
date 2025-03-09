@@ -2,7 +2,7 @@ import { DndWrapper } from '@ir-engine/editor/src/components/dnd/DndWrapper'
 import { ItemTypes } from '@ir-engine/editor/src/constants/AssetTypes'
 import { getMutableState, NO_PROXY, useHookstate } from '@ir-engine/hyperflux'
 import { Button, Input } from '@ir-engine/ui'
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { useDrop } from 'react-dnd'
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
 import { useSearchParam } from '../../utils/useSearchParam'
@@ -81,21 +81,85 @@ export const MappingUI = () => {
   )
 }
 
+/**
+ * Takes a raw CSV string and converts it to a JavaScript object.
+ * @param {string} text The raw CSV string.
+ * @param {string[]} headers An optional array of headers to use. If none are
+ * given, they are pulled from the first line of `text`.
+ * @param {string} quoteChar A character to use as the encapsulating character.
+ * @param {string} delimiter A character to use between columns.
+ * @returns {object[]} An array of JavaScript objects containing headers as keys
+ * and row entries as values.
+ */
+function csvToJson(text: string, headers = undefined, quoteChar = '"', delimiter = ',') {
+  const regex = new RegExp(`\\s*(${quoteChar})?(.*?)\\1\\s*(?:${delimiter}|$)`, 'gs')
+
+  const match = (line: string) =>
+    [...line.matchAll(regex)]
+      .map((m) => m[2]) // we only want the second capture group
+      .slice(0, -1) // cut off blank match at the end
+
+  const lines = text.split('\n')
+  const linesMatched = lines.map((line) => match(line))
+  // the header line is the line with the most non empty cells, the lines above can be discarded
+  const headerline = linesMatched.findIndex(
+    (line) =>
+      line.filter((cell) => cell.length > 0).length ===
+      Math.max(...linesMatched.map((line) => line.filter((cell) => cell.length > 0).length))
+  )
+  const heads = headers ?? linesMatched[headerline]
+
+  return linesMatched.slice(headerline + 1, linesMatched.length - 1).map((lineMatched) => {
+    return lineMatched.reduce((acc, cur, i) => {
+      // Attempt to parse as a number; replace blank matches with `null`
+      const val = cur.length <= 0 ? null : Number(cur) || cur
+      const key = heads[i] ?? `extra_${i}`
+      return { ...acc, [key]: val }
+    }, {})
+  })
+}
+
+const parseResponse = async (response: Response, fileType: string) => {
+  if (fileType === 'json') {
+    return response.json()
+  } else if (fileType === 'csv') {
+    const text = await response.text()
+    return csvToJson(text)
+  }
+  throw new Error('Unknown file type')
+}
+
+const FileTypeOptions = [
+  {
+    label: 'JSON',
+    value: 'json'
+  },
+  {
+    label: 'CSV',
+    value: 'csv'
+  }
+]
+
 const InputData = (props: { onNewData: (data: { schema: JSONSchema; data: unknown }) => void }) => {
   const rawData = useHookstate<{ schema: JSONSchema; data: unknown } | null>(null)
 
   const selectedURL = useHookstate(new URLSearchParams(window.location.search).get('url') || '')
+  const fileType = useHookstate(new URLSearchParams(window.location.search).get('fileType') || FileTypeOptions[0].value)
   const loadingData = useHookstate(false)
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     if (!selectedURL.value) return
     const abortController = new AbortController()
     loadingData.set(true)
     fetch(selectedURL.value)
       .then((response) => {
         if (abortController.signal.aborted) return
-        response
-          .json()
+        if (!response.ok) {
+          console.warn('Failed to fetch data')
+          loadingData.set(false)
+          return
+        }
+        parseResponse(response, fileType.value)
           .then((data) => {
             if (abortController.signal.aborted) return
             const schema = generateJsonSchema(data)
@@ -116,8 +180,9 @@ const InputData = (props: { onNewData: (data: { schema: JSONSchema; data: unknow
       abortController.abort()
       loadingData.set(false)
     }
-  }, [selectedURL])
+  }, [])
 
+  useSearchParam('fileType', fileType.value)
   useSearchParam('url', selectedURL.value.startsWith('blob://') ? '' : selectedURL.value)
 
   useEffect(() => {
@@ -137,10 +202,24 @@ const InputData = (props: { onNewData: (data: { schema: JSONSchema; data: unknow
           <DndWrapper id="dnd-container">
             <URLAndFileUpload value={inputField.value} onChange={inputField.set} />
           </DndWrapper>
+          <select className="rounded-l" value={fileType.value} onChange={(e) => fileType.set(e.target.value)}>
+            {FileTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
           {loadingData.value ? (
             <div className="rounded-r bg-gray-200 p-2">Loading...</div>
           ) : (
-            <Button className="rounded-r" variant="primary" onClick={() => selectedURL.set(inputField.value.trim())}>
+            <Button
+              className="rounded-r"
+              variant="primary"
+              onClick={() => {
+                selectedURL.set(inputField.value.trim())
+                fetchData()
+              }}
+            >
               Confirm
             </Button>
           )}
