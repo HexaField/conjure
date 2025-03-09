@@ -31,6 +31,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   CircleGeometry,
+  Color,
   DataTexture,
   DoubleSide,
   InstancedBufferAttribute,
@@ -43,9 +44,10 @@ import {
   SRGBColorSpace,
   Vector3
 } from 'three'
+import { randomColor } from '../../utils/randomColor'
 
 export interface NodeData {
-  nodes: Array<{ id: number; label: string; imageSrc?: string }>
+  nodes: Array<{ id: number; label: string; group?: string; imageSrc?: string }>
   edges: Array<{ id: number; source: number; target: number; weight: number }>
 }
 
@@ -207,7 +209,7 @@ const reactor = () => {
     const folder1 = gui.addFolder('Options')
     folder1.closed = false
     const options = {
-      repulsion: -10,
+      repulsion: -80,
       distanceMax: 100,
       linkStrength: 50,
       relationship: 'linear',
@@ -325,20 +327,6 @@ const reactor = () => {
       return
     }
 
-    const defaultImage = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'
-    const nodesWithDefaultImage = [
-      {
-        id: -1,
-        label: 'default',
-        imageSrc: defaultImage
-      },
-      ...dataset.nodes
-    ]
-    // atlasImages(nodesWithDefaultImage).then(() => {
-
-    // })
-    // load images
-
     const entity = createEntity()
     setComponent(entity, NameComponent, 'Node')
     setComponent(entity, TransformComponent, { position: new Vector3(0, 0, 0) })
@@ -346,7 +334,21 @@ const reactor = () => {
 
     const circleGeom = new CircleGeometry(graphScale, 16)
     const material = new MeshBasicMaterial({ side: DoubleSide })
+
     const mesh = new InstancedMesh(circleGeom, material, dataset.nodes.length)
+    // colors are a quick way to visualize group data
+
+    const colors = new Map<string, Color>()
+
+    // set the color for each node using mesh.setColorAt
+    for (let i = 0; i < dataset.nodes.length; i++) {
+      const node = dataset.nodes[i]
+      if (!node.group) continue // will be white
+      if (!colors.has(node.group)) colors.set(node.group, new Color(randomColor(node.group)))
+      const color = colors.get(node.group)!
+      mesh.setColorAt(i, color)
+    }
+
     mesh.frustumCulled = false
     setComponent(entity, MeshComponent, mesh)
 
@@ -395,7 +397,7 @@ const reactor = () => {
       getMutableState(d3State).meshEntity.set(UndefinedEntity)
       getMutableState(d3State).lineEntity.set(UndefinedEntity)
     }
-  }, [!!dataset, originEntity, viewerEntity])
+  }, [dataset, originEntity, viewerEntity])
 
   return null
 }
@@ -435,6 +437,16 @@ export const ControlHelper = () => {
     </div>
   )
 }
+
+// const defaultImage = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'
+// const nodesWithDefaultImage = [
+//   {
+//     id: -1,
+//     label: 'default',
+//     imageSrc: defaultImage
+//   },
+//   ...dataset.nodes
+// ]
 
 const atlasImages = async (nodesWithDefaultImage: NodeData['nodes']) => {
   const images = await Promise.all(

@@ -33,6 +33,7 @@ function inferJsonSchemaForValue(value: any): JSONSchema {
   if (Array.isArray(value)) {
     // For arrays, attempt to infer the schema from the first non-null element.
     const sample = value.find((item) => item !== null && item !== undefined)
+    /** @todo we should include 'optional' as a field here for all properties only in some entries of the array */
     if (sample !== undefined) {
       return { type: 'array', items: inferJsonSchemaForValue(sample) }
     } else {
@@ -59,15 +60,13 @@ function inferJsonSchemaForValue(value: any): JSONSchema {
  * @returns A JSONSchema object representing the data structure.
  */
 export function generateJsonSchema(rawData: any): JSONSchema {
-  const dataArray = Array.isArray(rawData) ? rawData : [rawData]
-  if (dataArray.length === 0) {
-    // No data: return an empty object schema.
-    return { type: 'object', properties: {} }
+  if (Array.isArray(rawData)) {
+    // Infer the schema from the first item (assuming homogeneity).
+    const itemSchema = inferJsonSchemaForValue(rawData[0])
+    return {
+      type: 'array',
+      items: itemSchema
+    }
   }
-  // Infer the schema from the first item (assuming homogeneity).
-  const itemSchema = inferJsonSchemaForValue(dataArray[0])
-  return {
-    type: 'array',
-    items: itemSchema
-  }
+  return inferJsonSchemaForValue(rawData)
 }

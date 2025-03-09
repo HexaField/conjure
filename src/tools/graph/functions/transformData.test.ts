@@ -1,82 +1,65 @@
-import jsonTransform from 'json-transforms'
 import { describe, expect, it } from 'vitest'
 import { transformData } from './transformData'
 
 // Tests
 
 describe('transformData', () => {
-  const inputData = {
-    profiles: [
-      {
-        _id: 'a',
-        data: {
-          profile: {
-            username: 'Alice',
-            url: 'https://alice.com/'
+  it('should transform data with provided mapping', () => {
+    const inputData = {
+      profiles: [
+        {
+          _id: 'a',
+          data: {
+            profile: {
+              username: 'Alice',
+              url: 'https://alice.com/'
+            }
+          }
+        },
+        {
+          _id: 'b',
+          data: {
+            profile: {
+              username: 'Bob',
+              url: 'https://bob.org/'
+            }
+          }
+        },
+        {
+          _id: 'c',
+          data: {
+            profile: {
+              username: 'Charlie',
+              url: 'https://charlie.net/'
+            }
           }
         }
-      },
-      {
-        _id: 'b',
-        data: {
-          profile: {
-            username: 'Bob',
-            url: 'https://bob.org/'
-          }
-        }
-      },
-      {
-        _id: 'c',
-        data: {
-          profile: {
-            username: 'Charlie',
-            url: 'https://charlie.net/'
-          }
-        }
-      }
-    ],
-    edges: [
-      ['a', 'b'],
-      ['b', 'c']
-    ]
-  }
-
-  it('should transform data with hardcoded rules', () => {
-    // hard-coded rules for the example
-    const nodesRule = [
-      jsonTransform.pathRule('.profiles', (d) => {
-        return d.runner()
-      }),
-      jsonTransform.pathRule('.', (d) => {
-        return {
-          id: d.context._id,
-          label: d.context.data.profile.username
-        }
-      })
-    ]
-
-    const edgesRule = [
-      jsonTransform.pathRule('.edges', (d) => {
-        return d.runner()
-      }),
-      jsonTransform.pathRule('.', (d) => {
-        return {
-          source: d.context[0],
-          target: d.context[1]
-        }
-      })
-    ]
-
-    const exampleRules = {
-      nodes: nodesRule,
-      edges: edgesRule
+      ],
+      edges: [
+        ['a', 'b'],
+        ['b', 'c']
+      ]
     }
 
-    const exampleOutputData = Object.fromEntries(
-      Object.entries(exampleRules).map(([prompt, rule]) => [prompt, jsonTransform.transform(inputData, rule)])
-    )
+    const jsonRules = {
+      nodes: [
+        {
+          id: 'profiles._id',
+          label: 'profiles.data.profile.username'
+        }
+      ],
+      edges: [
+        {
+          source: 'edges.0',
+          target: 'edges.1',
+          weight: '' // empty string to indicate that this field is not present in the input data
+        }
+      ]
+    }
 
-    expect(exampleOutputData).toEqual({
+    const outputData = transformData(jsonRules, inputData)
+
+    expect(outputData).toEqual({
       nodes: [
         {
           id: 'a',
@@ -104,25 +87,63 @@ describe('transformData', () => {
     })
   })
 
-  it('should transform data with provided mapping', () => {
+  it('should transform data nested in array with provided mapping', () => {
+    const inputData = {
+      profiles: [
+        {
+          _id: 'a',
+          data: {
+            profile: {
+              username: 'Alice',
+              url: 'https://alice.com/'
+            }
+          }
+        },
+        {
+          _id: 'b',
+          data: {
+            profile: {
+              username: 'Bob',
+              url: 'https://bob.org/'
+            }
+          }
+        },
+        {
+          _id: 'c',
+          data: {
+            profile: {
+              username: 'Charlie',
+              url: 'https://charlie.net/'
+            }
+          }
+        }
+      ],
+      edges: [
+        ['a', 'b'],
+        ['b', 'c']
+      ]
+    }
+
     // express the rules as serializable JSON, such that they can be stored in a database
     const jsonRules = {
       nodes: [
         {
-          id: 'profiles._id',
-          label: 'profiles.data.profile.username'
+          id: 'result.0.profiles._id',
+          label: 'result.0.profiles.data.profile.username'
         }
       ],
       edges: [
         {
-          source: 'edges.0',
-          target: 'edges.1',
+          source: 'result.0.edges.0',
+          target: 'result.0.edges.1',
           weight: '' // empty string to indicate that this field is not present in the input data
         }
       ]
     }
 
-    const outputData = transformData(jsonRules, inputData)
+    const outputData = transformData(jsonRules, {
+      result: [inputData]
+    })
 
     expect(outputData).toEqual({
       nodes: [

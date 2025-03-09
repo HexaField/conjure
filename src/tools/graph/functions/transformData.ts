@@ -30,7 +30,7 @@ export const transformData = (jsonRules: any, inputData: any) => {
           if (!dataPart) {
             continue
           }
-          if (Array.isArray(dataPart)) {
+          if (Array.isArray(dataPart) && dataPart.length > 1) {
             ruleArrayIndex = i
             break
           }
@@ -38,7 +38,8 @@ export const transformData = (jsonRules: any, inputData: any) => {
         return ruleArrayIndex
       }
       const ruleArrayIndex = findRuleIndex(ruleParts)
-      const rulesRoot = ruleParts.slice(0, ruleArrayIndex).join('.')
+      // replace '0' with '' to get the root path of an array with a single element
+      const rulesRoot = ruleParts.slice(0, ruleArrayIndex).join('.').replace('0', '')
       const rulePaths = rules
         .filter(([outputPath, inputPath]) => !!outputPath && !!inputPath)
         .map(([outputPath, inputPath]) => [outputPath, inputPath.split('.').slice(ruleArrayIndex).join('.')])

@@ -1,6 +1,5 @@
 import { useHookstate } from '@hookstate/core'
 import { getNestedObject, NO_PROXY, setNestedObject } from '@ir-engine/hyperflux'
-import { Button } from '@ir-engine/ui'
 import React, { useEffect } from 'react'
 import { useSearchParam } from '../../utils/useSearchParam'
 import { JSONPreview } from './components/JSONPreview'
@@ -47,7 +46,12 @@ export function flattenSchema(
       ) {
         result = {
           ...result,
-          ...flattenSchema(childSchema.items, fullKey, sampleData ? sampleData[key]?.[0] : undefined)
+          ...flattenSchema(
+            childSchema.items,
+            // if the array has one element, it's the only data we can use, so reference it directly
+            sampleData[key].length === 1 ? fullKey + '.0' : fullKey,
+            sampleData ? sampleData[key]?.[0] : undefined
+          )
         }
       }
       // For an array-of-arrays, try to infer a fixed length from sample data.
@@ -211,26 +215,17 @@ const allRequirementsMet = (schema: JSONSchema, mapping: any): boolean => {
   return requirements.every((req) => !!getNestedObjectIgnoringArrays(mapping, req))
 }
 
-export interface GraphMappingSettingsProps {
+const GraphMappingSettings = (props: {
+  sourceID: string
   jsonSchema: JSONSchema
-  targetSchemas: Array<{ value: JSONSchema; label: string }>
+  targetSchema: JSONSchema
   data: any
   onChange: (mapping: any) => void
-  onConfirm: () => void
-}
-
-const GraphMappingSettings: React.FC<GraphMappingSettingsProps> = ({
-  jsonSchema,
-  targetSchemas,
-  data,
-  onChange,
-  onConfirm
 }) => {
-  // Global visualization type state.
-  const visualizationType = useHookstate(0) // todo put in search params once we have multiple
-  const currentSchema = targetSchemas[visualizationType.get()].value
+  const { sourceID, jsonSchema, targetSchema, data, onChange } = props
+
   // Our flattened schema.
-  const flattenedFields = jsonSchema?.items?.properties ? flattenSchema(jsonSchema.items, '', data) : {}
+  const flattenedFields = flattenSchema(jsonSchema, '', data)
 
   // Build options for the dropdown from the flattened fields.
   const fieldOptions = Object.keys(flattenedFields).map((key) => ({
@@ -243,58 +238,38 @@ const GraphMappingSettings: React.FC<GraphMappingSettingsProps> = ({
   // Graph mapping state.
   const graphMappingState = useHookstate<any>(() => {
     try {
-      const fromURL = new URLSearchParams(window.location.search).get('mapping')
+      const fromURL = new URLSearchParams(window.location.search).get(sourceID + '-mapping')
       if (fromURL) {
         return JSON.parse(fromURL)
       }
     } catch (e) {
       //
     }
-    return buildEmptyStructureFromSchema(currentSchema)
+    return buildEmptyStructureFromSchema(targetSchema)
   })
 
+  // On mount - if a mapping exists and all requirements are met, call onChange
   useEffect(() => {
-    // upon mount, if a mapping exists and all requirements are met, call onConfirm
-    if (allRequirementsMet(currentSchema, graphMappingState.get(NO_PROXY))) {
+    if (allRequirementsMet(targetSchema, graphMappingState.get(NO_PROXY))) {
       onChange(graphMappingState.get(NO_PROXY))
-      onConfirm()
     }
   }, [])
-
-  useEffect(() => {
-    onChange(graphMappingState.get(NO_PROXY))
-  }, [graphMappingState])
 
   const updateMapping = (path: string, newValue: string) => {
     const currentState = structuredClone(graphMappingState.get(NO_PROXY))
     setNestedObject(currentState, path, newValue)
     graphMappingState.merge(currentState)
+    if (allRequirementsMet(targetSchema, graphMappingState.get(NO_PROXY))) {
+      onChange(graphMappingState.get(NO_PROXY))
+    } else {
+      onChange(null)
+    }
   }
 
-  useSearchParam('mapping', graphMappingState.value)
+  useSearchParam(`${sourceID}-mapping`, graphMappingState.value)
 
   return (
     <div className="6xl mx-auto p-4">
-      <h2 className="mb-4 text-2xl font-semibold">Graph Mapping Settings</h2>
-
-      {/* Global Visualization Type Selection */}
-      <div className="mb-6">
-        <label htmlFor="visType" className="mb-2 block font-medium">
-          Select Visualization Type:
-        </label>
-        <select
-          id="visType"
-          className="rounded border p-2"
-          value={visualizationType.get()}
-          onChange={(e) => visualizationType.set(parseInt(e.target.value))}
-        >
-          {targetSchemas.map((option, i) => (
-            <option key={i} value={i}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
       <h3 className="mb-2 text-xl font-semibold">Forcegraph Mapping</h3>
       <div>
         <h4 className="mb-2 text-lg font-medium">Nodes</h4>
@@ -307,7 +282,7 @@ const GraphMappingSettings: React.FC<GraphMappingSettingsProps> = ({
           </thead>
           <tbody>
             <ObjectSchemaOptions
-              schema={currentSchema}
+              schema={targetSchema}
               options={fieldOptions}
               path=""
               onChange={updateMapping}
@@ -316,12 +291,7 @@ const GraphMappingSettings: React.FC<GraphMappingSettingsProps> = ({
           </tbody>
         </table>
       </div>
-      {currentSchema && <JSONPreview json={graphMappingState.get(NO_PROXY)} />}
-      {allRequirementsMet(currentSchema, graphMappingState.get(NO_PROXY)) && (
-        <Button className="pointer-events-auto z-10 mb-1 p-4" variant="tertiary" onClick={onConfirm}>
-          Confirm
-        </Button>
-      )}
+      {targetSchema && <JSONPreview json={graphMappingState.get(NO_PROXY)} title="Mapping" />}
     </div>
   )
 }
@@ -408,3 +378,5 @@ const ObjectSchemaOptions: React.FC<{
 }
 
 export default GraphMappingSettings
+
+// https://192.168.1.167:3000/graph?url=https%3A%2F%2Fsum-app.net%2Fprojects%2F173738202501291587%2Fdownload_data%2Fkumu_json&mapping=%7B%22nodes%22%3A%5B%7B%22id%22%3A%22elements.Id%22%2C%22label%22%3A%22elements.Label%22%2C%22image%22%3A%22%22%7D%5D%2C%22edges%22%3A%5B%7B%22source%22%3A%22connections.From%22%2C%22target%22%3A%22connections.To%22%2C%22weight%22%3A%22connections.Weight%22%7D%5D%7D
