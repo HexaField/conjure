@@ -203,6 +203,7 @@ const InputData = (props: { sourceID: string; onNewData: (data: { schema: JSONSc
           .then((data) => {
             if (abortController.signal.aborted) return
             const schema = generateJsonSchema(data)
+            console.log(data)
             rawData.set({ schema, data })
           })
           .catch((error) => {
@@ -343,14 +344,14 @@ const forcegraphSchema: JSONSchema = {
 
 type ForceGraphShape = {
   nodes: Array<{
-    id: string
+    id: string | number
     label: string
     group?: string
     image?: string
   }>
   edges: Array<{
-    source: string
-    target: string
+    source: string | number
+    target: string | number
     weight?: number
   }>
 }
@@ -368,22 +369,38 @@ const targetSchemas: Array<TargetSchema<any>> = [
     value: forcegraphSchema,
     onData: (data: Record<string, ForceGraphShape>) => {
       const finalData: ForceGraphShape = { nodes: [], edges: [] }
+      const seenLabels = new Map<string, { source: string; id: number | string }>()
+      const replacedNodes = {} as Record<string, Map<number | string, number | string>>
       for (const sourceID in data) {
         const source = data[sourceID]
         if (typeof source !== 'object') continue
         //sum the various data sources together, distinguishing different sources by the 'category' field on nodes
         /** @todo this should be a configurable field in the mapping UI - need support for a 'literal' either at the source or overall level */
         if (Array.isArray(source.nodes)) {
-          for (const node of source.nodes) {
-            finalData.nodes.push({
-              ...node,
-              group: sourceID
-            })
+          for (let i = 0; i < source.nodes.length; i++) {
+            const node = source.nodes[i]
+            const seenNode = seenLabels.get(node.label)
+            if (seenNode) {
+              if (!replacedNodes[sourceID]) {
+                replacedNodes[sourceID] = new Map()
+              }
+              replacedNodes[sourceID].set(node.id, seenNode.id)
+            } else {
+              seenLabels.set(node.label, { source: sourceID, id: node.id })
+              finalData.nodes.push({
+                ...node,
+                group: sourceID
+              })
+            }
           }
         }
         if (Array.isArray(source.edges)) {
           for (const edge of source.edges) {
-            finalData.edges.push(edge)
+            finalData.edges.push({
+              source: replacedNodes[sourceID]?.get(edge.source) ?? edge.source,
+              target: replacedNodes[sourceID]?.get(edge.target) ?? edge.target,
+              weight: edge.weight
+            })
           }
         }
       }
