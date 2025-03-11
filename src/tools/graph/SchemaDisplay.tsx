@@ -378,5 +378,3 @@ const ObjectSchemaOptions: React.FC<{
 }
 
 export default GraphMappingSettings
-
-// https://192.168.1.167:3000/graph?url=https%3A%2F%2Fsum-app.net%2Fprojects%2F173738202501291587%2Fdownload_data%2Fkumu_json&mapping=%7B%22nodes%22%3A%5B%7B%22id%22%3A%22elements.Id%22%2C%22label%22%3A%22elements.Label%22%2C%22image%22%3A%22%22%7D%5D%2C%22edges%22%3A%5B%7B%22source%22%3A%22connections.From%22%2C%22target%22%3A%22connections.To%22%2C%22weight%22%3A%22connections.Weight%22%7D%5D%7D
