@@ -4,27 +4,32 @@ import '@ir-engine/engine'
 import '@ir-engine/spatial/src/camera/systems/CameraOrbitSystem'
 
 import {
+  createEntity,
+  defineSystem,
+  ECSState,
   EngineState,
   Entity,
   EntityTreeComponent,
-  SimulationSystemGroup,
-  UndefinedEntity,
-  createEntity,
-  defineSystem,
   getComponent,
   removeEntity,
-  setComponent
+  setComponent,
+  SimulationSystemGroup,
+  UndefinedEntity
 } from '@ir-engine/ecs'
 import { InstancingComponent } from '@ir-engine/engine/src/scene/components/InstancingComponent'
 import { defineState, getMutableState, getState, useHookstate, useMutableState } from '@ir-engine/hyperflux'
 import { ReferenceSpaceState, TransformComponent } from '@ir-engine/spatial'
 import { CameraOrbitComponent } from '@ir-engine/spatial/src/camera/components/CameraOrbitComponent'
+import { createTransitionState } from '@ir-engine/spatial/src/common/functions/createTransitionState'
 import { NameComponent } from '@ir-engine/spatial/src/common/NameComponent'
+import { InputComponent } from '@ir-engine/spatial/src/input/components/InputComponent'
+import { InputSourceComponent } from '@ir-engine/spatial/src/input/components/InputSourceComponent'
 import { MeshComponent } from '@ir-engine/spatial/src/renderer/components/MeshComponent'
 import { ObjectComponent } from '@ir-engine/spatial/src/renderer/components/ObjectComponent'
 import { setVisibleComponent } from '@ir-engine/spatial/src/renderer/components/VisibleComponent'
 import React, { useEffect } from 'react'
 import {
+  AdditiveBlending,
   BackSide,
   BufferAttribute,
   BufferGeometry,
@@ -35,10 +40,11 @@ import {
   InstancedBufferAttribute,
   InstancedMesh,
   Line,
-  LineBasicMaterial,
   Matrix4,
   MeshBasicMaterial,
   Quaternion,
+  RawShaderMaterial,
+  Sphere,
   SRGBColorSpace,
   Vector3
 } from 'three'
@@ -78,8 +84,9 @@ export const d3State = defineState({
   }
 })
 
+const iconScale = 5
 const simulationScale = 100
-const graphScale = 5 / simulationScale
+const graphScale = iconScale / simulationScale
 
 // For Working
 const m = new Matrix4()
@@ -87,18 +94,41 @@ const p = new Vector3()
 const q = new Quaternion()
 const s = new Vector3(1, 1, 1)
 
+const _vec3 = new Vector3()
+const sphere = new Sphere()
+sphere.radius = graphScale
+
+let selectedNodeIndex = -1
+let hoveredNodeIndex = -1
+let hoverAlpha = 1
+let nodeFocusTransition = createTransitionState(0.25, 'OUT')
+
 // buffer is 3 floats per vertex, 6 floats per line
 let lastBuffer: ArrayBuffer | null = null
 
 const execute = () => {
-  const { lineEntity, links, nodes } = getState(d3State)
+  const { lineEntity, links, nodes, meshEntity } = getState(d3State)
+  if (!meshEntity) return
+
+  const mesh = getComponent(meshEntity, MeshComponent) as InstancedMesh
+
+  const viewer = getState(ReferenceSpaceState).viewerEntity
+
+  const cameraTransform = getComponent(viewer, TransformComponent)
+  const cameraPosition = cameraTransform.position
+  const cameraRotation = cameraTransform.rotation
+
   if (!lastBuffer) return
+
+  nodeFocusTransition.update(getState(ECSState).deltaSeconds, (alpha) => {
+    hoverAlpha = 1 - alpha * 0.02
+  })
 
   const linksOffset = nodes.length * 3
 
   if (lineEntity) {
     const positions = new Float32Array(links.length * 6)
-    const colors = new Float32Array(links.length * 6)
+    const colors = new Float32Array(links.length * 8)
     for (let i = 0; i < links.length; i++) {
       const link = links[i]
       positions[i * 6] = lastBuffer[linksOffset + i * 6] * graphScale
@@ -107,31 +137,29 @@ const execute = () => {
       positions[i * 6 + 3] = lastBuffer[linksOffset + i * 6 + 3] * graphScale
       positions[i * 6 + 4] = lastBuffer[linksOffset + i * 6 + 4] * graphScale
       positions[i * 6 + 5] = lastBuffer[linksOffset + i * 6 + 5] * graphScale
+
+      const hoveredNodeID = nodes[hoveredNodeIndex]?.id
+      const selectedNodeID = nodes[selectedNodeIndex]?.id
+      const isFocused =
+        link.source === hoveredNodeID ||
+        link.target === hoveredNodeID ||
+        link.source === selectedNodeID ||
+        link.target === selectedNodeID
       const weight = 1 //strengthFuncs[strengthFunc](links[i])
-      colors[i * 6] = weight
-      colors[i * 6 + 1] = weight
-      colors[i * 6 + 2] = weight
-      colors[i * 6 + 3] = weight
-      colors[i * 6 + 4] = weight
-      colors[i * 6 + 5] = weight
+      const alpha = isFocused ? hoverAlpha : 0.02
+      colors[i * 8] = weight
+      colors[i * 8 + 1] = weight
+      colors[i * 8 + 2] = weight
+      colors[i * 8 + 3] = alpha
+      colors[i * 8 + 4] = weight
+      colors[i * 8 + 5] = weight
+      colors[i * 8 + 6] = weight
+      colors[i * 8 + 7] = alpha
     }
     const line = getComponent(lineEntity, ObjectComponent) as Line
     line.geometry.setAttribute('position', new BufferAttribute(positions, 3))
-    line.geometry.setAttribute('color', new BufferAttribute(colors, 3))
+    line.geometry.setAttribute('color', new BufferAttribute(colors, 4, true))
   }
-
-  const viewer = getState(ReferenceSpaceState).viewerEntity
-  if (!viewer) return
-
-  // make all nodes face the camera
-  const cameraInverseQuaterion = getComponent(viewer, TransformComponent).rotation
-  const meshEntity = getState(d3State).meshEntity
-
-  if (!meshEntity) return
-
-  const mesh = getComponent(meshEntity, MeshComponent) as InstancedMesh
-
-  s.set(5, 5, 5)
 
   // update image positions
   for (let i = 0; i < nodes.length; i++) {
@@ -139,10 +167,44 @@ const execute = () => {
     const y = lastBuffer[i * 3 + 1] * graphScale
     const z = lastBuffer[i * 3 + 2] * graphScale
     p.set(x, y, z)
-    mesh.setMatrixAt(i, m.compose(p, cameraInverseQuaterion, s))
+    mesh.setMatrixAt(i, m.compose(p, cameraRotation, s))
+  }
+  mesh.instanceMatrix.needsUpdate = true
+
+  const rayhits = [] as { x: number; y: number; z: number; i: number; distance: number }[]
+
+  const inputSources = InputComponent.getInputSourceEntities(viewer)
+  if (!inputSources.length) {
+    if (selectedNodeIndex === -1) nodeFocusTransition.setState('OUT')
+    return
   }
 
-  mesh.instanceMatrix.needsUpdate = true
+  const inputSource = getComponent(inputSources[0], InputSourceComponent)
+  const ray = inputSource.raycaster.ray
+
+  for (let i = 0; i < nodes.length; i++) {
+    const x = lastBuffer[i * 3] * graphScale
+    const y = lastBuffer[i * 3 + 1] * graphScale
+    const z = lastBuffer[i * 3 + 2] * graphScale
+    p.set(x, y, z)
+    sphere.center.copy(p)
+    const hit = ray.intersectSphere(sphere, _vec3)
+    if (hit) rayhits.push({ x, y, z, i, distance: cameraPosition.distanceToSquared(p) })
+  }
+
+  const closestHit = rayhits.sort((a, b) => a.distance - b.distance)[0]
+  if (closestHit) {
+    hoveredNodeIndex = closestHit.i
+  } else {
+    hoveredNodeIndex = -1
+  }
+
+  const buttons = InputComponent.getMergedButtons(viewer)
+  if (buttons.PrimaryClick?.down) {
+    selectedNodeIndex = selectedNodeIndex === hoveredNodeIndex ? -1 : hoveredNodeIndex
+  }
+
+  nodeFocusTransition.setState(selectedNodeIndex > -1 || hoveredNodeIndex > -1 ? 'IN' : 'OUT')
 }
 
 const reactor = () => {
@@ -223,8 +285,56 @@ const reactor = () => {
     // setComponent(debugEntity, MeshComponent, debugMesh)
     // setComponent(debugEntity, EntityTreeComponent, { parentEntity: originEntity })
 
+    const lineVertexShader = `
+precision mediump float;
+precision mediump int;
+
+uniform mat4 modelViewMatrix; // optional
+uniform mat4 projectionMatrix; // optional
+
+attribute vec3 position;
+attribute vec4 color;
+
+varying vec3 vPosition;
+varying vec4 vColor;
+
+void main()	{
+
+  vPosition = position;
+  vColor = color;
+
+  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+}`
+
+    const lineFragmentShader = `
+precision mediump float;
+precision mediump int;
+
+uniform float time;
+
+varying vec3 vPosition;
+varying vec4 vColor;
+
+void main()	{
+  vec4 color = vec4( vColor );
+
+  gl_FragColor = color;
+
+}`
+
     /** Create Line */
-    const line = new Line(new BufferGeometry(), new LineBasicMaterial({ vertexColors: true }))
+    const line = new Line(
+      new BufferGeometry(),
+      new RawShaderMaterial({
+        vertexColors: true,
+        transparent: true,
+        depthTest: false,
+        blending: AdditiveBlending,
+        fragmentShader: lineFragmentShader,
+        vertexShader: lineVertexShader
+      })
+    )
 
     const lineEntity = createEntity()
     setComponent(lineEntity, NameComponent, 'Line')
@@ -379,7 +489,7 @@ const ForceGraphSchema = {
       edge.weight = edge.weight || 1
     }
 
-    const minConnections = 3
+    const minConnections = 0
 
     // quick hack, remove all nodes that only have one edge
     const nodeCounts = new Map<string | number, number>()
