@@ -1,6 +1,6 @@
 import { DndWrapper } from '@ir-engine/editor/src/components/dnd/DndWrapper'
 import { ItemTypes } from '@ir-engine/editor/src/constants/AssetTypes'
-import { getMutableState, NO_PROXY, none, useHookstate } from '@ir-engine/hyperflux'
+import { defineState, getState, NO_PROXY, none, useHookstate } from '@ir-engine/hyperflux'
 import { Button, Input } from '@ir-engine/ui'
 import React, { useEffect } from 'react'
 import { useDrop } from 'react-dnd'
@@ -8,7 +8,6 @@ import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
 import { v4 as uuidv4 } from 'uuid'
 import { useSearchParam } from '../../utils/useSearchParam'
 import { JSONPreview } from './components/JSONPreview'
-import { d3State } from './ForceGraph'
 import { generateJsonSchema, JSONSchema } from './functions/generateJsonSchema'
 import { transformData } from './functions/transformData'
 import SchemaDisplay from './SchemaDisplay'
@@ -16,10 +15,10 @@ import SchemaDisplay from './SchemaDisplay'
 export const MappingUI = () => {
   // Global visualization type state.
   const visualizationType = useHookstate(0) // todo put in search params once we have multiple
-  const targetSchema = targetSchemas[visualizationType.get()].value
+  const targetSchema = getState(TargetSchemaState)[visualizationType.get()].value
 
   const onConfirm = () => {
-    targetSchemas[visualizationType.get()].onConfirm(transformedDataState.get(NO_PROXY))
+    getState(TargetSchemaState)[visualizationType.get()].onConfirm(transformedDataState.get(NO_PROXY))
     showMappingUI.set(false)
   }
 
@@ -40,6 +39,7 @@ export const MappingUI = () => {
   }
   const removeSource = (source: string) => {
     mapSources[source].set(none)
+    mapSourceResults[source].set(none)
   }
 
   const mapSourceResults = useHookstate({} as Record<string, {}>)
@@ -57,7 +57,7 @@ export const MappingUI = () => {
       any
     >
     try {
-      const transformedData = data ? targetSchemas[visualizationType.get()].onData(data) : null
+      const transformedData = data ? getState(TargetSchemaState)[visualizationType.get()].onData(data) : null
       transformedDataState.set(transformedData)
     } catch (e) {
       console.error(e)
@@ -96,7 +96,7 @@ export const MappingUI = () => {
               value={visualizationType.get()}
               onChange={(e) => visualizationType.set(parseInt(e.target.value))}
             >
-              {targetSchemas.map((option, i) => (
+              {getState(TargetSchemaState).map((option, i) => (
                 <option key={i} value={i}>
                   {option.label}
                 </option>
@@ -203,7 +203,6 @@ const InputData = (props: { sourceID: string; onNewData: (data: { schema: JSONSc
           .then((data) => {
             if (abortController.signal.aborted) return
             const schema = generateJsonSchema(data)
-            console.log(data)
             rawData.set({ schema, data })
           })
           .catch((error) => {
@@ -314,48 +313,6 @@ const URLAndFileUpload = (props: { value: string; onChange: (value: string) => v
   )
 }
 
-const forcegraphSchema: JSONSchema = {
-  type: 'object',
-  properties: {
-    nodes: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          label: { type: 'string' },
-          image: { type: 'string', optional: true }
-        }
-      }
-    },
-    edges: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          source: { type: 'string' },
-          target: { type: 'string' },
-          weight: { type: 'number', optional: true }
-        }
-      }
-    }
-  }
-}
-
-type ForceGraphShape = {
-  nodes: Array<{
-    id: string | number
-    label: string
-    group?: string
-    image?: string
-  }>
-  edges: Array<{
-    source: string | number
-    target: string | number
-    weight?: number
-  }>
-}
-
 type TargetSchema<T> = {
   label: string
   value: JSONSchema
@@ -363,57 +320,7 @@ type TargetSchema<T> = {
   onConfirm: (data: T) => void
 }
 
-const targetSchemas: Array<TargetSchema<any>> = [
-  {
-    label: 'Force Graph',
-    value: forcegraphSchema,
-    onData: (data: Record<string, ForceGraphShape>) => {
-      const finalData: ForceGraphShape = { nodes: [], edges: [] }
-      const seenLabels = new Map<string, { source: string; id: number | string }>()
-      const replacedNodes = {} as Record<string, Map<number | string, number | string>>
-      for (const sourceID in data) {
-        const source = data[sourceID]
-        if (typeof source !== 'object') continue
-        //sum the various data sources together, distinguishing different sources by the 'category' field on nodes
-        /** @todo this should be a configurable field in the mapping UI - need support for a 'literal' either at the source or overall level */
-        if (Array.isArray(source.nodes)) {
-          for (let i = 0; i < source.nodes.length; i++) {
-            const node = source.nodes[i]
-            const seenNode = seenLabels.get(node.label)
-            if (seenNode) {
-              if (!replacedNodes[sourceID]) {
-                replacedNodes[sourceID] = new Map()
-              }
-              replacedNodes[sourceID].set(node.id, seenNode.id)
-            } else {
-              seenLabels.set(node.label, { source: sourceID, id: node.id })
-              finalData.nodes.push({
-                ...node,
-                group: sourceID
-              })
-            }
-          }
-        }
-        if (Array.isArray(source.edges)) {
-          for (const edge of source.edges) {
-            finalData.edges.push({
-              source: replacedNodes[sourceID]?.get(edge.source) ?? edge.source,
-              target: replacedNodes[sourceID]?.get(edge.target) ?? edge.target,
-              weight: edge.weight
-            })
-          }
-        }
-      }
-      // ensure all edges have a weight
-      for (const edge of finalData.edges) {
-        edge.weight = edge.weight || 1
-      }
-
-      return finalData
-    },
-
-    onConfirm: (data) => {
-      getMutableState(d3State).dataset.set(data)
-    }
-  }
-]
+export const TargetSchemaState = defineState({
+  name: 'hexafield.conjure.graph-tool.TargetSchemaState',
+  initial: [] as Array<TargetSchema<any>>
+})

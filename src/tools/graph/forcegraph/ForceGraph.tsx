@@ -23,8 +23,6 @@ import { NameComponent } from '@ir-engine/spatial/src/common/NameComponent'
 import { MeshComponent } from '@ir-engine/spatial/src/renderer/components/MeshComponent'
 import { ObjectComponent } from '@ir-engine/spatial/src/renderer/components/ObjectComponent'
 import { setVisibleComponent } from '@ir-engine/spatial/src/renderer/components/VisibleComponent'
-import * as d3 from 'd3-force-3d'
-import * as dat from 'dat.gui'
 import React, { useEffect } from 'react'
 import {
   BackSide,
@@ -44,97 +42,44 @@ import {
   SRGBColorSpace,
   Vector3
 } from 'three'
-import { randomColor } from '../../utils/randomColor'
+import { randomColor } from '../../../utils/randomColor'
+import { JSONSchema } from '../functions/generateJsonSchema'
+import { TargetSchemaState } from '../MappingUI'
+import { startWebworker } from './createWorker'
+
+export interface Node {
+  id: number
+  label: string
+  group?: string
+  imageSrc?: string
+}
+
+export interface Edge {
+  id: number
+  source: number
+  target: number
+  weight: number
+}
 
 export interface NodeData {
-  nodes: Array<{ id: number; label: string; group?: string; imageSrc?: string }>
-  edges: Array<{ id: number; source: number; target: number; weight: number }>
-}
-
-type d3_type = {
-  tick: (iterations: number) => d3_type
-  restart: () => d3_type
-  stop: () => d3_type
-  numDimensions: (num?: number) => number
-  nodes: (nodes: d3Node[]) => d3_type | d3Node[]
-  alpha: (alpha?: number) => number
-  alphaMin: (alphaMin?: number) => number
-  alphaDecay: (alphaDecay?: number) => number
-  alphaTarget: (alphaTarget?: number) => number
-  velocityDecay: (velocityDecay?: number) => number
-  randomSource: (randomSource?: () => number) => () => number
-  force: (name: string, force: any) => d3_type
-  find: (x: number, y: number, z: number, radius: number) => d3Node
-  on: (type: string, listener: (event: any) => void) => d3_type
-}
-
-type d3Node = {
-  id: number
-  index: 1
-  vx: number
-  vy: number
-  vz: number
-  x: number
-  y: number
-  z: number
-}
-
-type d3Link = {
-  index: number
-  source: d3Node
-  target: d3Node
+  nodes: Node[]
+  edges: Edge[]
 }
 
 export const d3State = defineState({
   name: 'hxafield.conjure.d3State',
   initial: {
-    dataset: null as NodeData | null,
     lineEntity: null as Entity | null,
     meshEntity: null as Entity | null,
     atlasIndices: [] as number[],
-    simulation: null as d3_type | null,
-    nodes: [] as d3Node[],
-    links: [] as d3Link[],
-    strengthFunc: 'linear' as 'equal' | 'linear' | 'exponential'
+    nodes: [] as Array<Node>,
+    links: [] as Array<Edge>
+    // strengthFunc: 'linear' as 'equal' | 'linear' | 'exponential'
   }
 })
 
 const simulationScale = 100
 const graphScale = 5 / simulationScale
-const maxWeight = 5
-
-const linkStrengths = {
-  all: 1,
-  0: 0,
-  1: 0.05,
-  2: 0.1,
-  3: 0.2,
-  4: 0.5
-}
-
-const calculateStrengthsEqual = (link: d3Link) => {
-  const dataset = getState(d3State).dataset!
-  const connection = dataset.edges[link.index]
-  return linkStrengths[connection.weight] * linkStrengths.all
-}
-const calculateStrengthsLinear = (link: d3Link) => {
-  const dataset = getState(d3State).dataset!
-  const connection = dataset.edges[link.index]
-  return ((connection.weight + 1) / maxWeight) * linkStrengths[connection.weight] * linkStrengths.all
-}
-const calculateStrengthsExponential = (link: d3Link) => {
-  const dataset = getState(d3State).dataset!
-  const connection = dataset.edges[link.index]
-  const strength = (connection.weight + 1) / maxWeight
-  return strength * strength * linkStrengths[connection.weight] * linkStrengths.all
-}
-
-/** Define strength relationship functions */
-const strengthFuncs = {
-  equal: calculateStrengthsEqual,
-  linear: calculateStrengthsLinear,
-  exponential: calculateStrengthsExponential
-}
 
 // For Working
 const m = new Matrix4()
@@ -142,22 +87,27 @@ const p = new Vector3()
 const q = new Quaternion()
 const s = new Vector3(1, 1, 1)
 
+// buffer is 3 floats per vertex, 6 floats per line
+let lastBuffer: ArrayBuffer | null = null
+
 const execute = () => {
-  const { strengthFunc, lineEntity, links, nodes, dataset } = getState(d3State)
-  if (!dataset) return
+  const { lineEntity, links, nodes } = getState(d3State)
+  if (!lastBuffer) return
+
+  const linksOffset = nodes.length * 3
 
   if (lineEntity) {
     const positions = new Float32Array(links.length * 6)
     const colors = new Float32Array(links.length * 6)
     for (let i = 0; i < links.length; i++) {
       const link = links[i]
-      positions[i * 6] = link.source.x * graphScale
-      positions[i * 6 + 1] = link.source.y * graphScale
-      positions[i * 6 + 2] = link.source.z * graphScale
-      positions[i * 6 + 3] = link.target.x * graphScale
-      positions[i * 6 + 4] = link.target.y * graphScale
-      positions[i * 6 + 5] = link.target.z * graphScale
-      const weight = strengthFuncs[strengthFunc](links[i])
+      positions[i * 6] = lastBuffer[linksOffset + i * 6] * graphScale
+      positions[i * 6 + 1] = lastBuffer[linksOffset + i * 6 + 1] * graphScale
+      positions[i * 6 + 2] = lastBuffer[linksOffset + i * 6 + 2] * graphScale
+      positions[i * 6 + 3] = lastBuffer[linksOffset + i * 6 + 3] * graphScale
+      positions[i * 6 + 4] = lastBuffer[linksOffset + i * 6 + 4] * graphScale
+      positions[i * 6 + 5] = lastBuffer[linksOffset + i * 6 + 5] * graphScale
+      const weight = 1 //strengthFuncs[strengthFunc](links[i])
       colors[i * 6] = weight
       colors[i * 6 + 1] = weight
       colors[i * 6 + 2] = weight
@@ -185,10 +135,9 @@ const execute = () => {
 
   // update image positions
   for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i]
-    const x = node.x * graphScale
-    const y = node.y * graphScale
-    const z = node.z * graphScale
+    const x = lastBuffer[i * 3] * graphScale
+    const y = lastBuffer[i * 3 + 1] * graphScale
+    const z = lastBuffer[i * 3 + 2] * graphScale
     p.set(x, y, z)
     mesh.setMatrixAt(i, m.compose(p, cameraInverseQuaterion, s))
   }
@@ -197,129 +146,36 @@ const execute = () => {
 }
 
 const reactor = () => {
-  const dataset = useHookstate(getMutableState(d3State).dataset).value
+  useEffect(() => {
+    getMutableState(TargetSchemaState).merge([ForceGraphSchema])
+  }, [])
+
+  const d3 = useHookstate(getMutableState(d3State))
   const { originEntity, viewerEntity } = useMutableState(ReferenceSpaceState).value
 
   useEffect(() => {
-    if (!dataset || !originEntity || !viewerEntity) return
+    const { nodes, links } = getState(d3State)
 
-    /** UI */
-    const gui = new dat.GUI()
-    gui.domElement.style.pointerEvents = 'all'
-    const folder1 = gui.addFolder('Options')
-    folder1.closed = false
-    const options = {
-      repulsion: -80,
-      distanceMax: 100,
-      linkStrength: 50,
-      relationship: 'linear',
-      weights1: 0.05,
-      weights2: 0.1,
-      weights3: 0.2,
-      weights4: 0.5,
-      iconSize: 1,
-      restart: () => {
-        // wipe sim data
-        const nodes = simulationData.nodes as any
-        for (let i = 0; i < nodes.length; i++) {
-          delete nodes[i].x
-          delete nodes[i].y
-          delete nodes[i].z
-          delete nodes[i].vx
-          delete nodes[i].vy
-          delete nodes[i].vz
-        }
-        // reinit nodes
-        simulation.nodes(nodes)
-        // reheat sim
-        simulation.alpha(1)
-        // restart sim
-        simulation.restart()
-      },
-      reset: () => {
-        repulsionProperty.setValue(-10)
-        maxDistanceProperty.setValue(100)
-        relationshipProperty.setValue('exponential')
-        connectionCagetogriesProperties[0].setValue(0.05)
-        connectionCagetogriesProperties[1].setValue(0.1)
-        connectionCagetogriesProperties[2].setValue(0.2)
-        connectionCagetogriesProperties[3].setValue(0.5)
-        options.restart()
+    if (!nodes.length || !links.length || !originEntity || !viewerEntity) return
+
+    const abortController = new AbortController()
+    let cleanupWorker: (() => void) | null = null
+
+    startWebworker(nodes as Node[], links as Edge[], (data) => {
+      lastBuffer = data
+    }).then(([worker, cleanup]) => {
+      if (abortController.signal.aborted) {
+        cleanup()
+        return
       }
-    }
-    const repulsionProperty = folder1
-      .add(options, 'repulsion', -100, 0)
-      .onFinishChange((value) => {
-        charge.strength(value)
-        options.restart()
-      })
-      .name('Repulsion')
-    const maxDistanceProperty = folder1
-      .add(options, 'distanceMax', 0, 200)
-      .onFinishChange((value) => {
-        charge.distanceMax(value)
-        options.restart()
-      })
-      .name('Max Repulsion Distance')
 
-    const relationshipProperty = folder1
-      .add(options, 'relationship', ['equal', 'linear', 'exponential'])
-      .onFinishChange((value) => {
-        getMutableState(d3State).strengthFunc.set(value)
-        link.strength(strengthFuncs[value])
-        options.restart()
-      })
-      .name('Relationship Strength')
-
-    const connectionCagetogries = [1, 2, 3, 4]
-    const connectionCagetogriesProperties = connectionCagetogries.map((connection) => {
-      return folder1
-        .add(options, 'weights' + connection, 0, 1)
-        .name(connection + ' Weight')
-        .onFinishChange((value) => {
-          linkStrengths[connection] = value
-          options.restart()
-        })
+      cleanupWorker = cleanup
     })
 
-    folder1
-      .add(options, 'iconSize', 0.1, 10)
-      .name('Icon Size')
-      .onChange((value) => {
-        // for (const node of nodeEntities.value) getComponent(node, TransformComponent).scale.setScalar(value)
-      })
-
-    folder1.add(options, 'restart').name('Restart Simulation')
-    folder1.add(options, 'reset').name('Reset Parameters')
-
-    /** Process data */
-    const simulationData = {
-      nodes: dataset.nodes.map((i) => ({ id: i.id })),
-      links: dataset.edges.map((id) => ({
-        source: id.source,
-        target: id.target
-      }))
-    }
-
-    getMutableState(d3State).nodes.set(simulationData.nodes as any)
-    getMutableState(d3State).links.set(simulationData.links as any)
-
-    /** Configure simulation */
-
-    const getID = (d: d3Node) => d.id
-    const charge = d3.forceManyBody().strength(-10).distanceMax(100)
-    const center = d3.forceCenter()
-    const link = d3.forceLink(simulationData.links).id(getID).strength(strengthFuncs.linear)
-
-    let simulation: d3_type
-
     try {
-      simulation = d3.forceSimulation(simulationData.nodes, 3)
-
-      simulation.force('link', link).force('charge', charge).force('center', center)
+      // webworker
     } catch (e) {
       console.log(e)
-      gui.destroy()
       getMutableState(d3State).nodes.set([])
       getMutableState(d3State).links.set([])
       getMutableState(d3State).meshEntity.set(UndefinedEntity)
@@ -335,14 +191,14 @@ const reactor = () => {
     const circleGeom = new CircleGeometry(graphScale, 16)
     const material = new MeshBasicMaterial({ side: DoubleSide })
 
-    const mesh = new InstancedMesh(circleGeom, material, dataset.nodes.length)
+    const mesh = new InstancedMesh(circleGeom, material, nodes.length)
     // colors are a quick way to visualize group data
 
     const colors = new Map<string, Color>()
 
     // set the color for each node using mesh.setColorAt
-    for (let i = 0; i < dataset.nodes.length; i++) {
-      const node = dataset.nodes[i]
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i]
       if (!node.group) continue // will be white
       if (!colors.has(node.group)) colors.set(node.group, new Color(randomColor(node.group)))
       const color = colors.get(node.group)!
@@ -388,16 +244,14 @@ const reactor = () => {
     })
 
     return () => {
-      gui.destroy()
-      simulation.stop()
+      if (cleanupWorker) cleanupWorker()
       removeEntity(entity)
       removeEntity(lineEntity)
-      getMutableState(d3State).nodes.set([])
-      getMutableState(d3State).links.set([])
       getMutableState(d3State).meshEntity.set(UndefinedEntity)
       getMutableState(d3State).lineEntity.set(UndefinedEntity)
+      abortController.abort()
     }
-  }, [dataset, originEntity, viewerEntity])
+  }, [d3.nodes, d3.links, originEntity, viewerEntity])
 
   return null
 }
@@ -437,6 +291,122 @@ export const ControlHelper = () => {
     </div>
   )
 }
+
+const forcegraphSchema: JSONSchema = {
+  type: 'object',
+  properties: {
+    nodes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          label: { type: 'string' },
+          image: { type: 'string', optional: true }
+        }
+      }
+    },
+    edges: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          source: { type: 'string' },
+          target: { type: 'string' },
+          weight: { type: 'number', optional: true }
+        }
+      }
+    }
+  }
+}
+
+type ForceGraphShape = {
+  nodes: Array<{
+    id: string | number
+    label: string
+    group?: string
+    image?: string
+  }>
+  edges: Array<{
+    source: string | number
+    target: string | number
+    weight?: number
+  }>
+}
+
+const ForceGraphSchema = {
+  label: 'Force Graph',
+  value: forcegraphSchema,
+  onData: (data: Record<string, ForceGraphShape>) => {
+    const finalData: ForceGraphShape = { nodes: [], edges: [] }
+    const seenLabels = new Map<string, { source: string; id: number | string }>()
+    const replacedNodes = {} as Record<string, Map<number | string, number | string>>
+    for (const sourceID in data) {
+      const source = data[sourceID]
+      if (typeof source !== 'object') continue
+      //sum the various data sources together, distinguishing different sources by the 'category' field on nodes
+      /** @todo this should be a configurable field in the mapping UI - need support for a 'literal' either at the source or overall level */
+      if (Array.isArray(source.nodes)) {
+        for (let i = 0; i < source.nodes.length; i++) {
+          const node = source.nodes[i]
+          const seenNode = seenLabels.get(node.label)
+          if (seenNode) {
+            if (!replacedNodes[sourceID]) {
+              replacedNodes[sourceID] = new Map()
+            }
+            replacedNodes[sourceID].set(node.id, seenNode.id)
+          } else {
+            seenLabels.set(node.label, { source: sourceID, id: node.id })
+            finalData.nodes.push({
+              ...node,
+              group: sourceID
+            })
+          }
+        }
+      }
+      if (Array.isArray(source.edges)) {
+        for (const edge of source.edges) {
+          finalData.edges.push({
+            source: replacedNodes[sourceID]?.get(edge.source) ?? edge.source,
+            target: replacedNodes[sourceID]?.get(edge.target) ?? edge.target,
+            weight: edge.weight
+          })
+        }
+      }
+    }
+    // ensure all edges have a weight
+    for (const edge of finalData.edges) {
+      edge.weight = edge.weight || 1
+    }
+
+    const minConnections = 3
+
+    // quick hack, remove all nodes that only have one edge
+    const nodeCounts = new Map<string | number, number>()
+    for (const edge of finalData.edges) {
+      nodeCounts.set(edge.source, (nodeCounts.get(edge.source) || 0) + 1)
+      nodeCounts.set(edge.target, (nodeCounts.get(edge.target) || 0) + 1)
+    }
+    finalData.nodes = finalData.nodes.filter(
+      (node) => nodeCounts.get(node.id) && nodeCounts.get(node.id)! >= minConnections
+    )
+    // and now remove all edges that don't have both nodes
+    finalData.edges = finalData.edges.filter(
+      (edge) =>
+        finalData.nodes.find((node) => node.id === edge.source) &&
+        finalData.nodes.find((node) => node.id === edge.target)
+    )
+
+    return finalData
+  },
+
+  onConfirm: (data) => {
+    getMutableState(d3State).nodes.set(data.nodes)
+    getMutableState(d3State).links.set(data.edges)
+  }
+}
+
+/** Atlas Code */
 
 // const defaultImage = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png'
 // const nodesWithDefaultImage = [

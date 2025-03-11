@@ -8,6 +8,7 @@
     "check-errors": "tsc --noemit",
     "dev": "cross-env APP_ENV=development NODE_OPTIONS=--max_old_space_size=20480 vite",
     "build": "cross-env NODE_OPTIONS=--max_old_space_size=10240 vite build",
+    "build:worker": "esbuild src/tools/graph/forcegraph/ForceGraphWorker.ts --bundle --format=esm --outfile=src/tools/graph/forcegraph/ForceGraphWorker.bundle.js --loader:.wasm=binary",
     "start": "ts-node server.js",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "format-scss": "stylelint \"**/*.scss\" --fix",

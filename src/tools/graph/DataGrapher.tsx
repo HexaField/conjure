@@ -16,6 +16,8 @@ import { RendererState } from '@ir-engine/spatial/src/renderer/RendererState'
 import { Vector3 } from 'three'
 import { MappingUI } from './MappingUI'
 
+import './forcegraph/ForceGraph'
+
 export default function Template() {
   const [ref, setRef] = useReactiveRef()
 
