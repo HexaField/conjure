@@ -71,13 +71,13 @@ const Pipeline = () => {
   const currentPipeline = useHookstate(MultiSourceMappingVisualizationPipeline.id) // hardcoded for now
   const pipeline = useMutableState(DataToolRegistry)[currentPipeline.value].get(NO_PROXY) as Tool<true>
 
-  const pipelineArgs = useHookstate<unknown[]>([])
+  const pipelineArgs = useHookstate({ type: null as string | null, sources: [] as string[], mapping: {} })
   const loading = useHookstate(false)
 
   useEffect(() => {
-    if (!pipelineArgs.get(NO_PROXY).length) return
+    if (!pipelineArgs.type.value || !pipelineArgs.sources.value.length) return
     loading.set(true)
-    pipeline.implementation(pipelineArgs.get(NO_PROXY) as any[]).then(() => {
+    pipeline.implementation(pipelineArgs.get(NO_PROXY)).then(() => {
       loading.set(false)
       showMappingUI.set(false)
     })

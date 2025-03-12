@@ -125,22 +125,13 @@ const execute = () => {
     hoverAlpha = 1 - alpha * inactiveAlpha
   })
 
-  const linksOffset = nodes.length * 3
-
   if (lineEntity) {
-    const positions = new Float32Array(links.length * 6)
     const colors = new Float32Array(links.length * 8)
     for (let i = 0; i < links.length; i++) {
       const link = links[i]
-      positions[i * 6] = lastBuffer[linksOffset + i * 6] * graphScale
-      positions[i * 6 + 1] = lastBuffer[linksOffset + i * 6 + 1] * graphScale
-      positions[i * 6 + 2] = lastBuffer[linksOffset + i * 6 + 2] * graphScale
-      positions[i * 6 + 3] = lastBuffer[linksOffset + i * 6 + 3] * graphScale
-      positions[i * 6 + 4] = lastBuffer[linksOffset + i * 6 + 4] * graphScale
-      positions[i * 6 + 5] = lastBuffer[linksOffset + i * 6 + 5] * graphScale
 
-      const hoveredNodeID = nodes[hoveredNodeIndex]?.id
-      const selectedNodeID = nodes[selectedNodeIndex]?.id
+      const hoveredNodeID = hoveredNodeIndex === -1 ? null : nodes[hoveredNodeIndex].id
+      const selectedNodeID = selectedNodeIndex === -1 ? null : nodes[selectedNodeIndex].id
       const isFocused =
         link.source === hoveredNodeID ||
         link.target === hoveredNodeID ||
@@ -148,17 +139,17 @@ const execute = () => {
         link.target === selectedNodeID
       const weight = 1 //strengthFuncs[strengthFunc](links[i])
       const alpha = isFocused ? hoverAlpha : inactiveAlpha
-      colors[i * 8] = weight
-      colors[i * 8 + 1] = weight
-      colors[i * 8 + 2] = weight
-      colors[i * 8 + 3] = alpha
-      colors[i * 8 + 4] = weight
-      colors[i * 8 + 5] = weight
-      colors[i * 8 + 6] = weight
-      colors[i * 8 + 7] = alpha
+      const currentLinkNodeIndex = i * 8
+      colors[currentLinkNodeIndex] = weight
+      colors[currentLinkNodeIndex + 1] = weight
+      colors[currentLinkNodeIndex + 2] = weight
+      colors[currentLinkNodeIndex + 3] = alpha
+      colors[currentLinkNodeIndex + 4] = weight
+      colors[currentLinkNodeIndex + 5] = weight
+      colors[currentLinkNodeIndex + 6] = weight
+      colors[currentLinkNodeIndex + 7] = alpha
     }
     const line = getComponent(lineEntity, ObjectComponent) as Line
-    line.geometry.setAttribute('position', new BufferAttribute(positions, 3))
     line.geometry.setAttribute('color', new BufferAttribute(colors, 4, true))
   }
 
@@ -225,6 +216,19 @@ const reactor = () => {
     let cleanupWorker: (() => void) | null = null
 
     startWebworker(nodes as Node[], links as Edge[], (data) => {
+      const linksOffset = nodes.length * 3
+      const positions = new Float32Array(links.length * 6)
+      for (let i = 0; i < links.length; i++) {
+        const currentLinkIndex = i * 6
+        positions[currentLinkIndex] = data[linksOffset + currentLinkIndex] * graphScale
+        positions[currentLinkIndex + 1] = data[linksOffset + currentLinkIndex + 1] * graphScale
+        positions[currentLinkIndex + 2] = data[linksOffset + currentLinkIndex + 2] * graphScale
+        positions[currentLinkIndex + 3] = data[linksOffset + currentLinkIndex + 3] * graphScale
+        positions[currentLinkIndex + 4] = data[linksOffset + currentLinkIndex + 4] * graphScale
+        positions[currentLinkIndex + 5] = data[linksOffset + currentLinkIndex + 5] * graphScale
+      }
+      const line = getComponent(lineEntity, ObjectComponent) as Line
+      line.geometry.setAttribute('position', new BufferAttribute(positions, 3))
       lastBuffer = data
     }).then(([worker, cleanup]) => {
       if (abortController.signal.aborted) {

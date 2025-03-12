@@ -196,8 +196,8 @@ const InputData = (props: { sourceID: string; onNewData: (data: { schema: JSONSc
     if (!selectedURL.value) return
     const abortController = new AbortController()
     loadingData.set(true)
-    SourceFetchTool.implementation([selectedURL.value], abortController)
-      .then(([schema, data]) => {
+    SourceFetchTool.implementation({ url: selectedURL.value }, abortController)
+      .then(({ schema, data }) => {
         rawData.set({ schema, data })
       })
       .catch((error) => {
