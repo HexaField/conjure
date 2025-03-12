@@ -49,8 +49,8 @@ import {
   Vector3
 } from 'three'
 import { randomColor } from '../../../utils/randomColor'
+import { TargetVisualizationState } from '../DataState'
 import { JSONSchema } from '../functions/generateJsonSchema'
-import { TargetSchemaState } from '../MappingUI'
 import { startWebworker } from './createWorker'
 
 export interface Node {
@@ -101,6 +101,7 @@ sphere.radius = graphScale
 let selectedNodeIndex = -1
 let hoveredNodeIndex = -1
 let hoverAlpha = 1
+const inactiveAlpha = 0.01
 let nodeFocusTransition = createTransitionState(0.25, 'OUT')
 
 // buffer is 3 floats per vertex, 6 floats per line
@@ -121,7 +122,7 @@ const execute = () => {
   if (!lastBuffer) return
 
   nodeFocusTransition.update(getState(ECSState).deltaSeconds, (alpha) => {
-    hoverAlpha = 1 - alpha * 0.02
+    hoverAlpha = 1 - alpha * inactiveAlpha
   })
 
   const linksOffset = nodes.length * 3
@@ -146,7 +147,7 @@ const execute = () => {
         link.source === selectedNodeID ||
         link.target === selectedNodeID
       const weight = 1 //strengthFuncs[strengthFunc](links[i])
-      const alpha = isFocused ? hoverAlpha : 0.02
+      const alpha = isFocused ? hoverAlpha : inactiveAlpha
       colors[i * 8] = weight
       colors[i * 8 + 1] = weight
       colors[i * 8 + 2] = weight
@@ -209,7 +210,7 @@ const execute = () => {
 
 const reactor = () => {
   useEffect(() => {
-    getMutableState(TargetSchemaState).merge([ForceGraphSchema])
+    getMutableState(TargetVisualizationState).merge({ [ForceGraphSchema.id]: ForceGraphSchema })
   }, [])
 
   const d3 = useHookstate(getMutableState(d3State))
@@ -445,6 +446,7 @@ type ForceGraphShape = {
 }
 
 const ForceGraphSchema = {
+  id: 'hexafield.conjure.graph-tool.ForceGraph',
   label: 'Force Graph',
   value: forcegraphSchema,
   onData: (data: Record<string, ForceGraphShape>) => {

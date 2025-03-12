@@ -1,6 +1,6 @@
 import { DndWrapper } from '@ir-engine/editor/src/components/dnd/DndWrapper'
 import { ItemTypes } from '@ir-engine/editor/src/constants/AssetTypes'
-import { defineState, getState, NO_PROXY, none, useHookstate } from '@ir-engine/hyperflux'
+import { getState, NO_PROXY, none, useHookstate } from '@ir-engine/hyperflux'
 import { Button, Input } from '@ir-engine/ui'
 import React, { useEffect } from 'react'
 import { useDrop } from 'react-dnd'
@@ -8,17 +8,18 @@ import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
 import { v4 as uuidv4 } from 'uuid'
 import { useSearchParam } from '../../utils/useSearchParam'
 import { JSONPreview } from './components/JSONPreview'
-import { generateJsonSchema, JSONSchema } from './functions/generateJsonSchema'
+import { SourceFetchTool, TargetVisualizationState } from './DataState'
+import { JSONSchema } from './functions/generateJsonSchema'
 import { transformData } from './functions/transformData'
 import SchemaDisplay from './SchemaDisplay'
 
 export const MappingUI = () => {
   // Global visualization type state.
-  const visualizationType = useHookstate(0) // todo put in search params once we have multiple
-  const targetSchema = getState(TargetSchemaState)[visualizationType.get()].value
+  const visualizationType = useHookstate('hexafield.conjure.graph-tool.ForceGraph') // todo put in search params once we have multiple
+  const targetSchema = getState(TargetVisualizationState)[visualizationType.get()].value
 
   const onConfirm = () => {
-    getState(TargetSchemaState)[visualizationType.get()].onConfirm(transformedDataState.get(NO_PROXY))
+    getState(TargetVisualizationState)[visualizationType.get()].onConfirm(finalDataState.get(NO_PROXY))
     showMappingUI.set(false)
   }
 
@@ -46,10 +47,11 @@ export const MappingUI = () => {
   useSearchParam('sources', mapSourceResults.keys.join(','))
 
   const onSourceChanged = (sourceID: string, data: any) => {
-    mapSourceResults.merge({ [sourceID]: data })
+    const transformedData = transformData(data.mapping, data.data)
+    mapSourceResults.merge({ [sourceID]: transformedData })
   }
 
-  const transformedDataState = useHookstate<any | null>(null)
+  const finalDataState = useHookstate<any | null>(null)
 
   useEffect(() => {
     const data = Object.fromEntries(Object.entries(mapSourceResults.get(NO_PROXY)).filter(([_, v]) => !!v)) as Record<
@@ -57,8 +59,8 @@ export const MappingUI = () => {
       any
     >
     try {
-      const transformedData = data ? getState(TargetSchemaState)[visualizationType.get()].onData(data) : null
-      transformedDataState.set(transformedData)
+      const finalData = data ? getState(TargetVisualizationState)[visualizationType.get()].onData(data) : null
+      finalDataState.set(finalData)
     } catch (e) {
       console.error(e)
     }
@@ -94,10 +96,10 @@ export const MappingUI = () => {
               id="visType"
               className="rounded border p-2"
               value={visualizationType.get()}
-              onChange={(e) => visualizationType.set(parseInt(e.target.value))}
+              onChange={(e) => visualizationType.set(e.target.value)}
             >
-              {getState(TargetSchemaState).map((option, i) => (
-                <option key={i} value={i}>
+              {Object.values(getState(TargetVisualizationState)).map((option, i) => (
+                <option key={option.id} value={option.id}>
                   {option.label}
                 </option>
               ))}
@@ -118,7 +120,7 @@ export const MappingUI = () => {
           <Button className="pointer-events-auto z-10 mb-1 p-4" variant="tertiary" onClick={onConfirm}>
             Confirm
           </Button>
-          {transformedDataState.value && <JSONPreview json={transformedDataState.get(NO_PROXY)} title="Output Data" />}
+          {finalDataState.value && <JSONPreview json={finalDataState.get(NO_PROXY)} title="Output Data" />}
         </div>
       </div>
     </div>
@@ -128,7 +130,7 @@ export const MappingUI = () => {
 const MappingSource = (props: {
   sourceID: string
   targetSchema: JSONSchema
-  onChange: (data: any) => void
+  onChange: (args: { mapping: any; data: any }) => void
   onRemove: () => void
 }) => {
   const currentInputData = useHookstate<{ schema: JSONSchema; data: unknown } | null>(null)
@@ -142,8 +144,7 @@ const MappingSource = (props: {
 
     const { data } = currentInputData.get(NO_PROXY)!
 
-    const transformedData = transformData(mapping, data)
-    props.onChange(transformedData)
+    props.onChange({ mapping, data })
   }
 
   const openUI = useHookstate(false)
@@ -195,25 +196,14 @@ const InputData = (props: { sourceID: string; onNewData: (data: { schema: JSONSc
     if (!selectedURL.value) return
     const abortController = new AbortController()
     loadingData.set(true)
-    fetch(selectedURL.value)
-      .then((response) => {
-        if (abortController.signal.aborted) return
-        response
-          .json()
-          .then((data) => {
-            if (abortController.signal.aborted) return
-            const schema = generateJsonSchema(data)
-            rawData.set({ schema, data })
-          })
-          .catch((error) => {
-            console.error(error)
-          })
-          .finally(() => {
-            loadingData.set(false)
-          })
+    SourceFetchTool.implementation([selectedURL.value], abortController)
+      .then(([schema, data]) => {
+        rawData.set({ schema, data })
       })
       .catch((error) => {
         console.error(error)
+      })
+      .finally(() => {
         loadingData.set(false)
       })
     return () => {
@@ -237,21 +227,27 @@ const InputData = (props: { sourceID: string; onNewData: (data: { schema: JSONSc
         <label htmlFor="url-input" className="mb-2 font-medium">
           Data URL
         </label>
-        <div className="flex" id="dnd-container">
-          <DndWrapper id="dnd-container">
-            <URLAndFileUpload value={inputField.value} onChange={inputField.set} />
-          </DndWrapper>
-          {loadingData.value ? (
-            <div className="rounded-r bg-gray-200 p-2">Loading...</div>
-          ) : (
-            <Button className="rounded-r" variant="primary" onClick={() => selectedURL.set(inputField.value.trim())}>
-              Confirm
-            </Button>
-          )}
-        </div>
+        <DnDURLAndFileUpload selectedURL={inputField.value} onChange={inputField.set} />
+        {loadingData.value ? (
+          <div className="rounded-r bg-gray-200 p-2">Loading...</div>
+        ) : (
+          <Button className="rounded-r" variant="primary" onClick={() => selectedURL.set(inputField.value.trim())}>
+            Confirm
+          </Button>
+        )}
         {rawData.value?.schema && <JSONPreview json={rawData.get(NO_PROXY)!.schema} title="Input Schema" />}
       </div>
     </>
+  )
+}
+
+export const DnDURLAndFileUpload = (props: { selectedURL: string; onChange: (val: string) => void }) => {
+  return (
+    <div className="flex" id="dnd-container">
+      <DndWrapper id="dnd-container">
+        <URLAndFileUpload value={props.selectedURL} onChange={props.onChange} />
+      </DndWrapper>
+    </div>
   )
 }
 
@@ -312,15 +308,3 @@ const URLAndFileUpload = (props: { value: string; onChange: (value: string) => v
     />
   )
 }
-
-type TargetSchema<T> = {
-  label: string
-  value: JSONSchema
-  onData: (data: Record<string, Partial<T>>) => T
-  onConfirm: (data: T) => void
-}
-
-export const TargetSchemaState = defineState({
-  name: 'hexafield.conjure.graph-tool.TargetSchemaState',
-  initial: [] as Array<TargetSchema<any>>
-})

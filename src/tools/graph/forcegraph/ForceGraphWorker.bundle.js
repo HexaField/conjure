@@ -1851,7 +1851,6 @@ var graphs = {};
 self.postMessage({ type: "ready" });
 self.onmessage = (event) => {
   const { type, id } = event.data;
-  console.log("worker received", event.data);
   switch (type) {
     case "start":
       startForceGraph(event.data);

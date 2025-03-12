@@ -210,7 +210,7 @@ const getNestedObjectIgnoringArrays = (obj: any, path: string): any => {
   return result
 }
 
-const allRequirementsMet = (schema: JSONSchema, mapping: any): boolean => {
+export const allRequirementsMet = (schema: JSONSchema, mapping: any): boolean => {
   const requirements = getRequirements(schema, '')
   return requirements.every((req) => !!getNestedObjectIgnoringArrays(mapping, req))
 }
