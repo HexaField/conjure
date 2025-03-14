@@ -1,11 +1,10 @@
 import { DndWrapper } from '@ir-engine/editor/src/components/dnd/DndWrapper'
 import { ItemTypes } from '@ir-engine/editor/src/constants/AssetTypes'
-import { getState, NO_PROXY, none, useHookstate } from '@ir-engine/hyperflux'
+import { getState, NO_PROXY, useHookstate } from '@ir-engine/hyperflux'
 import { Button, Input } from '@ir-engine/ui'
 import React, { useEffect } from 'react'
 import { useDrop } from 'react-dnd'
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
-import { v4 as uuidv4 } from 'uuid'
 import { useSearchParam } from '../../utils/useSearchParam'
 import { JSONPreview } from './components/JSONPreview'
 import { SourceFetchTool, TargetVisualizationState } from './DataState'
@@ -19,45 +18,26 @@ export const MappingUI = () => {
   const targetSchema = getState(TargetVisualizationState)[visualizationType.get()].value
 
   const onConfirm = () => {
+    if (!finalDataState.value) return
     getState(TargetVisualizationState)[visualizationType.get()].onConfirm(finalDataState.get(NO_PROXY))
     showMappingUI.set(false)
   }
 
   const showMappingUI = useHookstate(true)
-  const mapSources = useHookstate(() => {
-    const sources = {} as Record<string, {} | null>
-    const fromURL = new URLSearchParams(window.location.search).get('sources')
-    if (fromURL) {
-      for (const source of fromURL.split(',')) {
-        sources[source] = null
-      }
-    }
-    return sources
-  })
-  const addSource = () => {
-    /** @todo in the future, you'll be able to save and load mappings from an inventory, this is a placeholder for that functionality */
-    mapSources.merge({ [uuidv4()]: {} })
-  }
-  const removeSource = (source: string) => {
-    mapSources[source].set(none)
-    mapSourceResults[source].set(none)
-  }
 
-  const mapSourceResults = useHookstate({} as Record<string, {}>)
-  useSearchParam('sources', mapSourceResults.keys.join(','))
+  const mapSourceResults = useHookstate({} as {})
 
-  const onSourceChanged = (sourceID: string, data: any) => {
+  const onSourceChanged = (data: any) => {
     const transformedData = transformData(data.mapping, data.data)
-    mapSourceResults.merge({ [sourceID]: transformedData })
+    mapSourceResults.set(transformedData)
   }
 
   const finalDataState = useHookstate<any | null>(null)
 
   useEffect(() => {
-    const data = Object.fromEntries(Object.entries(mapSourceResults.get(NO_PROXY)).filter(([_, v]) => !!v)) as Record<
-      string,
-      any
-    >
+    /** @todo since we implemented it with multi-source, and we no longer have the url, hack it from the search params */
+    const url = new URLSearchParams(window.location.search).get('url')!
+    const data = { [url]: mapSourceResults.get(NO_PROXY) }
     try {
       const finalData = data ? getState(TargetVisualizationState)[visualizationType.get()].onData(data) : null
       finalDataState.set(finalData)
@@ -65,6 +45,10 @@ export const MappingUI = () => {
       console.error(e)
     }
   }, [mapSourceResults])
+
+  useEffect(() => {
+    onConfirm()
+  }, [finalDataState])
 
   return (
     <div className="pointer-events-auto z-[10] h-fit w-fit overflow-auto overflow-x-auto overflow-y-auto rounded-lg bg-white p-4">
@@ -105,18 +89,7 @@ export const MappingUI = () => {
               ))}
             </select>
           </div>
-          {mapSources.keys.map((source) => (
-            <MappingSource
-              key={source}
-              sourceID={source}
-              targetSchema={targetSchema}
-              onChange={(data) => onSourceChanged(source, data)}
-              onRemove={() => removeSource(source)}
-            />
-          ))}
-          <Button className="pointer-events-auto z-10 mb-1 p-4" variant="tertiary" onClick={addSource}>
-            Add Source
-          </Button>
+          <MappingSource targetSchema={targetSchema} onChange={onSourceChanged} />
           <Button className="pointer-events-auto z-10 mb-1 p-4" variant="tertiary" onClick={onConfirm}>
             Confirm
           </Button>
@@ -127,12 +100,7 @@ export const MappingUI = () => {
   )
 }
 
-const MappingSource = (props: {
-  sourceID: string
-  targetSchema: JSONSchema
-  onChange: (args: { mapping: any; data: any }) => void
-  onRemove: () => void
-}) => {
+const MappingSource = (props: { targetSchema: JSONSchema; onChange: (args: { mapping: any; data: any }) => void }) => {
   const currentInputData = useHookstate<{ schema: JSONSchema; data: unknown } | null>(null)
 
   const onNewData = (data: { schema: JSONSchema; data: unknown }) => {
@@ -147,7 +115,7 @@ const MappingSource = (props: {
     props.onChange({ mapping, data })
   }
 
-  const openUI = useHookstate(false)
+  const openUI = useHookstate(true)
 
   return (
     <>
@@ -164,16 +132,12 @@ const MappingSource = (props: {
             <HiChevronRight className="text-theme-primary pointer-events-none place-self-center" />
           )}
         </Button>
-        <Button className="pointer-events-auto z-10 mb-1 p-4" variant="tertiary" onClick={props.onRemove}>
-          Remove Source
-        </Button>
       </div>
       <div className="h-full overflow-auto overflow-y-auto p-4" style={{ display: openUI.value ? 'block' : 'none' }}>
-        <InputData sourceID={props.sourceID} onNewData={onNewData} />
+        <InputData onNewData={onNewData} />
         {currentInputData.value && (
           <div className="pointer-events-auto relative z-[10] mx-auto">
             <SchemaDisplay
-              sourceID={props.sourceID}
               jsonSchema={currentInputData.get(NO_PROXY)!.schema}
               targetSchema={props.targetSchema}
               data={currentInputData.get(NO_PROXY)!.data}
@@ -186,10 +150,10 @@ const MappingSource = (props: {
   )
 }
 
-const InputData = (props: { sourceID: string; onNewData: (data: { schema: JSONSchema; data: unknown }) => void }) => {
+const InputData = (props: { onNewData: (data: { schema: JSONSchema; data: unknown }) => void }) => {
   const rawData = useHookstate<{ schema: JSONSchema; data: unknown } | null>(null)
 
-  const selectedURL = useHookstate(new URLSearchParams(window.location.search).get(props.sourceID + '-url') || '')
+  const selectedURL = useHookstate(new URLSearchParams(window.location.search).get('url') || '')
   const loadingData = useHookstate(false)
 
   useEffect(() => {
@@ -212,7 +176,7 @@ const InputData = (props: { sourceID: string; onNewData: (data: { schema: JSONSc
     }
   }, [selectedURL])
 
-  useSearchParam(`${props.sourceID}-url`, selectedURL.value.startsWith('blob://') ? '' : selectedURL.value)
+  useSearchParam('url', selectedURL.value.startsWith('blob://') ? '' : selectedURL.value)
 
   useEffect(() => {
     if (!rawData.value) return

@@ -504,7 +504,7 @@ const ForceGraphSchema = {
       nodeCounts.set(edge.target, (nodeCounts.get(edge.target) || 0) + 1)
     }
     finalData.nodes = finalData.nodes.filter(
-      (node) => nodeCounts.get(node.id) && nodeCounts.get(node.id)! >= minConnections
+      (node) => nodeCounts.get(node.id) // && nodeCounts.get(node.id)! >= minConnections
     )
     // and now remove all edges that don't have both nodes
     finalData.edges = finalData.edges.filter(
@@ -512,6 +512,8 @@ const ForceGraphSchema = {
         finalData.nodes.find((node) => node.id === edge.source) &&
         finalData.nodes.find((node) => node.id === edge.target)
     )
+
+    if (!finalData.nodes.length) return null
 
     return finalData
   },

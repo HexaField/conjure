@@ -35,13 +35,12 @@ const buildEmptyStructureFromSchema = (schema: JSONSchema): any => {
 }
 
 const GraphMappingSettings = (props: {
-  sourceID: string
   jsonSchema: JSONSchema
   targetSchema: JSONSchema
   data: any
   onChange: (mapping: any) => void
 }) => {
-  const { sourceID, jsonSchema, targetSchema, data, onChange } = props
+  const { jsonSchema, targetSchema, data, onChange } = props
 
   // Our flattened schema.
   const flattenedFields = useMemo(() => flattenSchema(jsonSchema, '', data), [jsonSchema, data])
@@ -57,7 +56,7 @@ const GraphMappingSettings = (props: {
   // Graph mapping state.
   const graphMappingState = useHookstate<any>(() => {
     try {
-      const fromURL = new URLSearchParams(window.location.search).get(sourceID + '-mapping')
+      const fromURL = new URLSearchParams(window.location.search).get('mapping')
       if (fromURL) {
         return JSON.parse(fromURL)
       }
@@ -85,7 +84,7 @@ const GraphMappingSettings = (props: {
     }
   }
 
-  useSearchParam(`${sourceID}-mapping`, graphMappingState.value)
+  useSearchParam('mapping', graphMappingState.value)
 
   return (
     <div className="6xl mx-auto p-4">
