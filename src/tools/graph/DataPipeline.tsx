@@ -19,7 +19,7 @@ import { Vector3 } from 'three'
 import { JSONPreview } from './components/JSONPreview'
 
 import { useSearchParam } from '../../utils/useSearchParam'
-import { DataToolRegistry, MultiSourceMappingVisualizationPipeline, Tool } from './DataState'
+import { DataToolRegistry, Tool } from './DataState'
 import './forcegraph/ForceGraph'
 import { DnDURLAndFileUpload } from './MappingUI'
 
@@ -68,7 +68,7 @@ export default function Template() {
  */
 const Pipeline = () => {
   const showMappingUI = useHookstate(true)
-  const currentPipeline = useHookstate(MultiSourceMappingVisualizationPipeline.id) // hardcoded for now
+  const currentPipeline = useHookstate('')
   const pipeline = useMutableState(DataToolRegistry)[currentPipeline.value].get(NO_PROXY) as Tool<true>
 
   const pipelineArgs = useHookstate({ type: null as string | null, sources: [] as string[], mapping: {} })

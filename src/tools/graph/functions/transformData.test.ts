@@ -4,6 +4,48 @@ import { transformData } from './transformData'
 // Tests
 
 describe('transformData', () => {
+  it('should transform nested object data to flat array', () => {
+    const inputData = {
+      profiles: [
+        {
+          _id: 'a',
+          data: {
+            profile: {
+              username: 'Alice',
+              url: 'https://alice.com/'
+            }
+          }
+        },
+        {
+          _id: 'b',
+          data: {
+            profile: {
+              username: 'Bob',
+              url: 'https://bob.org/'
+            }
+          }
+        },
+        {
+          _id: 'c',
+          data: {
+            profile: {
+              username: 'Charlie',
+              url: 'https://charlie.net/'
+            }
+          }
+        }
+      ]
+    }
+
+    const jsonRules = {
+      output: [{ name: 'profiles.data.profile.username' }]
+    }
+
+    const outputData = transformData(jsonRules, inputData)
+
+    expect(outputData).toEqual({ output: [{ name: 'Alice' }, { name: 'Bob' }, { name: 'Charlie' }] })
+  })
+
   it('should transform data with provided mapping', () => {
     const inputData = {
       profiles: [

@@ -1,8 +1,9 @@
 import { defineState, getMutableState, getState } from '@ir-engine/hyperflux'
 import { useEffect } from 'react'
+import { allRequirementsMet } from './functions/allRequirementsMet'
+import { flattenSchema } from './functions/flattenSchema'
 import { generateJsonSchema, JSONSchema } from './functions/generateJsonSchema'
 import { transformData } from './functions/transformData'
-import { allRequirementsMet, flattenSchema } from './SchemaDisplay'
 
 export type Tool<Async = boolean> = {
   id: string
@@ -28,10 +29,6 @@ export const DataToolRegistry = defineState({
         getMutableState(DataToolRegistry).merge({
           [tool.id]: tool
         })
-      for (const pipeline of Pipelines)
-        getMutableState(DataToolRegistry).merge({
-          [pipeline.id]: pipeline
-        })
     }, [])
 
     return null
@@ -54,13 +51,29 @@ export const TargetVisualizationState = defineState({
 export const SourceFetchTool = {
   id: 'core.source-fetch',
   label: 'Fetch Source',
-  input: { type: 'object', properties: { url: { type: 'string' } } },
+  input: {
+    type: 'object',
+    properties: {
+      url: { type: 'string' },
+      params: { type: 'object', optional: true },
+      search: { type: 'object', optional: true },
+      body: { type: 'object', optional: true }
+    }
+  },
   output: { type: 'object', properties: { schema: { type: 'object' }, data: { type: 'object' } } },
   isAsync: true,
-  implementation: (args: { url: string }, abortController) => {
+  implementation: (
+    args: { url: string; body?: Record<string, any>; search?: Record<string, any>; params?: Record<string, any> },
+    abortController
+  ) => {
     if (!abortController) abortController = new AbortController()
+
+    if (args.params && args.body) args.params.body = JSON.stringify(args.body)
+
+    const url = args.search ? `${args.url}?${new URLSearchParams(args.search).toString()}` : args.url
+
     return new Promise<{ schema: JSONSchema; data: any }>((resolve, reject) => {
-      fetch(args.url, { signal: abortController.signal })
+      fetch(url, { signal: abortController.signal, ...args.params })
         .then((response) => {
           if (abortController.signal.aborted) return
           response
@@ -71,11 +84,13 @@ export const SourceFetchTool = {
               resolve({ schema, data })
             })
             .catch((error) => {
+              if (abortController.signal.aborted) return
               console.error(error)
               reject(error)
             })
         })
         .catch((error) => {
+          if (abortController.signal.aborted) return
           console.error(error)
           reject(error)
         })
@@ -142,39 +157,137 @@ export const VisualizationTool = {
   }
 }
 
+export const IterationTool = {
+  id: 'core.iteration',
+  label: 'Iteration',
+  input: { type: 'object', properties: { mapping: { type: 'object' }, data: { type: 'object' } } },
+  output: { type: 'object', properties: { iterationResult: { type: 'object' } } },
+  isAsync: true,
+  implementation: async (args: {
+    data: any
+    mapping: string
+    outputMapping: string
+    tool: {
+      id: string
+      args: any
+    }
+  }) => {
+    const iterable = args.data[args.mapping]
+    const iterationResult = await Promise.all(
+      iterable.map(
+        (item: any) =>
+          new Promise<any>((resolve) => {
+            getState(DataToolRegistry)
+              [args.tool.id].implementation({
+                ...args.tool.args,
+                [args.outputMapping]: item
+              })
+              .then((result) => {
+                resolve(result)
+              })
+              .catch(() => {
+                resolve(undefined)
+              })
+          })
+      )
+    )
+    return { iterationResult: iterationResult.filter((val) => typeof val !== 'undefined') }
+  }
+}
+
+export const QueryTool = {
+  id: 'core.query',
+  label: 'Query',
+  input: {
+    type: 'object',
+    properties: {
+      data: {
+        type: 'object',
+        properties: {
+          body: { type: 'object', optional: true },
+          params: { type: 'object', optional: true },
+          search: { type: 'object', optional: true }
+        }
+      },
+      query: {
+        type: 'object',
+        properties: {
+          endpointURL: { type: 'string', optional: true },
+          args: { type: 'object', optional: true },
+          params: { type: 'object', optional: true }
+        }
+      }
+    }
+  },
+  output: { type: 'object' },
+  isAsync: true,
+  implementation: async (
+    args: {
+      data: {
+        body?: Record<string, any>
+        params?: Record<string, string>
+        search?: Record<string, string>
+      }
+      query: {
+        endpointURL: string
+        body?: Record<string, any>
+        params?: Record<string, string>
+        search?: Record<string, string>
+      }
+    },
+    abortController
+  ) => {
+    const fetchTool = getState(DataToolRegistry)[SourceFetchTool.id]
+
+    const search = {
+      ...args.query.search,
+      ...args.data.search
+    }
+
+    const params = {
+      ...args.query.params,
+      ...args.data.params
+    }
+
+    const body = {
+      ...args.query.body,
+      ...args.data.body
+    }
+
+    const fetchArgs = {
+      url: args.query.endpointURL
+    } as {
+      url: string
+      search?: Record<string, string>
+      params?: Record<string, string>
+      body?: Record<string, any>
+    }
+    if (Object.keys(search).length) fetchArgs.search = search
+    if (Object.keys(params).length) fetchArgs.params = params
+    if (Object.keys(body).length) fetchArgs.body = body
+
+    const { data } = await fetchTool.implementation(fetchArgs, abortController)
+    return { data }
+  }
+}
+
+const PipelineTool = {
+  id: 'core.pipeline',
+  label: 'Pipeline',
+  input: { type: 'object', properties: { pipeline: { type: 'string' }, args: { type: 'object' } } },
+  output: { type: 'object' },
+  isAsync: true,
+  implementation: async (args: { pipeline: string; inputArgs: any }, abortController) => {
+    // todo: use KHR_interactivity
+  }
+}
+
 const CoreTools: Tool[] = [
   SourceFetchTool,
   SchemaFlattenTool,
   MappingRequirementsTool,
   MappedTransformationTool,
-  VisualizationTool
+  VisualizationTool,
+  QueryTool,
+  PipelineTool
 ]
-
-export const MultiSourceMappingVisualizationPipeline = {
-  id: 'core.multi-source-mapping-visualization',
-  label: 'Multi Source Mapping Visualization Pipeline',
-  input: {
-    type: 'object',
-    properties: { type: { type: 'string' }, sources: { type: 'array' }, mapping: { type: 'object' } }
-  },
-  output: { type: 'object', properties: { result: { type: 'object' } } },
-  isAsync: true,
-  implementation: async (args: { type: string; sources: string[]; mapping: any }, abortController) => {
-    const { type, sources, mapping } = args
-    const { schema, data } = await SourceFetchTool.implementation({ url: sources[0] }, abortController)
-    const targetSchema = getState(TargetVisualizationState)[type].value
-    const { meetsRequirements } = MappingRequirementsTool.implementation({ targetSchema, mapping })
-    if (!meetsRequirements) {
-      throw new Error('Mapping does not meet requirements')
-    }
-    const { transformedData } = MappedTransformationTool.implementation({ mapping, data })
-    const { combinedData } = VisualizationTool.implementation({ type, data: { [sources[0]]: transformedData } })
-    return { result: combinedData }
-  }
-}
-
-const Pipelines: Tool[] = [MultiSourceMappingVisualizationPipeline]
-
-/**
- * @todo maybe consider changing from arrays to an object...
- */
