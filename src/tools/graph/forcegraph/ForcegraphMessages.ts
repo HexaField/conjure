@@ -13,7 +13,7 @@ export type UpdateMessage = {
   restart?: boolean
   repulsion?: number
   distanceMax?: number
-  relationship?: 'equal' | 'linear' | 'exponential'
+  relationship?: 'equal' | 'linear' | 'exponential' | 'quadratic'
 }
 
 export type StopMessage = {

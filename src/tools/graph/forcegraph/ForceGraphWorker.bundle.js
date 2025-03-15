@@ -1,18 +1,18 @@
 // ../../../../../node_modules/d3-force-3d/src/center.js
-function center_default(x2, y2, z2) {
+function center_default(x3, y3, z3) {
   var nodes, strength = 1;
-  if (x2 == null)
-    x2 = 0;
-  if (y2 == null)
-    y2 = 0;
-  if (z2 == null)
-    z2 = 0;
+  if (x3 == null)
+    x3 = 0;
+  if (y3 == null)
+    y3 = 0;
+  if (z3 == null)
+    z3 = 0;
   function force() {
     var i, n = nodes.length, node, sx = 0, sy = 0, sz = 0;
     for (i = 0; i < n; ++i) {
       node = nodes[i], sx += node.x || 0, sy += node.y || 0, sz += node.z || 0;
     }
-    for (sx = (sx / n - x2) * strength, sy = (sy / n - y2) * strength, sz = (sz / n - z2) * strength, i = 0; i < n; ++i) {
+    for (sx = (sx / n - x3) * strength, sy = (sy / n - y3) * strength, sz = (sz / n - z3) * strength, i = 0; i < n; ++i) {
       node = nodes[i];
       if (sx) {
         node.x -= sx;
@@ -29,13 +29,13 @@ function center_default(x2, y2, z2) {
     nodes = _;
   };
   force.x = function(_) {
-    return arguments.length ? (x2 = +_, force) : x2;
+    return arguments.length ? (x3 = +_, force) : x3;
   };
   force.y = function(_) {
-    return arguments.length ? (y2 = +_, force) : y2;
+    return arguments.length ? (y3 = +_, force) : y3;
   };
   force.z = function(_) {
-    return arguments.length ? (z2 = +_, force) : z2;
+    return arguments.length ? (z3 = +_, force) : z3;
   };
   force.strength = function(_) {
     return arguments.length ? (strength = +_, force) : strength;
@@ -45,17 +45,17 @@ function center_default(x2, y2, z2) {
 
 // ../../../../../node_modules/d3-binarytree/src/add.js
 function add_default(d) {
-  const x2 = +this._x.call(null, d);
-  return add(this.cover(x2), x2, d);
+  const x3 = +this._x.call(null, d);
+  return add(this.cover(x3), x3, d);
 }
-function add(tree, x2, d) {
-  if (isNaN(x2))
+function add(tree, x3, d) {
+  if (isNaN(x3))
     return tree;
   var parent, node = tree._root, leaf = { data: d }, x0 = tree._x0, x1 = tree._x1, xm, xp, right, i, j;
   if (!node)
     return tree._root = leaf, tree;
   while (node.length) {
-    if (right = x2 >= (xm = (x0 + x1) / 2))
+    if (right = x3 >= (xm = (x0 + x1) / 2))
       x0 = xm;
     else
       x1 = xm;
@@ -63,11 +63,11 @@ function add(tree, x2, d) {
       return parent[i] = leaf, tree;
   }
   xp = +tree._x.call(null, node.data);
-  if (x2 === xp)
+  if (x3 === xp)
     return leaf.next = node, parent ? parent[i] = leaf : tree._root = leaf, tree;
   do {
     parent = parent ? parent[i] = new Array(2) : tree._root = new Array(2);
-    if (right = x2 >= (xm = (x0 + x1) / 2))
+    if (right = x3 >= (xm = (x0 + x1) / 2))
       x0 = xm;
     else
       x1 = xm;
@@ -80,14 +80,14 @@ function addAll(data) {
   const n = data.length;
   const xz = new Float64Array(n);
   let x0 = Infinity, x1 = -Infinity;
-  for (let i = 0, x2; i < n; ++i) {
-    if (isNaN(x2 = +this._x.call(null, data[i])))
+  for (let i = 0, x3; i < n; ++i) {
+    if (isNaN(x3 = +this._x.call(null, data[i])))
       continue;
-    xz[i] = x2;
-    if (x2 < x0)
-      x0 = x2;
-    if (x2 > x1)
-      x1 = x2;
+    xz[i] = x3;
+    if (x3 < x0)
+      x0 = x3;
+    if (x3 > x1)
+      x1 = x3;
   }
   if (x0 > x1)
     return this;
@@ -99,23 +99,23 @@ function addAll(data) {
 }
 
 // ../../../../../node_modules/d3-binarytree/src/cover.js
-function cover_default(x2) {
-  if (isNaN(x2 = +x2))
+function cover_default(x3) {
+  if (isNaN(x3 = +x3))
     return this;
   var x0 = this._x0, x1 = this._x1;
   if (isNaN(x0)) {
-    x1 = (x0 = Math.floor(x2)) + 1;
+    x1 = (x0 = Math.floor(x3)) + 1;
   } else {
-    var z2 = x1 - x0 || 1, node = this._root, parent, i;
-    while (x0 > x2 || x2 >= x1) {
-      i = +(x2 < x0);
-      parent = new Array(2), parent[i] = node, node = parent, z2 *= 2;
+    var z3 = x1 - x0 || 1, node = this._root, parent, i;
+    while (x0 > x3 || x3 >= x1) {
+      i = +(x3 < x0);
+      parent = new Array(2), parent[i] = node, node = parent, z3 *= 2;
       switch (i) {
         case 0:
-          x1 = x0 + z2;
+          x1 = x0 + z3;
           break;
         case 1:
-          x0 = x1 - z2;
+          x0 = x1 - z3;
           break;
       }
     }
@@ -152,18 +152,18 @@ function half_default(node, x0, x1) {
 }
 
 // ../../../../../node_modules/d3-binarytree/src/find.js
-function find_default(x2, radius) {
-  var data, x0 = this._x0, x1, x22, x3 = this._x1, halves = [], node = this._root, q, i;
+function find_default(x3, radius) {
+  var data, x0 = this._x0, x1, x22, x32 = this._x1, halves = [], node = this._root, q, i;
   if (node)
-    halves.push(new half_default(node, x0, x3));
+    halves.push(new half_default(node, x0, x32));
   if (radius == null)
     radius = Infinity;
   else {
-    x0 = x2 - radius;
-    x3 = x2 + radius;
+    x0 = x3 - radius;
+    x32 = x3 + radius;
   }
   while (q = halves.pop()) {
-    if (!(node = q.node) || (x1 = q.x0) > x3 || (x22 = q.x1) < x0)
+    if (!(node = q.node) || (x1 = q.x0) > x32 || (x22 = q.x1) < x0)
       continue;
     if (node.length) {
       var xm = (x1 + x22) / 2;
@@ -171,17 +171,17 @@ function find_default(x2, radius) {
         new half_default(node[1], xm, x22),
         new half_default(node[0], x1, xm)
       );
-      if (i = +(x2 >= xm)) {
+      if (i = +(x3 >= xm)) {
         q = halves[halves.length - 1];
         halves[halves.length - 1] = halves[halves.length - 1 - i];
         halves[halves.length - 1 - i] = q;
       }
     } else {
-      var d = Math.abs(x2 - +this._x.call(null, node.data));
+      var d = Math.abs(x3 - +this._x.call(null, node.data));
       if (d < radius) {
         radius = d;
-        x0 = x2 - d;
-        x3 = x2 + d;
+        x0 = x3 - d;
+        x32 = x3 + d;
         data = node.data;
       }
     }
@@ -191,14 +191,14 @@ function find_default(x2, radius) {
 
 // ../../../../../node_modules/d3-binarytree/src/remove.js
 function remove_default(d) {
-  if (isNaN(x2 = +this._x.call(null, d)))
+  if (isNaN(x3 = +this._x.call(null, d)))
     return this;
-  var parent, node = this._root, retainer, previous, next, x0 = this._x0, x1 = this._x1, x2, xm, right, i, j;
+  var parent, node = this._root, retainer, previous, next, x0 = this._x0, x1 = this._x1, x3, xm, right, i, j;
   if (!node)
     return this;
   if (node.length)
     while (true) {
-      if (right = x2 >= (xm = (x0 + x1) / 2))
+      if (right = x3 >= (xm = (x0 + x1) / 2))
         x0 = xm;
       else
         x1 = xm;
@@ -298,12 +298,12 @@ function x_default(_) {
 }
 
 // ../../../../../node_modules/d3-binarytree/src/binarytree.js
-function binarytree(nodes, x2) {
-  var tree = new Binarytree(x2 == null ? defaultX : x2, NaN, NaN);
+function binarytree(nodes, x3) {
+  var tree = new Binarytree(x3 == null ? defaultX : x3, NaN, NaN);
   return nodes == null ? tree : tree.addAll(nodes);
 }
-function Binarytree(x2, x0, x1) {
-  this._x = x2;
+function Binarytree(x3, x0, x1) {
+  this._x = x3;
   this._x0 = x0;
   this._x1 = x1;
   this._root = void 0;
@@ -350,21 +350,21 @@ treeProto.x = x_default;
 
 // ../../../../../node_modules/d3-quadtree/src/add.js
 function add_default2(d) {
-  const x2 = +this._x.call(null, d), y2 = +this._y.call(null, d);
-  return add2(this.cover(x2, y2), x2, y2, d);
+  const x3 = +this._x.call(null, d), y3 = +this._y.call(null, d);
+  return add2(this.cover(x3, y3), x3, y3, d);
 }
-function add2(tree, x2, y2, d) {
-  if (isNaN(x2) || isNaN(y2))
+function add2(tree, x3, y3, d) {
+  if (isNaN(x3) || isNaN(y3))
     return tree;
   var parent, node = tree._root, leaf = { data: d }, x0 = tree._x0, y0 = tree._y0, x1 = tree._x1, y1 = tree._y1, xm, ym, xp, yp, right, bottom, i, j;
   if (!node)
     return tree._root = leaf, tree;
   while (node.length) {
-    if (right = x2 >= (xm = (x0 + x1) / 2))
+    if (right = x3 >= (xm = (x0 + x1) / 2))
       x0 = xm;
     else
       x1 = xm;
-    if (bottom = y2 >= (ym = (y0 + y1) / 2))
+    if (bottom = y3 >= (ym = (y0 + y1) / 2))
       y0 = ym;
     else
       y1 = ym;
@@ -373,15 +373,15 @@ function add2(tree, x2, y2, d) {
   }
   xp = +tree._x.call(null, node.data);
   yp = +tree._y.call(null, node.data);
-  if (x2 === xp && y2 === yp)
+  if (x3 === xp && y3 === yp)
     return leaf.next = node, parent ? parent[i] = leaf : tree._root = leaf, tree;
   do {
     parent = parent ? parent[i] = new Array(4) : tree._root = new Array(4);
-    if (right = x2 >= (xm = (x0 + x1) / 2))
+    if (right = x3 >= (xm = (x0 + x1) / 2))
       x0 = xm;
     else
       x1 = xm;
-    if (bottom = y2 >= (ym = (y0 + y1) / 2))
+    if (bottom = y3 >= (ym = (y0 + y1) / 2))
       y0 = ym;
     else
       y1 = ym;
@@ -389,20 +389,20 @@ function add2(tree, x2, y2, d) {
   return parent[j] = node, parent[i] = leaf, tree;
 }
 function addAll2(data) {
-  var d, i, n = data.length, x2, y2, xz = new Array(n), yz = new Array(n), x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  var d, i, n = data.length, x3, y3, xz = new Array(n), yz = new Array(n), x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (i = 0; i < n; ++i) {
-    if (isNaN(x2 = +this._x.call(null, d = data[i])) || isNaN(y2 = +this._y.call(null, d)))
+    if (isNaN(x3 = +this._x.call(null, d = data[i])) || isNaN(y3 = +this._y.call(null, d)))
       continue;
-    xz[i] = x2;
-    yz[i] = y2;
-    if (x2 < x0)
-      x0 = x2;
-    if (x2 > x1)
-      x1 = x2;
-    if (y2 < y0)
-      y0 = y2;
-    if (y2 > y1)
-      y1 = y2;
+    xz[i] = x3;
+    yz[i] = y3;
+    if (x3 < x0)
+      x0 = x3;
+    if (x3 > x1)
+      x1 = x3;
+    if (y3 < y0)
+      y0 = y3;
+    if (y3 > y1)
+      y1 = y3;
   }
   if (x0 > x1 || y0 > y1)
     return this;
@@ -414,30 +414,30 @@ function addAll2(data) {
 }
 
 // ../../../../../node_modules/d3-quadtree/src/cover.js
-function cover_default2(x2, y2) {
-  if (isNaN(x2 = +x2) || isNaN(y2 = +y2))
+function cover_default2(x3, y3) {
+  if (isNaN(x3 = +x3) || isNaN(y3 = +y3))
     return this;
   var x0 = this._x0, y0 = this._y0, x1 = this._x1, y1 = this._y1;
   if (isNaN(x0)) {
-    x1 = (x0 = Math.floor(x2)) + 1;
-    y1 = (y0 = Math.floor(y2)) + 1;
+    x1 = (x0 = Math.floor(x3)) + 1;
+    y1 = (y0 = Math.floor(y3)) + 1;
   } else {
-    var z2 = x1 - x0 || 1, node = this._root, parent, i;
-    while (x0 > x2 || x2 >= x1 || y0 > y2 || y2 >= y1) {
-      i = (y2 < y0) << 1 | x2 < x0;
-      parent = new Array(4), parent[i] = node, node = parent, z2 *= 2;
+    var z3 = x1 - x0 || 1, node = this._root, parent, i;
+    while (x0 > x3 || x3 >= x1 || y0 > y3 || y3 >= y1) {
+      i = (y3 < y0) << 1 | x3 < x0;
+      parent = new Array(4), parent[i] = node, node = parent, z3 *= 2;
       switch (i) {
         case 0:
-          x1 = x0 + z2, y1 = y0 + z2;
+          x1 = x0 + z3, y1 = y0 + z3;
           break;
         case 1:
-          x0 = x1 - z2, y1 = y0 + z2;
+          x0 = x1 - z3, y1 = y0 + z3;
           break;
         case 2:
-          x1 = x0 + z2, y0 = y1 - z2;
+          x1 = x0 + z3, y0 = y1 - z3;
           break;
         case 3:
-          x0 = x1 - z2, y0 = y1 - z2;
+          x0 = x1 - z3, y0 = y1 - z3;
           break;
       }
     }
@@ -478,19 +478,19 @@ function quad_default(node, x0, y0, x1, y1) {
 }
 
 // ../../../../../node_modules/d3-quadtree/src/find.js
-function find_default2(x2, y2, radius) {
-  var data, x0 = this._x0, y0 = this._y0, x1, y1, x22, y22, x3 = this._x1, y3 = this._y1, quads = [], node = this._root, q, i;
+function find_default2(x3, y3, radius) {
+  var data, x0 = this._x0, y0 = this._y0, x1, y1, x22, y22, x32 = this._x1, y32 = this._y1, quads = [], node = this._root, q, i;
   if (node)
-    quads.push(new quad_default(node, x0, y0, x3, y3));
+    quads.push(new quad_default(node, x0, y0, x32, y32));
   if (radius == null)
     radius = Infinity;
   else {
-    x0 = x2 - radius, y0 = y2 - radius;
-    x3 = x2 + radius, y3 = y2 + radius;
+    x0 = x3 - radius, y0 = y3 - radius;
+    x32 = x3 + radius, y32 = y3 + radius;
     radius *= radius;
   }
   while (q = quads.pop()) {
-    if (!(node = q.node) || (x1 = q.x0) > x3 || (y1 = q.y0) > y3 || (x22 = q.x1) < x0 || (y22 = q.y1) < y0)
+    if (!(node = q.node) || (x1 = q.x0) > x32 || (y1 = q.y0) > y32 || (x22 = q.x1) < x0 || (y22 = q.y1) < y0)
       continue;
     if (node.length) {
       var xm = (x1 + x22) / 2, ym = (y1 + y22) / 2;
@@ -500,17 +500,17 @@ function find_default2(x2, y2, radius) {
         new quad_default(node[1], xm, y1, x22, ym),
         new quad_default(node[0], x1, y1, xm, ym)
       );
-      if (i = (y2 >= ym) << 1 | x2 >= xm) {
+      if (i = (y3 >= ym) << 1 | x3 >= xm) {
         q = quads[quads.length - 1];
         quads[quads.length - 1] = quads[quads.length - 1 - i];
         quads[quads.length - 1 - i] = q;
       }
     } else {
-      var dx = x2 - +this._x.call(null, node.data), dy = y2 - +this._y.call(null, node.data), d2 = dx * dx + dy * dy;
+      var dx = x3 - +this._x.call(null, node.data), dy = y3 - +this._y.call(null, node.data), d2 = dx * dx + dy * dy;
       if (d2 < radius) {
         var d = Math.sqrt(radius = d2);
-        x0 = x2 - d, y0 = y2 - d;
-        x3 = x2 + d, y3 = y2 + d;
+        x0 = x3 - d, y0 = y3 - d;
+        x32 = x3 + d, y32 = y3 + d;
         data = node.data;
       }
     }
@@ -520,18 +520,18 @@ function find_default2(x2, y2, radius) {
 
 // ../../../../../node_modules/d3-quadtree/src/remove.js
 function remove_default2(d) {
-  if (isNaN(x2 = +this._x.call(null, d)) || isNaN(y2 = +this._y.call(null, d)))
+  if (isNaN(x3 = +this._x.call(null, d)) || isNaN(y3 = +this._y.call(null, d)))
     return this;
-  var parent, node = this._root, retainer, previous, next, x0 = this._x0, y0 = this._y0, x1 = this._x1, y1 = this._y1, x2, y2, xm, ym, right, bottom, i, j;
+  var parent, node = this._root, retainer, previous, next, x0 = this._x0, y0 = this._y0, x1 = this._x1, y1 = this._y1, x3, y3, xm, ym, right, bottom, i, j;
   if (!node)
     return this;
   if (node.length)
     while (true) {
-      if (right = x2 >= (xm = (x0 + x1) / 2))
+      if (right = x3 >= (xm = (x0 + x1) / 2))
         x0 = xm;
       else
         x1 = xm;
-      if (bottom = y2 >= (ym = (y0 + y1) / 2))
+      if (bottom = y3 >= (ym = (y0 + y1) / 2))
         y0 = ym;
       else
         y1 = ym;
@@ -647,13 +647,13 @@ function y_default(_) {
 }
 
 // ../../../../../node_modules/d3-quadtree/src/quadtree.js
-function quadtree(nodes, x2, y2) {
-  var tree = new Quadtree(x2 == null ? defaultX2 : x2, y2 == null ? defaultY : y2, NaN, NaN, NaN, NaN);
+function quadtree(nodes, x3, y3) {
+  var tree = new Quadtree(x3 == null ? defaultX2 : x3, y3 == null ? defaultY : y3, NaN, NaN, NaN, NaN);
   return nodes == null ? tree : tree.addAll(nodes);
 }
-function Quadtree(x2, y2, x0, y0, x1, y1) {
-  this._x = x2;
-  this._y = y2;
+function Quadtree(x3, y3, x0, y0, x1, y1) {
+  this._x = x3;
+  this._y = y3;
   this._x0 = x0;
   this._y0 = y0;
   this._x1 = x1;
@@ -703,25 +703,25 @@ treeProto2.y = y_default;
 
 // ../../../../../node_modules/d3-octree/src/add.js
 function add_default3(d) {
-  const x2 = +this._x.call(null, d), y2 = +this._y.call(null, d), z2 = +this._z.call(null, d);
-  return add3(this.cover(x2, y2, z2), x2, y2, z2, d);
+  const x3 = +this._x.call(null, d), y3 = +this._y.call(null, d), z3 = +this._z.call(null, d);
+  return add3(this.cover(x3, y3, z3), x3, y3, z3, d);
 }
-function add3(tree, x2, y2, z2, d) {
-  if (isNaN(x2) || isNaN(y2) || isNaN(z2))
+function add3(tree, x3, y3, z3, d) {
+  if (isNaN(x3) || isNaN(y3) || isNaN(z3))
     return tree;
   var parent, node = tree._root, leaf = { data: d }, x0 = tree._x0, y0 = tree._y0, z0 = tree._z0, x1 = tree._x1, y1 = tree._y1, z1 = tree._z1, xm, ym, zm, xp, yp, zp, right, bottom, deep, i, j;
   if (!node)
     return tree._root = leaf, tree;
   while (node.length) {
-    if (right = x2 >= (xm = (x0 + x1) / 2))
+    if (right = x3 >= (xm = (x0 + x1) / 2))
       x0 = xm;
     else
       x1 = xm;
-    if (bottom = y2 >= (ym = (y0 + y1) / 2))
+    if (bottom = y3 >= (ym = (y0 + y1) / 2))
       y0 = ym;
     else
       y1 = ym;
-    if (deep = z2 >= (zm = (z0 + z1) / 2))
+    if (deep = z3 >= (zm = (z0 + z1) / 2))
       z0 = zm;
     else
       z1 = zm;
@@ -731,19 +731,19 @@ function add3(tree, x2, y2, z2, d) {
   xp = +tree._x.call(null, node.data);
   yp = +tree._y.call(null, node.data);
   zp = +tree._z.call(null, node.data);
-  if (x2 === xp && y2 === yp && z2 === zp)
+  if (x3 === xp && y3 === yp && z3 === zp)
     return leaf.next = node, parent ? parent[i] = leaf : tree._root = leaf, tree;
   do {
     parent = parent ? parent[i] = new Array(8) : tree._root = new Array(8);
-    if (right = x2 >= (xm = (x0 + x1) / 2))
+    if (right = x3 >= (xm = (x0 + x1) / 2))
       x0 = xm;
     else
       x1 = xm;
-    if (bottom = y2 >= (ym = (y0 + y1) / 2))
+    if (bottom = y3 >= (ym = (y0 + y1) / 2))
       y0 = ym;
     else
       y1 = ym;
-    if (deep = z2 >= (zm = (z0 + z1) / 2))
+    if (deep = z3 >= (zm = (z0 + z1) / 2))
       z0 = zm;
     else
       z1 = zm;
@@ -758,24 +758,24 @@ function addAll3(data) {
   const yz = new Float64Array(n);
   const zz = new Float64Array(n);
   let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
-  for (let i = 0, d, x2, y2, z2; i < n; ++i) {
-    if (isNaN(x2 = +this._x.call(null, d = data[i])) || isNaN(y2 = +this._y.call(null, d)) || isNaN(z2 = +this._z.call(null, d)))
+  for (let i = 0, d, x3, y3, z3; i < n; ++i) {
+    if (isNaN(x3 = +this._x.call(null, d = data[i])) || isNaN(y3 = +this._y.call(null, d)) || isNaN(z3 = +this._z.call(null, d)))
       continue;
-    xz[i] = x2;
-    yz[i] = y2;
-    zz[i] = z2;
-    if (x2 < x0)
-      x0 = x2;
-    if (x2 > x1)
-      x1 = x2;
-    if (y2 < y0)
-      y0 = y2;
-    if (y2 > y1)
-      y1 = y2;
-    if (z2 < z0)
-      z0 = z2;
-    if (z2 > z1)
-      z1 = z2;
+    xz[i] = x3;
+    yz[i] = y3;
+    zz[i] = z3;
+    if (x3 < x0)
+      x0 = x3;
+    if (x3 > x1)
+      x1 = x3;
+    if (y3 < y0)
+      y0 = y3;
+    if (y3 > y1)
+      y1 = y3;
+    if (z3 < z0)
+      z0 = z3;
+    if (z3 > z1)
+      z1 = z3;
   }
   if (x0 > x1 || y0 > y1 || z0 > z1)
     return this;
@@ -787,18 +787,18 @@ function addAll3(data) {
 }
 
 // ../../../../../node_modules/d3-octree/src/cover.js
-function cover_default3(x2, y2, z2) {
-  if (isNaN(x2 = +x2) || isNaN(y2 = +y2) || isNaN(z2 = +z2))
+function cover_default3(x3, y3, z3) {
+  if (isNaN(x3 = +x3) || isNaN(y3 = +y3) || isNaN(z3 = +z3))
     return this;
   var x0 = this._x0, y0 = this._y0, z0 = this._z0, x1 = this._x1, y1 = this._y1, z1 = this._z1;
   if (isNaN(x0)) {
-    x1 = (x0 = Math.floor(x2)) + 1;
-    y1 = (y0 = Math.floor(y2)) + 1;
-    z1 = (z0 = Math.floor(z2)) + 1;
+    x1 = (x0 = Math.floor(x3)) + 1;
+    y1 = (y0 = Math.floor(y3)) + 1;
+    z1 = (z0 = Math.floor(z3)) + 1;
   } else {
     var t = x1 - x0 || 1, node = this._root, parent, i;
-    while (x0 > x2 || x2 >= x1 || y0 > y2 || y2 >= y1 || z0 > z2 || z2 >= z1) {
-      i = (z2 < z0) << 2 | (y2 < y0) << 1 | x2 < x0;
+    while (x0 > x3 || x3 >= x1 || y0 > y3 || y3 >= y1 || z0 > z3 || z3 >= z1) {
+      i = (z3 < z0) << 2 | (y3 < y0) << 1 | x3 < x0;
       parent = new Array(8), parent[i] = node, node = parent, t *= 2;
       switch (i) {
         case 0:
@@ -868,19 +868,19 @@ function octant_default(node, x0, y0, z0, x1, y1, z1) {
 }
 
 // ../../../../../node_modules/d3-octree/src/find.js
-function find_default3(x2, y2, z2, radius) {
-  var data, x0 = this._x0, y0 = this._y0, z0 = this._z0, x1, y1, z1, x22, y22, z22, x3 = this._x1, y3 = this._y1, z3 = this._z1, octs = [], node = this._root, q, i;
+function find_default3(x3, y3, z3, radius) {
+  var data, x0 = this._x0, y0 = this._y0, z0 = this._z0, x1, y1, z1, x22, y22, z22, x32 = this._x1, y32 = this._y1, z32 = this._z1, octs = [], node = this._root, q, i;
   if (node)
-    octs.push(new octant_default(node, x0, y0, z0, x3, y3, z3));
+    octs.push(new octant_default(node, x0, y0, z0, x32, y32, z32));
   if (radius == null)
     radius = Infinity;
   else {
-    x0 = x2 - radius, y0 = y2 - radius, z0 = z2 - radius;
-    x3 = x2 + radius, y3 = y2 + radius, z3 = z2 + radius;
+    x0 = x3 - radius, y0 = y3 - radius, z0 = z3 - radius;
+    x32 = x3 + radius, y32 = y3 + radius, z32 = z3 + radius;
     radius *= radius;
   }
   while (q = octs.pop()) {
-    if (!(node = q.node) || (x1 = q.x0) > x3 || (y1 = q.y0) > y3 || (z1 = q.z0) > z3 || (x22 = q.x1) < x0 || (y22 = q.y1) < y0 || (z22 = q.z1) < z0)
+    if (!(node = q.node) || (x1 = q.x0) > x32 || (y1 = q.y0) > y32 || (z1 = q.z0) > z32 || (x22 = q.x1) < x0 || (y22 = q.y1) < y0 || (z22 = q.z1) < z0)
       continue;
     if (node.length) {
       var xm = (x1 + x22) / 2, ym = (y1 + y22) / 2, zm = (z1 + z22) / 2;
@@ -894,17 +894,17 @@ function find_default3(x2, y2, z2, radius) {
         new octant_default(node[1], xm, y1, z1, x22, ym, zm),
         new octant_default(node[0], x1, y1, z1, xm, ym, zm)
       );
-      if (i = (z2 >= zm) << 2 | (y2 >= ym) << 1 | x2 >= xm) {
+      if (i = (z3 >= zm) << 2 | (y3 >= ym) << 1 | x3 >= xm) {
         q = octs[octs.length - 1];
         octs[octs.length - 1] = octs[octs.length - 1 - i];
         octs[octs.length - 1 - i] = q;
       }
     } else {
-      var dx = x2 - +this._x.call(null, node.data), dy = y2 - +this._y.call(null, node.data), dz = z2 - +this._z.call(null, node.data), d2 = dx * dx + dy * dy + dz * dz;
+      var dx = x3 - +this._x.call(null, node.data), dy = y3 - +this._y.call(null, node.data), dz = z3 - +this._z.call(null, node.data), d2 = dx * dx + dy * dy + dz * dz;
       if (d2 < radius) {
         var d = Math.sqrt(radius = d2);
-        x0 = x2 - d, y0 = y2 - d, z0 = z2 - d;
-        x3 = x2 + d, y3 = y2 + d, z3 = z2 + d;
+        x0 = x3 - d, y0 = y3 - d, z0 = z3 - d;
+        x32 = x3 + d, y32 = y3 + d, z32 = z3 + d;
         data = node.data;
       }
     }
@@ -913,20 +913,20 @@ function find_default3(x2, y2, z2, radius) {
 }
 
 // ../../../../../node_modules/d3-octree/src/findAll.js
-var distance = (x1, y1, z1, x2, y2, z2) => Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2);
-function findAllWithinRadius(x2, y2, z2, radius) {
+var distance = (x1, y1, z1, x22, y22, z22) => Math.sqrt((x1 - x22) ** 2 + (y1 - y22) ** 2 + (z1 - z22) ** 2);
+function findAllWithinRadius(x3, y3, z3, radius) {
   const result = [];
-  const xMin = x2 - radius;
-  const yMin = y2 - radius;
-  const zMin = z2 - radius;
-  const xMax = x2 + radius;
-  const yMax = y2 + radius;
-  const zMax = z2 + radius;
+  const xMin = x3 - radius;
+  const yMin = y3 - radius;
+  const zMin = z3 - radius;
+  const xMax = x3 + radius;
+  const yMax = y3 + radius;
+  const zMax = z3 + radius;
   this.visit((node, x1, y1, z1, x22, y22, z22) => {
     if (!node.length) {
       do {
         const d = node.data;
-        if (distance(x2, y2, z2, this._x(d), this._y(d), this._z(d)) <= radius) {
+        if (distance(x3, y3, z3, this._x(d), this._y(d), this._z(d)) <= radius) {
           result.push(d);
         }
       } while (node = node.next);
@@ -938,22 +938,22 @@ function findAllWithinRadius(x2, y2, z2, radius) {
 
 // ../../../../../node_modules/d3-octree/src/remove.js
 function remove_default3(d) {
-  if (isNaN(x2 = +this._x.call(null, d)) || isNaN(y2 = +this._y.call(null, d)) || isNaN(z2 = +this._z.call(null, d)))
+  if (isNaN(x3 = +this._x.call(null, d)) || isNaN(y3 = +this._y.call(null, d)) || isNaN(z3 = +this._z.call(null, d)))
     return this;
-  var parent, node = this._root, retainer, previous, next, x0 = this._x0, y0 = this._y0, z0 = this._z0, x1 = this._x1, y1 = this._y1, z1 = this._z1, x2, y2, z2, xm, ym, zm, right, bottom, deep, i, j;
+  var parent, node = this._root, retainer, previous, next, x0 = this._x0, y0 = this._y0, z0 = this._z0, x1 = this._x1, y1 = this._y1, z1 = this._z1, x3, y3, z3, xm, ym, zm, right, bottom, deep, i, j;
   if (!node)
     return this;
   if (node.length)
     while (true) {
-      if (right = x2 >= (xm = (x0 + x1) / 2))
+      if (right = x3 >= (xm = (x0 + x1) / 2))
         x0 = xm;
       else
         x1 = xm;
-      if (bottom = y2 >= (ym = (y0 + y1) / 2))
+      if (bottom = y3 >= (ym = (y0 + y1) / 2))
         y0 = ym;
       else
         y1 = ym;
-      if (deep = z2 >= (zm = (z0 + z1) / 2))
+      if (deep = z3 >= (zm = (z0 + z1) / 2))
         z0 = zm;
       else
         z1 = zm;
@@ -1093,14 +1093,14 @@ function z_default(_) {
 }
 
 // ../../../../../node_modules/d3-octree/src/octree.js
-function octree(nodes, x2, y2, z2) {
-  var tree = new Octree(x2 == null ? defaultX3 : x2, y2 == null ? defaultY2 : y2, z2 == null ? defaultZ : z2, NaN, NaN, NaN, NaN, NaN, NaN);
+function octree(nodes, x3, y3, z3) {
+  var tree = new Octree(x3 == null ? defaultX3 : x3, y3 == null ? defaultY2 : y3, z3 == null ? defaultZ : z3, NaN, NaN, NaN, NaN, NaN, NaN);
   return nodes == null ? tree : tree.addAll(nodes);
 }
-function Octree(x2, y2, z2, x0, y0, z0, x1, y1, z1) {
-  this._x = x2;
-  this._y = y2;
-  this._z = z2;
+function Octree(x3, y3, z3, x0, y0, z0, x1, y1, z1) {
+  this._x = x3;
+  this._y = y3;
+  this._z = z3;
   this._x0 = x0;
   this._y0 = y0;
   this._z0 = z0;
@@ -1153,15 +1153,117 @@ treeProto3.y = y_default2;
 treeProto3.z = z_default;
 
 // ../../../../../node_modules/d3-force-3d/src/constant.js
-function constant_default(x2) {
+function constant_default(x3) {
   return function() {
-    return x2;
+    return x3;
   };
 }
 
 // ../../../../../node_modules/d3-force-3d/src/jiggle.js
 function jiggle_default(random) {
   return (random() - 0.5) * 1e-6;
+}
+
+// ../../../../../node_modules/d3-force-3d/src/collide.js
+function x(d) {
+  return d.x + d.vx;
+}
+function y(d) {
+  return d.y + d.vy;
+}
+function z(d) {
+  return d.z + d.vz;
+}
+function collide_default(radius) {
+  var nodes, nDim, radii, random, strength = 1, iterations = 1;
+  if (typeof radius !== "function")
+    radius = constant_default(radius == null ? 1 : +radius);
+  function force() {
+    var i, n = nodes.length, tree, node, xi, yi, zi, ri, ri2;
+    for (var k = 0; k < iterations; ++k) {
+      tree = (nDim === 1 ? binarytree(nodes, x) : nDim === 2 ? quadtree(nodes, x, y) : nDim === 3 ? octree(nodes, x, y, z) : null).visitAfter(prepare);
+      for (i = 0; i < n; ++i) {
+        node = nodes[i];
+        ri = radii[node.index], ri2 = ri * ri;
+        xi = node.x + node.vx;
+        if (nDim > 1) {
+          yi = node.y + node.vy;
+        }
+        if (nDim > 2) {
+          zi = node.z + node.vz;
+        }
+        tree.visit(apply);
+      }
+    }
+    function apply(treeNode, arg1, arg2, arg3, arg4, arg5, arg6) {
+      var args = [arg1, arg2, arg3, arg4, arg5, arg6];
+      var x0 = args[0], y0 = args[1], z0 = args[2], x1 = args[nDim], y1 = args[nDim + 1], z1 = args[nDim + 2];
+      var data = treeNode.data, rj = treeNode.r, r = ri + rj;
+      if (data) {
+        if (data.index > node.index) {
+          var x3 = xi - data.x - data.vx, y3 = nDim > 1 ? yi - data.y - data.vy : 0, z3 = nDim > 2 ? zi - data.z - data.vz : 0, l = x3 * x3 + y3 * y3 + z3 * z3;
+          if (l < r * r) {
+            if (x3 === 0)
+              x3 = jiggle_default(random), l += x3 * x3;
+            if (nDim > 1 && y3 === 0)
+              y3 = jiggle_default(random), l += y3 * y3;
+            if (nDim > 2 && z3 === 0)
+              z3 = jiggle_default(random), l += z3 * z3;
+            l = (r - (l = Math.sqrt(l))) / l * strength;
+            node.vx += (x3 *= l) * (r = (rj *= rj) / (ri2 + rj));
+            if (nDim > 1) {
+              node.vy += (y3 *= l) * r;
+            }
+            if (nDim > 2) {
+              node.vz += (z3 *= l) * r;
+            }
+            data.vx -= x3 * (r = 1 - r);
+            if (nDim > 1) {
+              data.vy -= y3 * r;
+            }
+            if (nDim > 2) {
+              data.vz -= z3 * r;
+            }
+          }
+        }
+        return;
+      }
+      return x0 > xi + r || x1 < xi - r || nDim > 1 && (y0 > yi + r || y1 < yi - r) || nDim > 2 && (z0 > zi + r || z1 < zi - r);
+    }
+  }
+  function prepare(treeNode) {
+    if (treeNode.data)
+      return treeNode.r = radii[treeNode.data.index];
+    for (var i = treeNode.r = 0; i < Math.pow(2, nDim); ++i) {
+      if (treeNode[i] && treeNode[i].r > treeNode.r) {
+        treeNode.r = treeNode[i].r;
+      }
+    }
+  }
+  function initialize() {
+    if (!nodes)
+      return;
+    var i, n = nodes.length, node;
+    radii = new Array(n);
+    for (i = 0; i < n; ++i)
+      node = nodes[i], radii[node.index] = +radius(node, i, nodes);
+  }
+  force.initialize = function(_nodes, ...args) {
+    nodes = _nodes;
+    random = args.find((arg) => typeof arg === "function") || Math.random;
+    nDim = args.find((arg) => [1, 2, 3].includes(arg)) || 2;
+    initialize();
+  };
+  force.iterations = function(_) {
+    return arguments.length ? (iterations = +_, force) : iterations;
+  };
+  force.strength = function(_) {
+    return arguments.length ? (strength = +_, force) : strength;
+  };
+  force.radius = function(_) {
+    return arguments.length ? (radius = typeof _ === "function" ? _ : constant_default(+_), initialize(), force) : radius;
+  };
+  return force;
 }
 
 // ../../../../../node_modules/d3-force-3d/src/link.js
@@ -1183,31 +1285,31 @@ function link_default(links) {
   }
   function force(alpha) {
     for (var k = 0, n = links.length; k < iterations; ++k) {
-      for (var i = 0, link, source, target, x2 = 0, y2 = 0, z2 = 0, l, b; i < n; ++i) {
+      for (var i = 0, link, source, target, x3 = 0, y3 = 0, z3 = 0, l, b; i < n; ++i) {
         link = links[i], source = link.source, target = link.target;
-        x2 = target.x + target.vx - source.x - source.vx || jiggle_default(random);
+        x3 = target.x + target.vx - source.x - source.vx || jiggle_default(random);
         if (nDim > 1) {
-          y2 = target.y + target.vy - source.y - source.vy || jiggle_default(random);
+          y3 = target.y + target.vy - source.y - source.vy || jiggle_default(random);
         }
         if (nDim > 2) {
-          z2 = target.z + target.vz - source.z - source.vz || jiggle_default(random);
+          z3 = target.z + target.vz - source.z - source.vz || jiggle_default(random);
         }
-        l = Math.sqrt(x2 * x2 + y2 * y2 + z2 * z2);
+        l = Math.sqrt(x3 * x3 + y3 * y3 + z3 * z3);
         l = (l - distances[i]) / l * alpha * strengths[i];
-        x2 *= l, y2 *= l, z2 *= l;
-        target.vx -= x2 * (b = bias[i]);
+        x3 *= l, y3 *= l, z3 *= l;
+        target.vx -= x3 * (b = bias[i]);
         if (nDim > 1) {
-          target.vy -= y2 * b;
+          target.vy -= y3 * b;
         }
         if (nDim > 2) {
-          target.vz -= z2 * b;
+          target.vz -= z3 * b;
         }
-        source.vx += x2 * (b = 1 - b);
+        source.vx += x3 * (b = 1 - b);
         if (nDim > 1) {
-          source.vy += y2 * b;
+          source.vy += y3 * b;
         }
         if (nDim > 2) {
-          source.vz += z2 * b;
+          source.vz += z3 * b;
         }
       }
     }
@@ -1480,13 +1582,13 @@ function lcg_default() {
 
 // ../../../../../node_modules/d3-force-3d/src/simulation.js
 var MAX_DIMENSIONS = 3;
-function x(d) {
+function x2(d) {
   return d.x;
 }
-function y(d) {
+function y2(d) {
   return d.y;
 }
-function z(d) {
+function z2(d) {
   return d.z;
 }
 var initialRadius = 10;
@@ -1612,14 +1714,14 @@ function simulation_default(nodes, numDimensions) {
     },
     find: function() {
       var args = Array.prototype.slice.call(arguments);
-      var x2 = args.shift() || 0, y2 = (nDim > 1 ? args.shift() : null) || 0, z2 = (nDim > 2 ? args.shift() : null) || 0, radius = args.shift() || Infinity;
+      var x3 = args.shift() || 0, y3 = (nDim > 1 ? args.shift() : null) || 0, z3 = (nDim > 2 ? args.shift() : null) || 0, radius = args.shift() || Infinity;
       var i = 0, n = nodes.length, dx, dy, dz, d2, node, closest;
       radius *= radius;
       for (i = 0; i < n; ++i) {
         node = nodes[i];
-        dx = x2 - node.x;
-        dy = y2 - (node.y || 0);
-        dz = z2 - (node.z || 0);
+        dx = x3 - node.x;
+        dy = y3 - (node.y || 0);
+        dz = z3 - (node.z || 0);
         d2 = dx * dx + dy * dy + dz * dz;
         if (d2 < radius)
           closest = node, radius = d2;
@@ -1636,7 +1738,7 @@ function simulation_default(nodes, numDimensions) {
 function manyBody_default() {
   var nodes, nDim, node, random, alpha, strength = constant_default(-30), strengths, distanceMin2 = 1, distanceMax2 = Infinity, theta2 = 0.81;
   function force(_) {
-    var i, n = nodes.length, tree = (nDim === 1 ? binarytree(nodes, x) : nDim === 2 ? quadtree(nodes, x, y) : nDim === 3 ? octree(nodes, x, y, z) : null).visitAfter(accumulate);
+    var i, n = nodes.length, tree = (nDim === 1 ? binarytree(nodes, x2) : nDim === 2 ? quadtree(nodes, x2, y2) : nDim === 3 ? octree(nodes, x2, y2, z2) : null).visitAfter(accumulate);
     for (alpha = _, i = 0; i < n; ++i)
       node = nodes[i], tree.visit(apply);
   }
@@ -1649,21 +1751,21 @@ function manyBody_default() {
       node2 = nodes[i], strengths[node2.index] = +strength(node2, i, nodes);
   }
   function accumulate(treeNode) {
-    var strength2 = 0, q, c2, weight = 0, x2, y2, z2, i;
+    var strength2 = 0, q, c2, weight = 0, x3, y3, z3, i;
     var numChildren = treeNode.length;
     if (numChildren) {
-      for (x2 = y2 = z2 = i = 0; i < numChildren; ++i) {
+      for (x3 = y3 = z3 = i = 0; i < numChildren; ++i) {
         if ((q = treeNode[i]) && (c2 = Math.abs(q.value))) {
-          strength2 += q.value, weight += c2, x2 += c2 * (q.x || 0), y2 += c2 * (q.y || 0), z2 += c2 * (q.z || 0);
+          strength2 += q.value, weight += c2, x3 += c2 * (q.x || 0), y3 += c2 * (q.y || 0), z3 += c2 * (q.z || 0);
         }
       }
       strength2 *= Math.sqrt(4 / numChildren);
-      treeNode.x = x2 / weight;
+      treeNode.x = x3 / weight;
       if (nDim > 1) {
-        treeNode.y = y2 / weight;
+        treeNode.y = y3 / weight;
       }
       if (nDim > 2) {
-        treeNode.z = z2 / weight;
+        treeNode.z = z3 / weight;
       }
     } else {
       q = treeNode;
@@ -1683,24 +1785,24 @@ function manyBody_default() {
   function apply(treeNode, x1, arg1, arg2, arg3) {
     if (!treeNode.value)
       return true;
-    var x2 = [arg1, arg2, arg3][nDim - 1];
-    var x3 = treeNode.x - node.x, y2 = nDim > 1 ? treeNode.y - node.y : 0, z2 = nDim > 2 ? treeNode.z - node.z : 0, w = x2 - x1, l = x3 * x3 + y2 * y2 + z2 * z2;
+    var x22 = [arg1, arg2, arg3][nDim - 1];
+    var x3 = treeNode.x - node.x, y3 = nDim > 1 ? treeNode.y - node.y : 0, z3 = nDim > 2 ? treeNode.z - node.z : 0, w = x22 - x1, l = x3 * x3 + y3 * y3 + z3 * z3;
     if (w * w / theta2 < l) {
       if (l < distanceMax2) {
         if (x3 === 0)
           x3 = jiggle_default(random), l += x3 * x3;
-        if (nDim > 1 && y2 === 0)
-          y2 = jiggle_default(random), l += y2 * y2;
-        if (nDim > 2 && z2 === 0)
-          z2 = jiggle_default(random), l += z2 * z2;
+        if (nDim > 1 && y3 === 0)
+          y3 = jiggle_default(random), l += y3 * y3;
+        if (nDim > 2 && z3 === 0)
+          z3 = jiggle_default(random), l += z3 * z3;
         if (l < distanceMin2)
           l = Math.sqrt(distanceMin2 * l);
         node.vx += x3 * treeNode.value * alpha / l;
         if (nDim > 1) {
-          node.vy += y2 * treeNode.value * alpha / l;
+          node.vy += y3 * treeNode.value * alpha / l;
         }
         if (nDim > 2) {
-          node.vz += z2 * treeNode.value * alpha / l;
+          node.vz += z3 * treeNode.value * alpha / l;
         }
       }
       return true;
@@ -1709,10 +1811,10 @@ function manyBody_default() {
     if (treeNode.data !== node || treeNode.next) {
       if (x3 === 0)
         x3 = jiggle_default(random), l += x3 * x3;
-      if (nDim > 1 && y2 === 0)
-        y2 = jiggle_default(random), l += y2 * y2;
-      if (nDim > 2 && z2 === 0)
-        z2 = jiggle_default(random), l += z2 * z2;
+      if (nDim > 1 && y3 === 0)
+        y3 = jiggle_default(random), l += y3 * y3;
+      if (nDim > 2 && z3 === 0)
+        z3 = jiggle_default(random), l += z3 * z3;
       if (l < distanceMin2)
         l = Math.sqrt(distanceMin2 * l);
     }
@@ -1721,10 +1823,10 @@ function manyBody_default() {
         w = strengths[treeNode.data.index] * alpha / l;
         node.vx += x3 * w;
         if (nDim > 1) {
-          node.vy += y2 * w;
+          node.vy += y3 * w;
         }
         if (nDim > 2) {
-          node.vz += z2 * w;
+          node.vz += z3 * w;
         }
       }
     while (treeNode = treeNode.next);
@@ -1752,38 +1854,39 @@ function manyBody_default() {
 
 // src/tools/graph/forcegraph/ForceGraphWorker.ts
 var getID = (d) => d.id;
-var maxWeight = 5;
-var linkStrengths = {
-  0: 0,
-  1: 0.05,
-  2: 0.1,
-  3: 0.2,
-  4: 0.5
-};
 var startForceGraph = (data) => {
   const calculateStrengthsEqual = (link2) => {
-    const connection = data.links[link2.index];
-    return linkStrengths[connection.weight];
+    return 1;
   };
   const calculateStrengthsLinear = (link2) => {
     const connection = data.links[link2.index];
-    return (connection.weight + 1) / maxWeight * linkStrengths[connection.weight];
+    return connection.weight;
   };
   const calculateStrengthsExponential = (link2) => {
     const connection = data.links[link2.index];
-    const strength = (connection.weight + 1) / maxWeight;
-    return strength * strength * linkStrengths[connection.weight];
+    const strength = connection.weight;
+    return strength * strength;
+  };
+  const calculateStrengthsQuadratic = (link2) => {
+    const connection = data.links[link2.index];
+    const strength = connection.weight;
+    return Math.pow(strength, 2);
   };
   const strengthFuncs = {
     equal: calculateStrengthsEqual,
     linear: calculateStrengthsLinear,
-    exponential: calculateStrengthsExponential
+    exponential: calculateStrengthsExponential,
+    quadratic: calculateStrengthsQuadratic
   };
   const charge = manyBody_default().strength(-10).distanceMax(100);
-  const center = center_default();
-  const link = link_default(data.links).id(getID);
+  const collide = collide_default().strength(0.2).radius(10).iterations(1);
+  const center = center_default(0, 0, 0).strength(0.1);
+  const link = link_default(data.links).id(getID).strength(strengthFuncs.linear);
   const simulation = simulation_default(data.nodes, 3);
-  simulation.force("link", link).force("charge", charge).force("center", center);
+  simulation.force("link", link);
+  simulation.force("charge", charge);
+  simulation.force("collide", collide);
+  simulation.force("center", center);
   simulation.on("tick", () => {
     const nodes = data.nodes;
     const links = data.links;
@@ -1811,7 +1914,7 @@ var startForceGraph = (data) => {
   simulation._links = data.links;
   simulation._charge = charge;
   simulation._link = link;
-  simulation._center = center;
+  simulation._strengthFuncs = strengthFuncs;
   graphs[data.id] = simulation;
   return simulation;
 };
@@ -1823,22 +1926,25 @@ var updateForceGraph = (data) => {
     forceGraph._charge.distanceMax(data.distanceMax);
   }
   if (data.repulsion) {
-    forceGraph._charge.strength(data.repulsion);
+    forceGraph._charge.strength(-data.repulsion);
+  }
+  if (data.relationship) {
+    forceGraph._link.strength(forceGraph._strengthFuncs[data.relationship]);
   }
   if (data.restart) {
     const nodes = forceGraph._nodes;
     for (let i = 0; i < nodes.length; i++) {
-      nodes[i].x = 0;
-      nodes[i].y = 0;
-      nodes[i].z = 0;
-      nodes[i].vx = 0;
-      nodes[i].vy = 0;
-      nodes[i].vz = 0;
+      nodes[i].x = NaN;
+      nodes[i].y = NaN;
+      nodes[i].z = NaN;
+      nodes[i].vx = NaN;
+      nodes[i].vy = NaN;
+      nodes[i].vz = NaN;
     }
     forceGraph.nodes(nodes);
-    forceGraph.alpha(1);
-    forceGraph.restart();
   }
+  forceGraph.alpha(0.1);
+  forceGraph.restart();
 };
 var endForceGraph = ({ id }) => {
   const forceGraph = graphs[id];

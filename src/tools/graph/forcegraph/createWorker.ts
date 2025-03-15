@@ -41,14 +41,9 @@ export const startWebworker = async (
   const folder1 = gui.addFolder('Options')
   folder1.closed = false
   const options = {
-    repulsion: -10,
+    repulsion: 10,
     distanceMax: 100,
-    linkStrength: 50,
     relationship: 'exponential',
-    weights1: 0.05,
-    weights2: 0.1,
-    weights3: 0.2,
-    weights4: 0.5,
     iconSize: 1,
     restart: () => {
       update({
@@ -59,10 +54,10 @@ export const startWebworker = async (
       })
     },
     reset: () => {
-      repulsionProperty.setValue(-10)
+      repulsionProperty.setValue(10)
       maxDistanceProperty.setValue(100)
       relationshipProperty.setValue('exponential')
-      update({ repulsion: -10, distanceMax: 100, relationship: 'exponential' })
+      update({ repulsion: 10, distanceMax: 100, relationship: 'exponential' })
       // connectionCagetogriesProperties[0].setValue(0.05)
       // connectionCagetogriesProperties[1].setValue(0.1)
       // connectionCagetogriesProperties[2].setValue(0.2)
@@ -71,45 +66,34 @@ export const startWebworker = async (
     }
   }
   const repulsionProperty = folder1
-    .add(options, 'repulsion', -100, 100)
+    .add(options, 'repulsion', 0, 100)
     .onFinishChange((value) => {
       update({ repulsion: value })
-      options.restart()
+      // options.restart()
     })
     .name('Repulsion')
   const maxDistanceProperty = folder1
-    .add(options, 'distanceMax', 0, 1000)
+    .add(options, 'distanceMax', 0, 100)
     .onFinishChange((value) => {
       update({ distanceMax: value })
-      options.restart()
+      // options.restart()
     })
     .name('Max Repulsion Distance')
 
   const relationshipProperty = folder1
-    .add(options, 'relationship', ['equal', 'linear', 'exponential'])
+    .add(options, 'relationship', ['equal', 'linear', 'exponential', 'quadratic'])
     .onFinishChange((value) => {
-      // link.strength(strengthFuncs[value])
-      options.restart()
+      update({ relationship: value })
+      // options.restart()
     })
     .name('Relationship Strength')
 
-  // const connectionCagetogries = [1, 2, 3, 4]
-  // const connectionCagetogriesProperties = connectionCagetogries.map((connection) => {
-  //   return folder1
-  //     .add(options, 'weights' + connection, 0, 1)
-  //     .name(connection + ' Weight')
-  //     .onFinishChange((value) => {
-  //       linkStrengths[connection] = value
-  //       options.restart()
-  //     })
-  // })
-
-  folder1
-    .add(options, 'iconSize', 0.1, 10)
-    .name('Icon Size')
-    .onChange((value) => {
-      // for (const node of nodeEntities.value) getComponent(node, TransformComponent).scale.setScalar(value)
-    })
+  // folder1
+  //   .add(options, 'iconSize', 0.1, 10)
+  //   .name('Icon Size')
+  //   .onChange((value) => {
+  //      // todo
+  //   })
 
   folder1.add(options, 'restart').name('Restart Simulation')
   folder1.add(options, 'reset').name('Reset Parameters')

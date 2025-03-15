@@ -21,7 +21,7 @@ type d3_type = {
   _links: d3Link[]
   _charge: d3.ForceManyBody<d3Node>
   _link: d3.ForceLink<d3Node, d3.Link<d3Node>>
-  _center: d3.ForceCenter<d3Node>
+  _strengthFuncs: Record<string, (link: d3.Link) => number>
 }
 
 type d3Node = {
@@ -41,45 +41,54 @@ type d3Link = {
   target: d3Node
 }
 const getID = (d: d3.Node) => d.id
-const maxWeight = 5
-
-const linkStrengths = {
-  0: 0,
-  1: 0.05,
-  2: 0.1,
-  3: 0.2,
-  4: 0.5
-}
 
 const startForceGraph = (data: StartMessage) => {
   const calculateStrengthsEqual = (link: d3.Link) => {
-    const connection = data.links[link.index]
-    return linkStrengths[connection.weight]
+    return 1
   }
+
   const calculateStrengthsLinear = (link: d3.Link) => {
     const connection = data.links[link.index]
-    return ((connection.weight + 1) / maxWeight) * linkStrengths[connection.weight]
+    return connection.weight
   }
   const calculateStrengthsExponential = (link: d3.Link) => {
     const connection = data.links[link.index]
-    const strength = (connection.weight + 1) / maxWeight
-    return strength * strength * linkStrengths[connection.weight]
+    const strength = connection.weight
+    return strength * strength
+  }
+
+  const calculateStrengthsQuadratic = (link: d3.Link) => {
+    const connection = data.links[link.index]
+    const strength = connection.weight
+    return Math.pow(strength, 2)
   }
 
   /** Define strength relationship functions */
   const strengthFuncs = {
     equal: calculateStrengthsEqual,
     linear: calculateStrengthsLinear,
-    exponential: calculateStrengthsExponential
+    exponential: calculateStrengthsExponential,
+    quadratic: calculateStrengthsQuadratic
   }
 
   const charge = d3.forceManyBody().strength(-10).distanceMax(100)
-  const center = d3.forceCenter()
-  const link = d3.forceLink(data.links).id(getID) //.strength(strengthFuncs.linear)
+  const collide = d3.forceCollide().strength(0.2).radius(10).iterations(1)
+  // const xForce = d3.forceX().x(0).strength(0.1)
+  // const yForce = d3.forceY().y(0).strength(0.1)
+  // const zForce = d3.forceZ().z(0).strength(0.1)
+  const center = d3.forceCenter(0, 0, 0).strength(0.1)
+
+  const link = d3.forceLink(data.links).id(getID).strength(strengthFuncs.linear)
 
   const simulation = d3.forceSimulation(data.nodes, 3) as d3_type
 
-  simulation.force('link', link).force('charge', charge).force('center', center)
+  simulation.force('link', link)
+  simulation.force('charge', charge)
+  simulation.force('collide', collide)
+  simulation.force('center', center)
+  // simulation.force('forceX', xForce)
+  // simulation.force('forceY', yForce)
+  // simulation.force('forceZ', zForce)
 
   simulation.on('tick', () => {
     const nodes = data.nodes as d3Node[]
@@ -116,7 +125,7 @@ const startForceGraph = (data: StartMessage) => {
   simulation._links = data.links as any as d3Link[]
   simulation._charge = charge
   simulation._link = link
-  simulation._center = center
+  simulation._strengthFuncs = strengthFuncs
 
   graphs[data.id] = simulation
 
@@ -127,30 +136,33 @@ const updateForceGraph = (data: UpdateMessage) => {
   const forceGraph = graphs[data.id]
   if (!forceGraph) return
   if (data.distanceMax) {
-    forceGraph!._charge.distanceMax(data.distanceMax)
+    forceGraph._charge.distanceMax(data.distanceMax)
   }
   if (data.repulsion) {
-    forceGraph!._charge.strength(data.repulsion)
+    forceGraph._charge.strength(-data.repulsion)
   }
-  // if (data.relationship) { }
+  if (data.relationship) {
+    forceGraph._link.strength(forceGraph._strengthFuncs[data.relationship])
+  }
   if (data.restart) {
     // wipe sim data
-    const nodes = forceGraph!._nodes
+    const nodes = forceGraph._nodes
     for (let i = 0; i < nodes.length; i++) {
-      nodes[i].x = 0
-      nodes[i].y = 0
-      nodes[i].z = 0
-      nodes[i].vx = 0
-      nodes[i].vy = 0
-      nodes[i].vz = 0
+      // NaN specifies a phyllotaxis layout https://observablehq.com/@d3/force-layout-phyllotaxis
+      nodes[i].x = NaN
+      nodes[i].y = NaN
+      nodes[i].z = NaN
+      nodes[i].vx = NaN
+      nodes[i].vy = NaN
+      nodes[i].vz = NaN
     }
     // reinit nodes
-    forceGraph!.nodes(nodes)
-    // reheat sim
-    forceGraph!.alpha(1)
-    // restart sim
-    forceGraph!.restart()
+    forceGraph.nodes(nodes)
   }
+  // reheat sim
+  forceGraph.alpha(0.1)
+  // restart timer
+  forceGraph.restart()
 }
 
 const endForceGraph = ({ id }: StopMessage) => {
@@ -160,9 +172,7 @@ const endForceGraph = ({ id }: StopMessage) => {
   delete graphs[id]
 }
 
-const graphs = {} as Record<number, ReturnType<typeof startForceGraph>>
-
-let forceGraph: ReturnType<typeof startForceGraph> | undefined
+const graphs = {} as Record<number, d3_type>
 
 // ping back we are ready
 self.postMessage({ type: 'ready' })

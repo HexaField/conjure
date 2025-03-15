@@ -457,6 +457,7 @@ const ForceGraphSchema = {
     const finalData: ForceGraphShape = { nodes: [], edges: [] }
     const seenLabels = new Map<string, { source: string; id: number | string }>()
     const replacedNodes = {} as Record<string, Map<number | string, number | string>>
+    let maxWeight = 0
     for (const sourceID in data) {
       const source = data[sourceID]
       if (typeof source !== 'object') continue
@@ -493,15 +494,18 @@ const ForceGraphSchema = {
     // ensure all edges have a weight
     for (const edge of finalData.edges) {
       edge.weight = edge.weight || 1
+      maxWeight = Math.max(maxWeight, edge.weight)
     }
 
-    const minConnections = 0
+    const minConnections = 3
 
     // quick hack, remove all nodes that only have one edge
     const nodeCounts = new Map<string | number, number>()
     for (const edge of finalData.edges) {
       nodeCounts.set(edge.source, (nodeCounts.get(edge.source) || 0) + 1)
       nodeCounts.set(edge.target, (nodeCounts.get(edge.target) || 0) + 1)
+      // scale all weights between 0 and 1
+      edge.weight = edge.weight! / maxWeight
     }
     finalData.nodes = finalData.nodes.filter(
       (node) => nodeCounts.get(node.id) // && nodeCounts.get(node.id)! >= minConnections
