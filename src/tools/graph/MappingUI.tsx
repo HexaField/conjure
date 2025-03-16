@@ -7,9 +7,8 @@ import { useDrop } from 'react-dnd'
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
 import { useSearchParam } from '../../utils/useSearchParam'
 import { JSONPreview } from './components/JSONPreview'
-import { SourceFetchTool, TargetVisualizationState } from './DataState'
-import { JSONSchema } from './functions/generateJsonSchema'
-import { transformData } from './functions/transformData'
+import { MappedTransformationTool, SourceFetchTool, TargetVisualizationState } from './DataState'
+import { JSONMappingSchema, JSONSchema } from './functions/generateJsonSchema'
 import SchemaDisplay from './SchemaDisplay'
 
 export const MappingUI = () => {
@@ -27,9 +26,13 @@ export const MappingUI = () => {
 
   const mapSourceResults = useHookstate({} as {})
 
-  const onSourceChanged = (data: any) => {
-    const transformedData = transformData(data.mapping, data.data)
-    mapSourceResults.set(transformedData)
+  const onSourceChanged = (data: { mapping: JSONMappingSchema; data: any }) => {
+    try {
+      const { transformedData } = MappedTransformationTool.implementation({ mapping: data.mapping, data: data.data })
+      mapSourceResults.set(transformedData)
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   const finalDataState = useHookstate<any | null>(null)
@@ -100,14 +103,17 @@ export const MappingUI = () => {
   )
 }
 
-const MappingSource = (props: { targetSchema: JSONSchema; onChange: (args: { mapping: any; data: any }) => void }) => {
+const MappingSource = (props: {
+  targetSchema: JSONSchema
+  onChange: (args: { mapping: JSONMappingSchema; data: any }) => void
+}) => {
   const currentInputData = useHookstate<{ schema: JSONSchema; data: unknown } | null>(null)
 
   const onNewData = (data: { schema: JSONSchema; data: unknown }) => {
     currentInputData.set(data)
   }
 
-  const onMappingChanged = (mapping: any) => {
+  const onMappingChanged = (mapping: JSONMappingSchema) => {
     if (!mapping || !currentInputData.value?.data) return
 
     const { data } = currentInputData.get(NO_PROXY)!
@@ -140,7 +146,6 @@ const MappingSource = (props: { targetSchema: JSONSchema; onChange: (args: { map
             <SchemaDisplay
               jsonSchema={currentInputData.get(NO_PROXY)!.schema}
               targetSchema={props.targetSchema}
-              data={currentInputData.get(NO_PROXY)!.data}
               onChange={onMappingChanged}
             />
           </div>

@@ -6,6 +6,17 @@ export interface JSONSchema {
   format?: string
 }
 
+export type JSONPathPartial = string
+
+export interface JSONMappingSchema {
+  type: string
+  properties?: { [key: string]: JSONMappingSchema }
+  value?: JSONPathPartial
+  items?: JSONMappingSchema
+  optional?: boolean
+  format?: string
+}
+
 /**
  * Recursively infers a JSON Schema for a given value.
  * @param value - The value to inspect.

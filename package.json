@@ -24,7 +24,7 @@
     "d3": "7.9.0",
     "d3-force-3d": "^3.0.5",
     "dat.gui": "^0.7.9",
-    "json-transforms": "1.1.2",
+    "jsonpath-plus": "10.3.0",
     "maxrects-packer": "2.7.3"
   },
   "devDependencies": {},

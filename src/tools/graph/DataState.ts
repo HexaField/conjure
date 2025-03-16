@@ -1,8 +1,8 @@
-import { defineState, getMutableState, getState } from '@ir-engine/hyperflux'
+import { defineState, getMutableState, getNestedObject, getState, setNestedObject } from '@ir-engine/hyperflux'
 import { useEffect } from 'react'
 import { allRequirementsMet } from './functions/allRequirementsMet'
 import { flattenSchema } from './functions/flattenSchema'
-import { generateJsonSchema, JSONSchema } from './functions/generateJsonSchema'
+import { generateJsonSchema, JSONMappingSchema, JSONSchema } from './functions/generateJsonSchema'
 import { transformData } from './functions/transformData'
 
 export type Tool<Async = boolean> = {
@@ -71,7 +71,7 @@ export const SourceFetchTool = {
     if (args.params && args.body) args.params.body = JSON.stringify(args.body)
 
     const url = args.search ? `${args.url}?${new URLSearchParams(args.search).toString()}` : args.url
-
+    console.log(url, args.params)
     return new Promise<{ schema: JSONSchema; data: any }>((resolve, reject) => {
       fetch(url, { signal: abortController.signal, ...args.params })
         .then((response) => {
@@ -133,9 +133,9 @@ export const MappedTransformationTool = {
   input: { type: 'object', properties: { mapping: { type: 'object' }, data: { type: 'object' } } },
   output: { type: 'object', properties: { transformedData: { type: 'object' } } },
   isAsync: false,
-  implementation: (args: { mapping: any; data: any }) => {
+  implementation: (args: { data: any; mapping: JSONMappingSchema }) => {
     const { mapping, data } = args
-    const transformedData = transformData(mapping, data)
+    const transformedData = transformData(data, mapping)
     return { transformedData }
   }
 }
@@ -160,38 +160,69 @@ export const VisualizationTool = {
 export const IterationTool = {
   id: 'core.iteration',
   label: 'Iteration',
-  input: { type: 'object', properties: { mapping: { type: 'object' }, data: { type: 'object' } } },
+  input: {
+    type: 'object',
+    properties: {
+      mapping: { type: 'object' },
+      iterableMaping: { type: 'string' },
+      outputMapping: { type: 'string' },
+      batchCount: { type: 'object', optional: true },
+      data: { type: 'object' }
+    }
+  },
   output: { type: 'object', properties: { iterationResult: { type: 'object' } } },
   isAsync: true,
   implementation: async (args: {
     data: any
     mapping: string
+    iterableMapping: string
     outputMapping: string
+    batchCount?: number
     tool: {
       id: string
       args: any
     }
   }) => {
-    const iterable = args.data[args.mapping]
-    const iterationResult = await Promise.all(
-      iterable.map(
-        (item: any) =>
-          new Promise<any>((resolve) => {
-            getState(DataToolRegistry)
-              [args.tool.id].implementation({
-                ...args.tool.args,
-                [args.outputMapping]: item
-              })
-              .then((result) => {
-                resolve(result)
-              })
-              .catch(() => {
-                resolve(undefined)
-              })
-          })
+    const iterable = getNestedObject(args.data, args.mapping).result
+    const batchedData = args.batchCount
+      ? iterable.reduce((acc: any[], item: any, index: number) => {
+          const batchIndex = Math.floor(index / args.batchCount!)
+          if (!acc[batchIndex]) acc[batchIndex] = []
+          acc[batchIndex].push(item)
+          return acc
+        }, [] as any[])
+      : [iterable]
+    const results = [] as any[]
+    for (const batch of batchedData) {
+      console.log({ batch })
+      const responses = await Promise.all(
+        batch.map(
+          (item: any) =>
+            new Promise<any>((resolve) => {
+              console.log({ item })
+              const mergedArgs = structuredClone(args.tool.args)
+              setNestedObject(
+                mergedArgs,
+                args.outputMapping,
+                getNestedObject(item, args.iterableMapping).result.toLowerCase()
+              )
+              console.log({ mergedArgs, item, outputMapping: args.outputMapping })
+              // prettier-ignore
+              getState(DataToolRegistry)[args.tool.id].implementation(mergedArgs)
+                .then((result) => {
+                  console.log({result})
+                  resolve(result.data) // todo add mapping
+                })
+                .catch((e) => {
+                  console.error(e)
+                  resolve(undefined)
+                })
+            })
+        )
       )
-    )
-    return { iterationResult: iterationResult.filter((val) => typeof val !== 'undefined') }
+      results.push(...responses)
+    }
+    return { iterationResult: results.filter((val) => typeof val !== 'undefined') }
   }
 }
 
@@ -223,11 +254,6 @@ export const QueryTool = {
   isAsync: true,
   implementation: async (
     args: {
-      data: {
-        body?: Record<string, any>
-        params?: Record<string, string>
-        search?: Record<string, string>
-      }
       query: {
         endpointURL: string
         body?: Record<string, any>
@@ -239,34 +265,20 @@ export const QueryTool = {
   ) => {
     const fetchTool = getState(DataToolRegistry)[SourceFetchTool.id]
 
-    const search = {
-      ...args.query.search,
-      ...args.data.search
-    }
-
-    const params = {
-      ...args.query.params,
-      ...args.data.params
-    }
-
-    const body = {
-      ...args.query.body,
-      ...args.data.body
-    }
-
     const fetchArgs = {
-      url: args.query.endpointURL
+      url: args.query.endpointURL,
+      search: args.query.search,
+      params: args.query.params,
+      body: args.query.body
     } as {
       url: string
       search?: Record<string, string>
       params?: Record<string, string>
       body?: Record<string, any>
     }
-    if (Object.keys(search).length) fetchArgs.search = search
-    if (Object.keys(params).length) fetchArgs.params = params
-    if (Object.keys(body).length) fetchArgs.body = body
 
     const { data } = await fetchTool.implementation(fetchArgs, abortController)
+    console.log({ data })
     return { data }
   }
 }
@@ -279,6 +291,26 @@ const PipelineTool = {
   isAsync: true,
   implementation: async (args: { pipeline: string; inputArgs: any }, abortController) => {
     // todo: use KHR_interactivity
+
+    const config = {
+      url: 'https://sum-app.net/projects/173738202501291587/download_data/kumu_json',
+      mapping: {
+        nodes: [
+          {
+            id: 'elements.Id',
+            label: 'elements.Label',
+            image: ''
+          }
+        ],
+        edges: [
+          {
+            source: 'connections.From',
+            target: 'connections.To',
+            weight: 'connections.Weight'
+          }
+        ]
+      }
+    }
   }
 }
 
