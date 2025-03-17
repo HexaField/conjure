@@ -28,30 +28,27 @@ export const AdamClientState = defineState({
 
       ad4mConnect.isAuthenticated().then((authenticated) => {
         authenticatedState.set(authenticated)
+
+        if (authenticated) return
+
+        const oldState = ad4mConnect.authState
+
+        const onAuthStateChange = (e) => {
+          if (ad4mConnect.authState === 'authenticated' && oldState !== 'authenticated') {
+            authenticatedState.set(true)
+            ad4mConnect.removeEventListener('authstatechange', onAuthStateChange)
+          }
+        }
+
+        ad4mConnect.addEventListener('authstatechange', onAuthStateChange)
       })
     }, [])
 
-    const authState = useHookstate(ad4mConnect.authState)
-
     useEffect(() => {
+      if (!authenticatedState.value) return
       getAd4mClient().then((client) => {
         getMutableState(AdamClientState).set(client)
       })
-
-      const onAuthStateChange = (e) => {
-        const oldState = authState.value
-        authState.set(ad4mConnect.authState)
-        console.log('auth state changed', e, ad4mConnect.authState)
-        if (ad4mConnect.authState === 'authenticated' && oldState !== 'authenticated') {
-          // window.location.reload()
-        }
-      }
-
-      ad4mConnect.addEventListener('authstatechange', onAuthStateChange)
-
-      return () => {
-        ad4mConnect.removeEventListener('authstatechange', onAuthStateChange)
-      }
     }, [authenticatedState.value])
 
     return null
