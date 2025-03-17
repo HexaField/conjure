@@ -1,45 +1,57 @@
 import { DndWrapper } from '@ir-engine/editor/src/components/dnd/DndWrapper'
 import { ItemTypes } from '@ir-engine/editor/src/constants/AssetTypes'
-import { getMutableState, NO_PROXY, useHookstate } from '@ir-engine/hyperflux'
+import { getState, NO_PROXY, useHookstate } from '@ir-engine/hyperflux'
 import { Button, Input } from '@ir-engine/ui'
 import React, { useEffect } from 'react'
 import { useDrop } from 'react-dnd'
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
 import { useSearchParam } from '../../utils/useSearchParam'
 import { JSONPreview } from './components/JSONPreview'
-import { d3State } from './ForceGraph'
-import { generateJsonSchema, JSONSchema } from './functions/generateJsonSchema'
-import { transformData } from './functions/transformData'
+import { MappedTransformationTool, SourceFetchTool, TargetVisualizationState } from './DataState'
+import { JSONMappingSchema, JSONSchema } from './functions/generateJsonSchema'
 import SchemaDisplay from './SchemaDisplay'
 
 export const MappingUI = () => {
-  const transformedDataState = useHookstate<any | null>(null)
-  const currentInputData = useHookstate<{ schema: JSONSchema; data: unknown } | null>(null)
-
-  const onNewData = (data: { schema: JSONSchema; data: unknown }) => {
-    currentInputData.set(data)
-  }
-
-  const onMappingChanged = (mapping: any) => {
-    if (!currentInputData.value?.data) return
-
-    const { data } = currentInputData.get(NO_PROXY)!
-
-    const transformedData = transformData(mapping, data)
-    transformedDataState.set(transformedData)
-  }
+  // Global visualization type state.
+  const visualizationType = useHookstate('hexafield.conjure.graph-tool.ForceGraph') // todo put in search params once we have multiple
+  const targetSchema = getState(TargetVisualizationState)[visualizationType.get()].value
 
   const onConfirm = () => {
-    // for now just hardcode the forcegraph
-    for (const edge of transformedDataState.get(NO_PROXY).edges) {
-      edge.weight = edge.weight || 1
-    }
-    getMutableState(d3State).dataset.set(transformedDataState.get(NO_PROXY))
+    if (!finalDataState.value) return
+    getState(TargetVisualizationState)[visualizationType.get()].onConfirm(finalDataState.get(NO_PROXY))
     showMappingUI.set(false)
   }
 
   const showMappingUI = useHookstate(true)
-  const showCurrentOutput = useHookstate(false)
+
+  const mapSourceResults = useHookstate({} as unknown)
+
+  const onSourceChanged = (data: { mapping: JSONMappingSchema; data: any }) => {
+    try {
+      const { transformedData } = MappedTransformationTool.implementation({ mapping: data.mapping, data: data.data })
+      mapSourceResults.set(transformedData)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const finalDataState = useHookstate<any | null>(null)
+
+  useEffect(() => {
+    /** @todo since we implemented it with multi-source, and we no longer have the url, hack it from the search params */
+    const url = new URLSearchParams(window.location.search).get('url')!
+    const data = { [url]: mapSourceResults.get(NO_PROXY) }
+    try {
+      const finalData = data ? getState(TargetVisualizationState)[visualizationType.get()].onData(data) : null
+      finalDataState.set(finalData)
+    } catch (e) {
+      console.error(e)
+    }
+  }, [mapSourceResults])
+
+  useEffect(() => {
+    onConfirm()
+  }, [finalDataState])
 
   return (
     <div className="pointer-events-auto z-[10] h-fit w-fit overflow-auto overflow-x-auto overflow-y-auto rounded-lg bg-white p-4">
@@ -60,24 +72,86 @@ export const MappingUI = () => {
           className="h-full overflow-auto overflow-y-auto p-4"
           style={{ display: showMappingUI.value ? 'block' : 'none' }}
         >
-          <InputData onNewData={onNewData} />
-          {currentInputData.value && (
-            <div className="pointer-events-auto relative z-[10] mx-auto">
-              <SchemaDisplay
-                jsonSchema={currentInputData.get(NO_PROXY)!.schema}
-                targetSchemas={targetSchemas}
-                data={currentInputData.get(NO_PROXY)!.data}
-                onChange={onMappingChanged}
-                onConfirm={onConfirm}
-              />
-            </div>
-          )}
-          {transformedDataState.value && showCurrentOutput.value && (
-            <JSONPreview json={transformedDataState.get(NO_PROXY)} />
-          )}
+          <h2 className="mb-4 text-2xl font-semibold">Graph Mapping Settings</h2>
+
+          {/* Global Visualization Type Selection */}
+          <div className="mb-6">
+            <label htmlFor="visType" className="mb-2 block font-medium">
+              Select Visualization Type:
+            </label>
+            <select
+              id="visType"
+              className="rounded border p-2"
+              value={visualizationType.get()}
+              onChange={(e) => visualizationType.set(e.target.value)}
+            >
+              {Object.values(getState(TargetVisualizationState)).map((option, i) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <MappingSource targetSchema={targetSchema} onChange={onSourceChanged} />
+          <Button className="pointer-events-auto z-10 mb-1 p-4" variant="tertiary" onClick={onConfirm}>
+            Confirm
+          </Button>
+          {finalDataState.value && <JSONPreview json={finalDataState.get(NO_PROXY)} title="Output Data" />}
         </div>
       </div>
     </div>
+  )
+}
+
+const MappingSource = (props: {
+  targetSchema: JSONSchema
+  onChange: (args: { mapping: JSONMappingSchema; data: any }) => void
+}) => {
+  const currentInputData = useHookstate<{ schema: JSONSchema; data: unknown } | null>(null)
+
+  const onNewData = (data: { schema: JSONSchema; data: unknown }) => {
+    currentInputData.set(data)
+  }
+
+  const onMappingChanged = (mapping: JSONMappingSchema) => {
+    if (!mapping || !currentInputData.value?.data) return
+
+    const { data } = currentInputData.get(NO_PROXY)!
+
+    props.onChange({ mapping, data })
+  }
+
+  const openUI = useHookstate(true)
+
+  return (
+    <>
+      <div className="flex flex-row">
+        <Button
+          className="p-4"
+          variant="tertiary"
+          style={{ top: '10px', left: openUI.value ? '310px' : '10px' }}
+          onClick={() => openUI.set(!openUI.value)}
+        >
+          {openUI.value ? (
+            <HiChevronLeft className="text-theme-primary pointer-events-none place-self-center" />
+          ) : (
+            <HiChevronRight className="text-theme-primary pointer-events-none place-self-center" />
+          )}
+        </Button>
+      </div>
+      <div className="h-full overflow-auto overflow-y-auto p-4" style={{ display: openUI.value ? 'block' : 'none' }}>
+        <InputData onNewData={onNewData} />
+        {currentInputData.value && (
+          <div className="pointer-events-auto relative z-[10] mx-auto">
+            <SchemaDisplay
+              jsonSchema={currentInputData.get(NO_PROXY)!.schema}
+              targetSchema={props.targetSchema}
+              onChange={onMappingChanged}
+            />
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
@@ -91,25 +165,14 @@ const InputData = (props: { onNewData: (data: { schema: JSONSchema; data: unknow
     if (!selectedURL.value) return
     const abortController = new AbortController()
     loadingData.set(true)
-    fetch(selectedURL.value)
-      .then((response) => {
-        if (abortController.signal.aborted) return
-        response
-          .json()
-          .then((data) => {
-            if (abortController.signal.aborted) return
-            const schema = generateJsonSchema(data)
-            rawData.set({ schema, data })
-          })
-          .catch((error) => {
-            console.error(error)
-          })
-          .finally(() => {
-            loadingData.set(false)
-          })
+    SourceFetchTool.implementation({ url: selectedURL.value }, abortController)
+      .then(({ schema, data }) => {
+        rawData.set({ schema, data })
       })
       .catch((error) => {
         console.error(error)
+      })
+      .finally(() => {
         loadingData.set(false)
       })
     return () => {
@@ -133,21 +196,27 @@ const InputData = (props: { onNewData: (data: { schema: JSONSchema; data: unknow
         <label htmlFor="url-input" className="mb-2 font-medium">
           Data URL
         </label>
-        <div className="flex" id="dnd-container">
-          <DndWrapper id="dnd-container">
-            <URLAndFileUpload value={inputField.value} onChange={inputField.set} />
-          </DndWrapper>
-          {loadingData.value ? (
-            <div className="rounded-r bg-gray-200 p-2">Loading...</div>
-          ) : (
-            <Button className="rounded-r" variant="primary" onClick={() => selectedURL.set(inputField.value.trim())}>
-              Confirm
-            </Button>
-          )}
-        </div>
-        {rawData.value?.schema && <JSONPreview json={rawData.get(NO_PROXY)!.schema} />}
+        <DnDURLAndFileUpload selectedURL={inputField.value} onChange={inputField.set} />
+        {loadingData.value ? (
+          <div className="rounded-r bg-gray-200 p-2">Loading...</div>
+        ) : (
+          <Button className="rounded-r" variant="primary" onClick={() => selectedURL.set(inputField.value.trim())}>
+            Confirm
+          </Button>
+        )}
+        {rawData.value?.schema && <JSONPreview json={rawData.get(NO_PROXY)!.schema} title="Input Schema" />}
       </div>
     </>
+  )
+}
+
+export const DnDURLAndFileUpload = (props: { selectedURL: string; onChange: (val: string) => void }) => {
+  return (
+    <div className="flex" id="dnd-container">
+      <DndWrapper id="dnd-container">
+        <URLAndFileUpload value={props.selectedURL} onChange={props.onChange} />
+      </DndWrapper>
+    </div>
   )
 }
 
@@ -208,38 +277,3 @@ const URLAndFileUpload = (props: { value: string; onChange: (value: string) => v
     />
   )
 }
-
-const forcegraphSchema: JSONSchema = {
-  type: 'object',
-  properties: {
-    nodes: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          label: { type: 'string' },
-          image: { type: 'string', optional: true }
-        }
-      }
-    },
-    edges: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          source: { type: 'string' },
-          target: { type: 'string' },
-          weight: { type: 'number', optional: true }
-        }
-      }
-    }
-  }
-}
-
-const targetSchemas = [
-  {
-    label: 'Force Graph',
-    value: forcegraphSchema
-  }
-]

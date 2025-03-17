@@ -1,68 +1,45 @@
-import { getNestedObject } from '@ir-engine/hyperflux'
-import * as jsonTransform from 'json-transforms'
+import { JSONPath } from 'jsonpath-plus'
+import { JSONMappingSchema, JSONSchemaToType } from './generateJsonSchema'
 
 /**
- * @todo adopt JSON Path
- * - https://www.ietf.org/archive/id/draft-goessner-dispatch-jsonpath-00.html
- * - https://www.npmjs.com/package/jsonpath
+ * Transforms input JSON data using a valid JSON Schema transformation definition.
+ * @param {Object} inputData - The original JSON data.
+ * @param {Object} schema - A valid JSON Schema defining the output structure.
+ * @returns {Object} - The transformed JSON output.
  */
-
-/**
- * uses json-transforms to transform data with provided mapping
- * @param jsonRules
- * @param inputData
- */
-export const transformData = (jsonRules: any, inputData: any) => {
-  const rootProperties = {} as any
-
-  for (const [propertyName, ruleDefinitions] of Object.entries(jsonRules)) {
-    const isArrayOfRules = Array.isArray(ruleDefinitions)
-    if (isArrayOfRules && ruleDefinitions.length === 1) {
-      const ruleDefinition = ruleDefinitions[0]
-      const rules = Object.entries(ruleDefinition) as [string, string][]
-      // for now, assume that the first path of the first rule is the root
-      const ruleParts = rules[0][1].split('.')
-      // returns the first index of the property in the input data that is an array
-      const findRuleIndex = (ruleParts: string[]) => {
-        let ruleArrayIndex = -1
-        for (let i = 0; i < ruleParts.length; i++) {
-          const dataPart = getNestedObject(inputData, ruleParts.slice(0, i).join('.')).result
-          if (!dataPart) {
-            continue
-          }
-          if (Array.isArray(dataPart)) {
-            ruleArrayIndex = i
-            break
-          }
-        }
-        return ruleArrayIndex
-      }
-      const ruleArrayIndex = findRuleIndex(ruleParts)
-      const rulesRoot = ruleParts.slice(0, ruleArrayIndex).join('.')
-      const rulePaths = rules
-        .filter(([outputPath, inputPath]) => !!outputPath && !!inputPath)
-        .map(([outputPath, inputPath]) => [outputPath, inputPath.split('.').slice(ruleArrayIndex).join('.')])
-      // // create a runner for the array
-      const pathRule = jsonTransform.pathRule('.' + rulesRoot, (d) => {
-        return d.runner()
-      })
-      // create the object rule
-      const objectRule = jsonTransform.pathRule('.', (d) =>
-        Object.fromEntries(
-          rulePaths.map(([outputPath, inputPath]) => [outputPath, getNestedObject(d.context, inputPath).result])
-        )
-      )
-      rootProperties[propertyName] = [pathRule, objectRule]
-    } else {
-      // todo: handle object rules
-    }
+export function transformData<T extends JSONMappingSchema>(inputData: any, schema: T) {
+  if (!schema.type) {
+    throw new Error('Schema must define an object structure.')
   }
 
-  const transformedData = Object.fromEntries(
-    Object.entries(rootProperties)
-      .map(([prompt, rule]) => [prompt, jsonTransform.transform(inputData, rule)])
-      .filter(([prompt, result]) => !!result)
-  )
+  // Function to process each item based on schema
+  function processItem(data: any, schemaDef: JSONMappingSchema) {
+    let transformedItem = {}
 
-  return transformedData
+    if (schema.type === 'array') {
+      const sourceArray = JSONPath({ path: `$..${schemaDef.value}`, json: data })[0] || []
+      return sourceArray.map((item) => processItem(item, schemaDef.items!))
+    }
+
+    for (const [key, definition] of Object.entries(schemaDef.properties || {}) as [string, JSONMappingSchema][]) {
+      if (
+        (definition.type === 'string' || definition.type === 'number' || definition.type === 'boolean') &&
+        definition.value
+      ) {
+        // Direct mapping using JSONPath
+        transformedItem[key] = JSONPath({ path: `$..${definition.value}`, json: data })[0]
+      } else if (definition.type === 'array' && definition.items) {
+        // Transform arrays using defined structure
+        const sourceArray = JSONPath({ path: `$..${definition.value}`, json: data })[0] || []
+        transformedItem[key] = sourceArray.map((item) => processItem(item, definition.items!))
+      } else if (definition.type === 'object') {
+        // Recursively process objects
+        transformedItem[key] = processItem(data, definition)
+      }
+    }
+
+    return transformedItem
+  }
+
+  return processItem(inputData, schema) as JSONSchemaToType<T>
 }

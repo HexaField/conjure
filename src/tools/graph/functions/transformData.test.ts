@@ -1,82 +1,139 @@
-import jsonTransform from 'json-transforms'
 import { describe, expect, it } from 'vitest'
+import { JSONMappingSchema } from './generateJsonSchema'
 import { transformData } from './transformData'
 
 // Tests
 
 describe('transformData', () => {
-  const inputData = {
-    profiles: [
-      {
-        _id: 'a',
-        data: {
-          profile: {
-            username: 'Alice',
-            url: 'https://alice.com/'
+  it('should transform nested object data to flat array', () => {
+    const inputData = {
+      profiles: [
+        {
+          _id: 'a',
+          data: {
+            profile: {
+              username: 'Alice',
+              url: 'https://alice.com/'
+            }
+          }
+        },
+        {
+          _id: 'b',
+          data: {
+            profile: {
+              username: 'Bob',
+              url: 'https://bob.org/'
+            }
+          }
+        },
+        {
+          _id: 'c',
+          data: {
+            profile: {
+              username: 'Charlie',
+              url: 'https://charlie.net/'
+            }
           }
         }
-      },
-      {
-        _id: 'b',
-        data: {
-          profile: {
-            username: 'Bob',
-            url: 'https://bob.org/'
-          }
-        }
-      },
-      {
-        _id: 'c',
-        data: {
-          profile: {
-            username: 'Charlie',
-            url: 'https://charlie.net/'
+      ]
+    }
+
+    const jsonRules2: JSONMappingSchema = {
+      type: 'object',
+      properties: {
+        output: {
+          type: 'array',
+          value: 'profiles',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', value: '_id' },
+              name: { type: 'string', value: 'data.profile.username' }
+            }
           }
         }
       }
-    ],
-    edges: [
-      ['a', 'b'],
-      ['b', 'c']
-    ]
-  }
-
-  it('should transform data with hardcoded rules', () => {
-    // hard-coded rules for the example
-    const nodesRule = [
-      jsonTransform.pathRule('.profiles', (d) => {
-        return d.runner()
-      }),
-      jsonTransform.pathRule('.', (d) => {
-        return {
-          id: d.context._id,
-          label: d.context.data.profile.username
-        }
-      })
-    ]
-
-    const edgesRule = [
-      jsonTransform.pathRule('.edges', (d) => {
-        return d.runner()
-      }),
-      jsonTransform.pathRule('.', (d) => {
-        return {
-          source: d.context[0],
-          target: d.context[1]
-        }
-      })
-    ]
-
-    const exampleRules = {
-      nodes: nodesRule,
-      edges: edgesRule
     }
 
-    const exampleOutputData = Object.fromEntries(
-      Object.entries(exampleRules).map(([prompt, rule]) => [prompt, jsonTransform.transform(inputData, rule)])
-    )
+    const outputData = transformData(inputData, jsonRules2)
 
-    expect(exampleOutputData).toEqual({
+    expect(outputData).toEqual({
+      output: [
+        { id: 'a', name: 'Alice' },
+        { id: 'b', name: 'Bob' },
+        { id: 'c', name: 'Charlie' }
+      ]
+    })
+  })
+
+  it('should transform data with provided mapping', () => {
+    const inputData = {
+      profiles: [
+        {
+          _id: 'a',
+          data: {
+            profile: {
+              username: 'Alice',
+              url: 'https://alice.com/'
+            }
+          }
+        },
+        {
+          _id: 'b',
+          data: {
+            profile: {
+              username: 'Bob',
+              url: 'https://bob.org/'
+            }
+          }
+        },
+        {
+          _id: 'c',
+          data: {
+            profile: {
+              username: 'Charlie',
+              url: 'https://charlie.net/'
+            }
+          }
+        }
+      ],
+      edges: [
+        ['a', 'b'],
+        ['b', 'c']
+      ]
+    }
+
+    const jsonRules: JSONMappingSchema = {
+      type: 'object',
+      properties: {
+        nodes: {
+          type: 'array',
+          value: 'profiles',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', value: '_id' },
+              label: { type: 'string', value: 'data.profile.username' }
+            }
+          }
+        },
+        edges: {
+          type: 'array',
+          value: 'edges',
+          items: {
+            type: 'object',
+            properties: {
+              source: { type: 'string', value: '0' },
+              target: { type: 'string', value: '1' }
+            }
+          }
+        }
+      }
+    }
+
+    const outputData = transformData(inputData, jsonRules)
+
+    expect(outputData).toEqual({
       nodes: [
         {
           id: 'a',
@@ -104,25 +161,78 @@ describe('transformData', () => {
     })
   })
 
-  it('should transform data with provided mapping', () => {
-    // express the rules as serializable JSON, such that they can be stored in a database
-    const jsonRules = {
-      nodes: [
+  it('should transform data nested in array with provided mapping', () => {
+    const inputData = {
+      profiles: [
         {
-          id: 'profiles._id',
-          label: 'profiles.data.profile.username'
+          _id: 'a',
+          data: {
+            profile: {
+              username: 'Alice',
+              url: 'https://alice.com/'
+            }
+          }
+        },
+        {
+          _id: 'b',
+          data: {
+            profile: {
+              username: 'Bob',
+              url: 'https://bob.org/'
+            }
+          }
+        },
+        {
+          _id: 'c',
+          data: {
+            profile: {
+              username: 'Charlie',
+              url: 'https://charlie.net/'
+            }
+          }
         }
       ],
       edges: [
-        {
-          source: 'edges.0',
-          target: 'edges.1',
-          weight: '' // empty string to indicate that this field is not present in the input data
-        }
+        ['a', 'b'],
+        ['b', 'c']
       ]
     }
 
-    const outputData = transformData(jsonRules, inputData)
+    // express the rules as serializable JSON, such that they can be stored in a database
+    const jsonRules: JSONMappingSchema = {
+      type: 'object',
+      properties: {
+        nodes: {
+          type: 'array',
+          value: 'profiles',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', value: '_id' },
+              label: { type: 'string', value: 'data.profile.username' }
+            }
+          }
+        },
+        edges: {
+          type: 'array',
+          value: 'edges',
+          items: {
+            type: 'object',
+            properties: {
+              source: { type: 'string', value: '0' },
+              target: { type: 'string', value: '1' }
+            }
+          }
+        }
+      }
+    }
+
+    const outputData = transformData(
+      {
+        result: [inputData]
+      },
+      jsonRules
+    )
 
     expect(outputData).toEqual({
       nodes: [
@@ -213,22 +323,35 @@ describe('transformData', () => {
     }
 
     // express the rules as serializable JSON, such that they can be stored in a database
-    const jsonRules = {
-      nodes: [
-        {
-          id: 'elements.rows.value._id',
-          label: 'elements.rows.value.attributes.label'
+    const jsonRules: JSONMappingSchema = {
+      type: 'object',
+      properties: {
+        nodes: {
+          type: 'array',
+          value: 'elements.rows',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', value: 'value._id' },
+              label: { type: 'string', value: 'value.attributes.label' }
+            }
+          }
+        },
+        edges: {
+          type: 'array',
+          value: 'connections.rows',
+          items: {
+            type: 'object',
+            properties: {
+              source: { type: 'string', value: 'value.from_id' },
+              target: { type: 'string', value: 'value.to_id' }
+            }
+          }
         }
-      ],
-      edges: [
-        {
-          source: 'connections.rows.value.from_id',
-          target: 'connections.rows.value.to_id'
-        }
-      ]
+      }
     }
 
-    const outputData = transformData(jsonRules, inputData)
+    const outputData = transformData(inputData, jsonRules)
 
     expect(outputData).toEqual({
       nodes: [
@@ -255,6 +378,32 @@ describe('transformData', () => {
           target: 'gamma'
         }
       ]
+    })
+  })
+
+  it('should transform data with provided mapping and handle nested properties on an array', () => {
+    const inputData = [
+      {
+        result: [
+          {
+            matches: [{ id: 'a' }]
+          }
+        ]
+      }
+    ]
+
+    // express the rules as serializable JSON, such that they can be stored in a database
+    const jsonRules: JSONMappingSchema = {
+      type: 'object',
+      properties: {
+        id: { type: 'string', value: 'result[0].matches[0].id' }
+      }
+    }
+
+    const outputData = transformData(inputData, jsonRules)
+
+    expect(outputData).toEqual({
+      id: 'a'
     })
   })
 })

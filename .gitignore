@@ -112,3 +112,5 @@ dist/
 index.ts.bak
 
 public/projects/*
+
+public/data/*

@@ -1,6 +1,6 @@
 import '@ir-engine/client/src/engine'
 
-import { getMutableState, useMutableState, useReactiveRef } from '@ir-engine/hyperflux'
+import { getMutableState, useHookstate, useMutableState, useReactiveRef } from '@ir-engine/hyperflux'
 import { useSpatialEngine } from '@ir-engine/spatial/src/initializeEngine'
 import { useEngineCanvas } from '@ir-engine/spatial/src/renderer/functions/useEngineCanvas'
 
@@ -14,11 +14,12 @@ import { NameComponent } from '@ir-engine/spatial/src/common/NameComponent'
 import { setVisibleComponent } from '@ir-engine/spatial/src/renderer/components/VisibleComponent'
 import { RendererState } from '@ir-engine/spatial/src/renderer/RendererState'
 import { Vector3 } from 'three'
-import { MappingUI } from './MappingUI'
 
 import './forcegraph/ForceGraph'
+import { ForceGraphSchema } from './forcegraph/ForceGraph'
+import { DnDURLAndFileUpload } from './MappingUI'
 
-export default function Template() {
+export default function ForceGraphRaw() {
   const [ref, setRef] = useReactiveRef()
 
   useSpatialEngine()
@@ -48,10 +49,20 @@ export default function Template() {
     }
   }, [originEntity, viewerEntity])
 
+  const currentURL = useHookstate(new URLSearchParams(window.location.search).get('url') || '')
+
+  const onChange = (url) => {
+    fetch(url)
+      .then((res) => res.json())
+      .then((data) => {
+        ForceGraphSchema.onConfirm(data)
+      })
+  }
+
   return (
     <>
       <div ref={setRef} style={{ width: '100%', height: '100%', position: 'absolute' }} />
-      <MappingUI />
+      <DnDURLAndFileUpload selectedURL={currentURL.value} onChange={onChange} />
       <Debug />
     </>
   )

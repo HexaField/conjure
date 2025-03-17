@@ -1,140 +1,10 @@
 import { useHookstate } from '@hookstate/core'
-import { getNestedObject, NO_PROXY, setNestedObject } from '@ir-engine/hyperflux'
-import { Button } from '@ir-engine/ui'
+import { NO_PROXY, setNestedObject } from '@ir-engine/hyperflux'
 import React, { useEffect } from 'react'
 import { useSearchParam } from '../../utils/useSearchParam'
 import { JSONPreview } from './components/JSONPreview'
-import { JSONSchema } from './functions/generateJsonSchema'
-
-/**
- * Recursively flattens a JSONSchema so that nested properties are represented
- * with period-separated keys.
- *
- * When encountering an array-of-arrays, if sample data is provided and every sub-array
- * has the same length, it will flatten the inner array so that each index becomes
- * a selectable field (using the index as part of the period-separated key).
- *
- * @param schema - The JSON Schema to flatten.
- * @param prefix - The current prefix (used during recursion).
- * @param sampleData - Optional sample data to help determine fixed lengths.
- * @returns An object whose keys are period-separated field paths, and whose values are the corresponding JSONSchema.
- */
-export function flattenSchema(
-  schema: JSONSchema,
-  prefix: string = '',
-  sampleData?: any
-): { [key: string]: JSONSchema } {
-  let result: { [key: string]: JSONSchema } = {}
-
-  if (schema.type === 'object' && schema.properties) {
-    for (const key in schema.properties) {
-      const fullKey = prefix ? `${prefix}.${key}` : key
-      const childSchema = schema.properties[key]
-
-      // If the property is an object, recurse.
-      if (childSchema.type === 'object' && childSchema.properties) {
-        result = {
-          ...result,
-          ...flattenSchema(childSchema, fullKey, sampleData ? sampleData[key] : undefined)
-        }
-      }
-      // For an array of objects, flatten the items.
-      else if (
-        childSchema.type === 'array' &&
-        childSchema.items &&
-        childSchema.items.type === 'object' &&
-        childSchema.items.properties
-      ) {
-        result = {
-          ...result,
-          ...flattenSchema(childSchema.items, fullKey, sampleData ? sampleData[key]?.[0] : undefined)
-        }
-      }
-      // For an array-of-arrays, try to infer a fixed length from sample data.
-      else if (childSchema.type === 'array' && childSchema.items && childSchema.items.type === 'array') {
-        let fixedLength: number | null = null
-        // If sample data is available for this property and is an array...
-        if (sampleData && Array.isArray(sampleData[key])) {
-          const arr = sampleData[key]
-          // Filter out elements that are arrays.
-          const subArrays = arr.filter((x: any) => Array.isArray(x))
-          if (subArrays.length > 0) {
-            const firstLength = subArrays[0].length
-            // Check if every sub-array has the same length.
-            const allSame = subArrays.every((sub: any) => sub.length === firstLength)
-            if (allSame) {
-              fixedLength = firstLength
-            }
-          }
-        }
-        if (fixedLength !== null && childSchema.items.items) {
-          // For each index in the fixed-length sub-arrays, flatten the inner schema.
-          for (let i = 0; i < fixedLength; i++) {
-            const newPrefix = `${fullKey}.${i}`
-            // Pass the corresponding sample data (if available) for this index.
-            const sampleForIndex = sampleData && Array.isArray(sampleData[key]) ? sampleData[key][i] : undefined
-            result = {
-              ...result,
-              ...flattenSchema(childSchema.items.items, newPrefix, sampleForIndex)
-            }
-          }
-        } else {
-          // If we can’t infer a fixed length, fall back to flattening the array normally.
-          result = {
-            ...result,
-            ...flattenSchema(childSchema.items, fullKey, sampleData ? sampleData[key] : undefined)
-          }
-        }
-      }
-      // For a regular array (non-array-of-arrays), flatten the items.
-      else if (childSchema.type === 'array' && childSchema.items) {
-        result = {
-          ...result,
-          ...flattenSchema(childSchema.items, fullKey, sampleData ? sampleData[key] : undefined)
-        }
-      }
-      // Base case: a primitive value.
-      else {
-        result[fullKey] = childSchema
-      }
-    }
-  } else if (schema.type === 'array' && schema.items) {
-    // If the schema itself is an array, try to flatten its items.
-    if (schema.items.type === 'array') {
-      let fixedLength: number | null = null
-      if (sampleData && Array.isArray(sampleData)) {
-        const subArrays = sampleData.filter((x: any) => Array.isArray(x))
-        if (subArrays.length > 0) {
-          const firstLength = subArrays[0].length
-          const allSame = subArrays.every((sub: any) => sub.length === firstLength)
-          if (allSame) fixedLength = firstLength
-        }
-      }
-      if (fixedLength !== null && schema.items.items) {
-        for (let i = 0; i < fixedLength; i++) {
-          const newPrefix = prefix ? `${prefix}.${i}` : `${i}`
-          result = {
-            ...result,
-            ...flattenSchema(
-              schema.items.items,
-              newPrefix,
-              sampleData && Array.isArray(sampleData) ? sampleData[i] : undefined
-            )
-          }
-        }
-      } else {
-        result = { ...result, ...flattenSchema(schema.items, prefix, sampleData) }
-      }
-    } else {
-      result = { ...result, ...flattenSchema(schema.items, prefix, sampleData) }
-    }
-  } else {
-    if (prefix) {
-      result[prefix] = schema
-    }
-  }
-  return result
-}
+import { allRequirementsMet } from './functions/allRequirementsMet'
+import { JSONMappingSchema, JSONSchema } from './functions/generateJsonSchema'
 
 const buildEmptyStructureFromSchema = (schema: JSONSchema): any => {
   if (schema.type === 'object' && schema.properties) {
@@ -163,85 +33,15 @@ const buildEmptyStructureFromSchema = (schema: JSONSchema): any => {
   }
 }
 
-const getRequirements = (schema: JSONSchema, path: string): string[] => {
-  let result: string[] = []
-  if (schema.optional) return result
-  if (schema.type === 'object' && schema.properties) {
-    for (const key in schema.properties) {
-      const childSchema = schema.properties[key]
-      if (childSchema.optional) continue
-      if (childSchema.type === 'object' && childSchema.properties) {
-        result = [...result, ...getRequirements(childSchema, path ? `${path}.${key}` : key)]
-      } else if (childSchema.type === 'array' && childSchema.items && childSchema.items.type === 'object') {
-        result = [...result, ...getRequirements(childSchema.items, path ? `${path}.${key}` : key)]
-      } else {
-        result.push(path ? `${path}.${key}` : key)
-      }
-    }
-  } else if (schema.type === 'array' && schema.items) {
-    if (schema.items.type === 'array') {
-      result.push(path)
-    } else {
-      result.push(path)
-    }
-  } else {
-    result.push(path)
-  }
-  return result
-}
-
-const getNestedObjectIgnoringArrays = (obj: any, path: string): any => {
-  const parts = path.split('.')
-  let result = obj
-  for (const part of parts) {
-    if (result[part] === undefined) {
-      return
-    }
-    if (Array.isArray(result[part])) {
-      result = result[part][0]
-      continue
-    }
-    result = result[part]
-  }
-  return result
-}
-
-const allRequirementsMet = (schema: JSONSchema, mapping: any): boolean => {
-  const requirements = getRequirements(schema, '')
-  return requirements.every((req) => !!getNestedObjectIgnoringArrays(mapping, req))
-}
-
-export interface GraphMappingSettingsProps {
+const GraphMappingSettings = (props: {
   jsonSchema: JSONSchema
-  targetSchemas: Array<{ value: JSONSchema; label: string }>
-  data: any
-  onChange: (mapping: any) => void
-  onConfirm: () => void
-}
-
-const GraphMappingSettings: React.FC<GraphMappingSettingsProps> = ({
-  jsonSchema,
-  targetSchemas,
-  data,
-  onChange,
-  onConfirm
+  targetSchema: JSONSchema
+  onChange: (mapping: JSONMappingSchema) => void
 }) => {
-  // Global visualization type state.
-  const visualizationType = useHookstate(0) // todo put in search params once we have multiple
-  const currentSchema = targetSchemas[visualizationType.get()].value
-  // Our flattened schema.
-  const flattenedFields = jsonSchema?.items?.properties ? flattenSchema(jsonSchema.items, '', data) : {}
-
-  // Build options for the dropdown from the flattened fields.
-  const fieldOptions = Object.keys(flattenedFields).map((key) => ({
-    value: key,
-    label: key
-  }))
-  // Add an empty option.
-  fieldOptions.unshift({ value: '', label: 'None' })
+  const { jsonSchema, targetSchema, onChange } = props
 
   // Graph mapping state.
-  const graphMappingState = useHookstate<any>(() => {
+  const graphMappingState = useHookstate<JSONMappingSchema>(() => {
     try {
       const fromURL = new URLSearchParams(window.location.search).get('mapping')
       if (fromURL) {
@@ -250,51 +50,29 @@ const GraphMappingSettings: React.FC<GraphMappingSettingsProps> = ({
     } catch (e) {
       //
     }
-    return buildEmptyStructureFromSchema(currentSchema)
+    return structuredClone(targetSchema)
   })
 
+  // On mount - if a mapping exists and all requirements are met, call onChange
   useEffect(() => {
-    // upon mount, if a mapping exists and all requirements are met, call onConfirm
-    if (allRequirementsMet(currentSchema, graphMappingState.get(NO_PROXY))) {
+    if (allRequirementsMet(graphMappingState.get(NO_PROXY))) {
       onChange(graphMappingState.get(NO_PROXY))
-      onConfirm()
     }
   }, [])
-
-  useEffect(() => {
-    onChange(graphMappingState.get(NO_PROXY))
-  }, [graphMappingState])
 
   const updateMapping = (path: string, newValue: string) => {
     const currentState = structuredClone(graphMappingState.get(NO_PROXY))
     setNestedObject(currentState, path, newValue)
     graphMappingState.merge(currentState)
+    if (allRequirementsMet(graphMappingState.get(NO_PROXY))) {
+      onChange(graphMappingState.get(NO_PROXY))
+    }
   }
 
   useSearchParam('mapping', graphMappingState.value)
 
   return (
     <div className="6xl mx-auto p-4">
-      <h2 className="mb-4 text-2xl font-semibold">Graph Mapping Settings</h2>
-
-      {/* Global Visualization Type Selection */}
-      <div className="mb-6">
-        <label htmlFor="visType" className="mb-2 block font-medium">
-          Select Visualization Type:
-        </label>
-        <select
-          id="visType"
-          className="rounded border p-2"
-          value={visualizationType.get()}
-          onChange={(e) => visualizationType.set(parseInt(e.target.value))}
-        >
-          {targetSchemas.map((option, i) => (
-            <option key={i} value={i}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
       <h3 className="mb-2 text-xl font-semibold">Forcegraph Mapping</h3>
       <div>
         <h4 className="mb-2 text-lg font-medium">Nodes</h4>
@@ -307,21 +85,15 @@ const GraphMappingSettings: React.FC<GraphMappingSettingsProps> = ({
           </thead>
           <tbody>
             <ObjectSchemaOptions
-              schema={currentSchema}
-              options={fieldOptions}
+              dataSchema={jsonSchema}
+              schema={graphMappingState.get(NO_PROXY)}
               path=""
               onChange={updateMapping}
-              value={graphMappingState.get()}
             />
           </tbody>
         </table>
       </div>
-      {currentSchema && <JSONPreview json={graphMappingState.get(NO_PROXY)} />}
-      {allRequirementsMet(currentSchema, graphMappingState.get(NO_PROXY)) && (
-        <Button className="pointer-events-auto z-10 mb-1 p-4" variant="tertiary" onClick={onConfirm}>
-          Confirm
-        </Button>
-      )}
+      {targetSchema && <JSONPreview json={graphMappingState.get(NO_PROXY)} title="Mapping" />}
     </div>
   )
 }
@@ -330,80 +102,121 @@ const GraphMappingSettings: React.FC<GraphMappingSettingsProps> = ({
  * Recursively renders a table of schema properties with dropdowns for mapping.
  */
 const ObjectSchemaOptions: React.FC<{
-  schema: JSONSchema
+  dataSchema?: JSONSchema
+  schema: JSONMappingSchema
   path: string
-  options: Array<{ value: string; label: string }>
-  value: any
+  parentLabel?: string
   onChange: (path: string, e: string) => void
-}> = ({ schema, path, options, value, onChange }) => {
+}> = ({ dataSchema, schema, parentLabel, path, onChange }) => {
   if (!schema || !schema.properties) return null
-
-  const isFieldMet = (key: string) => {
-    const fieldValue = getNestedObject(value, path ? `${path}.${key}` : key).result
-    return fieldValue !== undefined && fieldValue !== ''
-  }
 
   return (
     <>
-      {Object.keys(schema.properties).map((key) => {
-        const childSchema = schema.properties![key]
-        const isOptional = childSchema.optional || false
-        const fieldMet = isFieldMet(key)
-
-        if (childSchema.type === 'object' && childSchema.properties) {
-          return (
-            <React.Fragment key={key}>
-              <tr>
-                <td className="border-b px-4 py-2">{key}</td>
-                <td className="border-b px-4 py-2">Nested Object</td>
-              </tr>
-              <ObjectSchemaOptions
-                schema={childSchema}
-                options={options}
-                path={path ? `${path}.${key}` : key}
-                value={value}
-                onChange={onChange}
-              />
-            </React.Fragment>
-          )
-        }
-        if (childSchema.type === 'array' && childSchema.items) {
-          return (
-            <React.Fragment key={key}>
-              <tr>
-                <td className="border-b px-4 py-2">{key}</td>
-                <td className="border-b px-4 py-2">Array of Objects</td>
-              </tr>
-              <ObjectSchemaOptions
-                schema={childSchema.items}
-                options={options}
-                path={path ? `${path}.0.${key}` : key + '.0'}
-                value={value}
-                onChange={onChange}
-              />
-            </React.Fragment>
-          )
-        }
-        return (
-          <tr key={key}>
-            <td className="border-b px-4 py-2">{key}</td>
-            <td className="border-b px-4 py-2">
-              <select
-                className={`rounded border p-2 ${!isOptional && !fieldMet ? 'border-red-500' : ''}`}
-                value={getNestedObject(value, path ? `${path}.${key}` : key).result}
-                onChange={(e) => onChange(path ? `${path}.${key}` : key, e.target.value)}
-              >
-                {options.map((option, i) => (
-                  <option key={i} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </td>
-          </tr>
-        )
-      })}
+      {Object.keys(schema.properties).map((key) => (
+        <ObjetSchemaProperty
+          key={key}
+          dataSchema={dataSchema}
+          schema={schema}
+          schemaKey={key}
+          parentLabel={parentLabel}
+          path={path}
+          onChange={onChange}
+        />
+      ))}
     </>
+  )
+}
+
+const ObjetSchemaProperty: React.FC<{
+  dataSchema?: JSONSchema
+  schema: JSONMappingSchema
+  schemaKey: string
+  parentLabel?: string
+  path: string
+  onChange: (path: string, e: string) => void
+}> = (props) => {
+  const { dataSchema, schema, schemaKey: key, parentLabel, path, onChange } = props
+
+  const options = Object.entries(dataSchema?.properties ?? {}).map(([key, val]) => ({
+    value: key,
+    label: `${key} (${val.type})`
+  }))
+  options.unshift({ value: '', label: 'None' })
+
+  const childSchema = schema.properties![key]
+
+  const childDataSchema = childSchema.value ? dataSchema?.properties?.[childSchema.value as string] : undefined
+  const isRequirementMet = childSchema.optional ? true : !!childSchema.value
+
+  const label = parentLabel ? `${parentLabel}.${key}` : key
+
+  if (childSchema.type === 'object' && childSchema.properties) {
+    return (
+      <React.Fragment key={key}>
+        <tr>
+          <td className="border-b px-4 py-2">{label}</td>
+          <td className="border-b px-4 py-2">Nested Object</td>
+        </tr>
+        <ObjectSchemaOptions
+          dataSchema={childDataSchema}
+          schema={childSchema}
+          parentLabel={label}
+          path={path ? `${path}.properties.${key}` : `properties.${key}`}
+          onChange={onChange}
+        />
+      </React.Fragment>
+    )
+  }
+  if (childSchema.type === 'array' && childSchema.items) {
+    return (
+      <React.Fragment key={key}>
+        <tr>
+          <td className="border-b px-4 py-2">{label}</td>
+          <td className="border-b px-4 py-2">
+            <select
+              className={`rounded border p-2 ${isRequirementMet ? '' : 'border-red-500'}`}
+              value={childSchema.value as string}
+              onChange={(e) =>
+                onChange(path ? `${path}.properties.${key}.value` : `properties.${key}.value`, e.target.value)
+              }
+            >
+              {options.map((option, i) => (
+                <option key={i} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </td>
+        </tr>
+        <ObjectSchemaOptions
+          dataSchema={childDataSchema?.items ? childDataSchema.items : childDataSchema}
+          schema={childSchema.items}
+          parentLabel={label}
+          path={path ? `${path}.properties.${key}.items` : `properties.${key}.items`}
+          onChange={onChange}
+        />
+      </React.Fragment>
+    )
+  }
+  return (
+    <tr key={key}>
+      <td className="border-b px-4 py-2">{label}</td>
+      <td className="border-b px-4 py-2">
+        <select
+          className={`rounded border p-2 ${isRequirementMet ? '' : 'border-red-500'}`}
+          value={childSchema.value as string}
+          onChange={(e) =>
+            onChange(path ? `${path}.properties.${key}.value` : `properties.${key}.value`, e.target.value)
+          }
+        >
+          {options.map((option, i) => (
+            <option key={i} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </td>
+    </tr>
   )
 }
 

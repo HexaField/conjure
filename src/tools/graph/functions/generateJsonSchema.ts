@@ -6,6 +6,35 @@ export interface JSONSchema {
   format?: string
 }
 
+export type JSONPathPartial = string | number | boolean
+
+export interface JSONMappingSchema {
+  type: string
+  properties?: { [key: string]: JSONMappingSchema }
+  value?: JSONPathPartial
+  items?: JSONMappingSchema
+  optional?: boolean
+  format?: string
+}
+
+export type JSONSchemaToType<T extends JSONSchema> = T extends { type: 'string' }
+  ? string
+  : T extends { type: 'number' }
+  ? number
+  : T extends { type: 'integer' }
+  ? number
+  : T extends { type: 'boolean' }
+  ? boolean
+  : T extends { type: 'array'; items: infer Item }
+  ? Item extends JSONSchema
+    ? JSONSchemaToType<Item>[]
+    : unknown[]
+  : T extends { type: 'object'; properties: infer Props }
+  ? {
+      [K in keyof Props]: Props[K] extends JSONSchema ? JSONSchemaToType<Props[K]> : unknown
+    }
+  : unknown
+
 /**
  * Recursively infers a JSON Schema for a given value.
  * @param value - The value to inspect.
@@ -33,6 +62,7 @@ function inferJsonSchemaForValue(value: any): JSONSchema {
   if (Array.isArray(value)) {
     // For arrays, attempt to infer the schema from the first non-null element.
     const sample = value.find((item) => item !== null && item !== undefined)
+    /** @todo we should include 'optional' as a field here for all properties only in some entries of the array */
     if (sample !== undefined) {
       return { type: 'array', items: inferJsonSchemaForValue(sample) }
     } else {
@@ -59,15 +89,13 @@ function inferJsonSchemaForValue(value: any): JSONSchema {
  * @returns A JSONSchema object representing the data structure.
  */
 export function generateJsonSchema(rawData: any): JSONSchema {
-  const dataArray = Array.isArray(rawData) ? rawData : [rawData]
-  if (dataArray.length === 0) {
-    // No data: return an empty object schema.
-    return { type: 'object', properties: {} }
+  if (Array.isArray(rawData)) {
+    // Infer the schema from the first item (assuming homogeneity).
+    const itemSchema = inferJsonSchemaForValue(rawData[0])
+    return {
+      type: 'array',
+      items: itemSchema
+    }
   }
-  // Infer the schema from the first item (assuming homogeneity).
-  const itemSchema = inferJsonSchemaForValue(dataArray[0])
-  return {
-    type: 'array',
-    items: itemSchema
-  }
+  return inferJsonSchemaForValue(rawData)
 }

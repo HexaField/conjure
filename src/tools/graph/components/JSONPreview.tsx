@@ -3,7 +3,7 @@ import { Button } from '@ir-engine/ui'
 import React from 'react'
 import { HiChevronDown, HiChevronUp } from 'react-icons/hi'
 
-export const JSONPreview = (props: { json: any }) => {
+export const JSONPreview = (props: { json: any; title: string }) => {
   const showCurrentInputSchema = useHookstate(false)
 
   return (
@@ -14,7 +14,9 @@ export const JSONPreview = (props: { json: any }) => {
         style={{ top: '10px', left: showCurrentInputSchema.value ? '310px' : '10px' }}
         onClick={() => showCurrentInputSchema.set(!showCurrentInputSchema.value)}
       >
-        <h4 className="font-medium">{showCurrentInputSchema.value ? 'Hide' : 'Show'} Input Schema</h4>
+        <h4 className="font-medium">
+          {showCurrentInputSchema.value ? 'Hide' : 'Show'} {props.title}
+        </h4>
         {showCurrentInputSchema.value ? (
           <HiChevronUp className="text-theme-primary pointer-events-none place-self-center" />
         ) : (
