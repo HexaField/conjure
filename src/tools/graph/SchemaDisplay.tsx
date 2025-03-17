@@ -145,7 +145,7 @@ const ObjetSchemaProperty: React.FC<{
 
   const childSchema = schema.properties![key]
 
-  const childDataSchema = childSchema.value ? dataSchema?.properties?.[childSchema.value] : undefined
+  const childDataSchema = childSchema.value ? dataSchema?.properties?.[childSchema.value as string] : undefined
   const isRequirementMet = childSchema.optional ? true : !!childSchema.value
 
   const label = parentLabel ? `${parentLabel}.${key}` : key
@@ -175,7 +175,7 @@ const ObjetSchemaProperty: React.FC<{
           <td className="border-b px-4 py-2">
             <select
               className={`rounded border p-2 ${isRequirementMet ? '' : 'border-red-500'}`}
-              value={childSchema.value}
+              value={childSchema.value as string}
               onChange={(e) =>
                 onChange(path ? `${path}.properties.${key}.value` : `properties.${key}.value`, e.target.value)
               }
@@ -204,7 +204,7 @@ const ObjetSchemaProperty: React.FC<{
       <td className="border-b px-4 py-2">
         <select
           className={`rounded border p-2 ${isRequirementMet ? '' : 'border-red-500'}`}
-          value={childSchema.value}
+          value={childSchema.value as string}
           onChange={(e) =>
             onChange(path ? `${path}.properties.${key}.value` : `properties.${key}.value`, e.target.value)
           }
