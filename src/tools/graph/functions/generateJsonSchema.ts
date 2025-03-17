@@ -6,7 +6,7 @@ export interface JSONSchema {
   format?: string
 }
 
-export type JSONPathPartial = string
+export type JSONPathPartial = string | number | boolean
 
 export interface JSONMappingSchema {
   type: string

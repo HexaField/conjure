@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { allRequirementsMet, getRequirements } from './allRequirementsMet'
-import { JSONSchema } from './generateJsonSchema'
+import { JSONMappingSchema, JSONSchema } from './generateJsonSchema'
 
 describe('getRequirements', () => {
   it('should return an empty array for an optional schema', () => {
@@ -35,7 +35,7 @@ describe('getRequirements', () => {
       }
     }
     const result = getRequirements(schema, '')
-    expect(result).toEqual(['person.name', 'person.age'])
+    expect(result).toEqual(['properties.person.name', 'properties.person.age'])
   })
 
   it('should return required fields for an array of objects', () => {
@@ -55,7 +55,7 @@ describe('getRequirements', () => {
       }
     }
     const result = getRequirements(schema, '')
-    expect(result).toEqual(['people.name', 'people.age'])
+    expect(result).toEqual(['items.people.name', 'items.people.age'])
   })
 
   it('should return required fields for an array of arrays', () => {
@@ -78,28 +78,26 @@ describe('getRequirements', () => {
 
 describe('allRequirementsMet', () => {
   it('should return true when all requirements are met', () => {
-    const schema: JSONSchema = {
+    const mapping: JSONMappingSchema = {
       type: 'object',
       properties: {
-        name: { type: 'string' },
-        age: { type: 'number' }
+        name: { type: 'string', value: 'John' },
+        age: { type: 'number', value: 30 }
       }
     }
-    const mapping = { name: 'John', age: 30 }
-    const result = allRequirementsMet(schema, mapping)
+    const result = allRequirementsMet(mapping)
     expect(result).toBe(true)
   })
 
   it('should return false when a requirement is not met', () => {
-    const schema: JSONSchema = {
+    const mapping: JSONMappingSchema = {
       type: 'object',
       properties: {
-        name: { type: 'string' },
+        name: { type: 'string', value: 'John' },
         age: { type: 'number' }
       }
     }
-    const mapping = { name: 'John' }
-    const result = allRequirementsMet(schema, mapping)
+    const result = allRequirementsMet(mapping)
     expect(result).toBe(false)
   })
 })
