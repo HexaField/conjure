@@ -3,7 +3,7 @@ export type ID = string | number
 export type StartMessage = {
   id: number
   type: 'start'
-  nodes: Array<{ id: ID }>
+  nodes: Array<{ id: ID; group: string }>
   links: Array<{ source: ID; target: ID; weight: number }>
 }
 
@@ -14,6 +14,7 @@ export type UpdateMessage = {
   repulsion?: number
   distanceMax?: number
   relationship?: 'equal' | 'linear' | 'exponential' | 'quadratic'
+  enabledGroups?: Record<string, boolean>
 }
 
 export type StopMessage = {

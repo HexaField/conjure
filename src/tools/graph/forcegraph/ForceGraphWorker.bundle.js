@@ -1,48 +1,3 @@
-// ../../../../../node_modules/d3-force-3d/src/center.js
-function center_default(x3, y3, z3) {
-  var nodes, strength = 1;
-  if (x3 == null)
-    x3 = 0;
-  if (y3 == null)
-    y3 = 0;
-  if (z3 == null)
-    z3 = 0;
-  function force() {
-    var i, n = nodes.length, node, sx = 0, sy = 0, sz = 0;
-    for (i = 0; i < n; ++i) {
-      node = nodes[i], sx += node.x || 0, sy += node.y || 0, sz += node.z || 0;
-    }
-    for (sx = (sx / n - x3) * strength, sy = (sy / n - y3) * strength, sz = (sz / n - z3) * strength, i = 0; i < n; ++i) {
-      node = nodes[i];
-      if (sx) {
-        node.x -= sx;
-      }
-      if (sy) {
-        node.y -= sy;
-      }
-      if (sz) {
-        node.z -= sz;
-      }
-    }
-  }
-  force.initialize = function(_) {
-    nodes = _;
-  };
-  force.x = function(_) {
-    return arguments.length ? (x3 = +_, force) : x3;
-  };
-  force.y = function(_) {
-    return arguments.length ? (y3 = +_, force) : y3;
-  };
-  force.z = function(_) {
-    return arguments.length ? (z3 = +_, force) : z3;
-  };
-  force.strength = function(_) {
-    return arguments.length ? (strength = +_, force) : strength;
-  };
-  return force;
-}
-
 // ../../../../../node_modules/d3-binarytree/src/add.js
 function add_default(d) {
   const x3 = +this._x.call(null, d);
@@ -1852,6 +1807,105 @@ function manyBody_default() {
   return force;
 }
 
+// ../../../../../node_modules/d3-force-3d/src/x.js
+function x_default4(x3) {
+  var strength = constant_default(0.1), nodes, strengths, xz;
+  if (typeof x3 !== "function")
+    x3 = constant_default(x3 == null ? 0 : +x3);
+  function force(alpha) {
+    for (var i = 0, n = nodes.length, node; i < n; ++i) {
+      node = nodes[i], node.vx += (xz[i] - node.x) * strengths[i] * alpha;
+    }
+  }
+  function initialize() {
+    if (!nodes)
+      return;
+    var i, n = nodes.length;
+    strengths = new Array(n);
+    xz = new Array(n);
+    for (i = 0; i < n; ++i) {
+      strengths[i] = isNaN(xz[i] = +x3(nodes[i], i, nodes)) ? 0 : +strength(nodes[i], i, nodes);
+    }
+  }
+  force.initialize = function(_) {
+    nodes = _;
+    initialize();
+  };
+  force.strength = function(_) {
+    return arguments.length ? (strength = typeof _ === "function" ? _ : constant_default(+_), initialize(), force) : strength;
+  };
+  force.x = function(_) {
+    return arguments.length ? (x3 = typeof _ === "function" ? _ : constant_default(+_), initialize(), force) : x3;
+  };
+  return force;
+}
+
+// ../../../../../node_modules/d3-force-3d/src/y.js
+function y_default3(y3) {
+  var strength = constant_default(0.1), nodes, strengths, yz;
+  if (typeof y3 !== "function")
+    y3 = constant_default(y3 == null ? 0 : +y3);
+  function force(alpha) {
+    for (var i = 0, n = nodes.length, node; i < n; ++i) {
+      node = nodes[i], node.vy += (yz[i] - node.y) * strengths[i] * alpha;
+    }
+  }
+  function initialize() {
+    if (!nodes)
+      return;
+    var i, n = nodes.length;
+    strengths = new Array(n);
+    yz = new Array(n);
+    for (i = 0; i < n; ++i) {
+      strengths[i] = isNaN(yz[i] = +y3(nodes[i], i, nodes)) ? 0 : +strength(nodes[i], i, nodes);
+    }
+  }
+  force.initialize = function(_) {
+    nodes = _;
+    initialize();
+  };
+  force.strength = function(_) {
+    return arguments.length ? (strength = typeof _ === "function" ? _ : constant_default(+_), initialize(), force) : strength;
+  };
+  force.y = function(_) {
+    return arguments.length ? (y3 = typeof _ === "function" ? _ : constant_default(+_), initialize(), force) : y3;
+  };
+  return force;
+}
+
+// ../../../../../node_modules/d3-force-3d/src/z.js
+function z_default2(z3) {
+  var strength = constant_default(0.1), nodes, strengths, zz;
+  if (typeof z3 !== "function")
+    z3 = constant_default(z3 == null ? 0 : +z3);
+  function force(alpha) {
+    for (var i = 0, n = nodes.length, node; i < n; ++i) {
+      node = nodes[i], node.vz += (zz[i] - node.z) * strengths[i] * alpha;
+    }
+  }
+  function initialize() {
+    if (!nodes)
+      return;
+    var i, n = nodes.length;
+    strengths = new Array(n);
+    zz = new Array(n);
+    for (i = 0; i < n; ++i) {
+      strengths[i] = isNaN(zz[i] = +z3(nodes[i], i, nodes)) ? 0 : +strength(nodes[i], i, nodes);
+    }
+  }
+  force.initialize = function(_) {
+    nodes = _;
+    initialize();
+  };
+  force.strength = function(_) {
+    return arguments.length ? (strength = typeof _ === "function" ? _ : constant_default(+_), initialize(), force) : strength;
+  };
+  force.z = function(_) {
+    return arguments.length ? (z3 = typeof _ === "function" ? _ : constant_default(+_), initialize(), force) : z3;
+  };
+  return force;
+}
+
 // src/tools/graph/forcegraph/ForceGraphWorker.ts
 var getID = (d) => d.id;
 var startForceGraph = (data) => {
@@ -1878,15 +1932,19 @@ var startForceGraph = (data) => {
     exponential: calculateStrengthsExponential,
     quadratic: calculateStrengthsQuadratic
   };
-  const charge = manyBody_default().strength(-10).distanceMax(100);
+  const charge = manyBody_default().strength(-10);
   const collide = collide_default().strength(0.2).radius(10).iterations(1);
-  const center = center_default(0, 0, 0).strength(0.1);
+  const xForce = x_default4().x(0).strength(0.1);
+  const yForce = y_default3().y(0).strength(0.1);
+  const zForce = z_default2().z(0).strength(0.1);
   const link = link_default(data.links).id(getID).strength(strengthFuncs.linear);
   const simulation = simulation_default(data.nodes, 3);
   simulation.force("link", link);
   simulation.force("charge", charge);
   simulation.force("collide", collide);
-  simulation.force("center", center);
+  simulation.force("forceX", xForce);
+  simulation.force("forceY", yForce);
+  simulation.force("forceZ", zForce);
   simulation.on("tick", () => {
     const nodes = data.nodes;
     const links = data.links;
@@ -1932,7 +1990,7 @@ var updateForceGraph = (data) => {
     forceGraph._link.strength(forceGraph._strengthFuncs[data.relationship]);
   }
   if (data.restart) {
-    const nodes = forceGraph._nodes;
+    const nodes = forceGraph._nodes.filter((n) => data.enabledGroups ? data.enabledGroups[n.group] : true);
     for (let i = 0; i < nodes.length; i++) {
       nodes[i].x = NaN;
       nodes[i].y = NaN;

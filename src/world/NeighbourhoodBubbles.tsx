@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useRef } from 'react'
 import { AgentState } from '../ad4m/useADAM'
 import { NeighbourhoodNetworkState } from '../ad4m/useNeighbourhoodNetwork'
 import { PerspectivesState } from '../ad4m/usePerspectives'
-import { randomColor } from '../utils/randomColor'
+import { stringToColor } from '../utils/stringToColor'
 
 interface Circle {
   id: string
@@ -208,7 +208,7 @@ const NeighbourhoodBubbles = () => {
         id: key,
         name: neighbourhoodsState.value[key].name,
         // create a color based on the hash of the name
-        color: randomColor(key),
+        color: stringToColor(key),
         diameter: memberState.value[key]?.length ?? 1
       })),
     [neighbourhoodsState.keys, memberState]

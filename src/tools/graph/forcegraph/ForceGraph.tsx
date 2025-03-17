@@ -27,6 +27,7 @@ import { InputSourceComponent } from '@ir-engine/spatial/src/input/components/In
 import { MeshComponent } from '@ir-engine/spatial/src/renderer/components/MeshComponent'
 import { ObjectComponent } from '@ir-engine/spatial/src/renderer/components/ObjectComponent'
 import { setVisibleComponent } from '@ir-engine/spatial/src/renderer/components/VisibleComponent'
+import * as dat from 'dat.gui'
 import React, { useEffect } from 'react'
 import {
   AdditiveBlending,
@@ -48,7 +49,7 @@ import {
   SRGBColorSpace,
   Vector3
 } from 'three'
-import { randomColor } from '../../../utils/randomColor'
+import { stringToColor } from '../../../utils/stringToColor'
 import { TargetVisualizationState } from '../DataState'
 import { JSONSchema } from '../functions/generateJsonSchema'
 import { startWebworker } from './createWorker'
@@ -56,7 +57,7 @@ import { startWebworker } from './createWorker'
 export interface Node {
   id: number
   label: string
-  group?: string
+  group: string
   imageSrc?: string
 }
 
@@ -208,17 +209,29 @@ const reactor = () => {
   const { originEntity, viewerEntity } = useMutableState(ReferenceSpaceState).value
 
   useEffect(() => {
-    const { nodes, links } = getState(d3State)
+    const state = getState(d3State)
 
-    if (!nodes.length || !links.length || !originEntity || !viewerEntity) return
+    if (!state.nodes.length || !state.links.length || !originEntity || !viewerEntity) return
 
-    const abortController = new AbortController()
-    let cleanupWorker: (() => void) | null = null
+    const minConnections = 1
 
-    startWebworker(nodes as Node[], links as Edge[], (data) => {
-      const linksOffset = nodes.length * 3
-      const positions = new Float32Array(links.length * 6)
-      for (let i = 0; i < links.length; i++) {
+    // quick hack, remove all nodes that only have one edge
+    const nodeCounts = new Map<string | number, number>()
+    for (const edge of state.links) {
+      nodeCounts.set(edge.source, (nodeCounts.get(edge.source) || 0) + 1)
+      nodeCounts.set(edge.target, (nodeCounts.get(edge.target) || 0) + 1)
+    }
+    state.nodes = state.nodes.filter((node) => nodeCounts.get(node.id) && nodeCounts.get(node.id)! >= minConnections)
+    // and now remove all edges that don't have both nodes
+    state.links = state.links.filter(
+      (edge) =>
+        state.nodes.find((node) => node.id === edge.source) && state.nodes.find((node) => node.id === edge.target)
+    )
+
+    const { worker, id, update, destroy } = startWebworker(state.nodes as Node[], state.links as Edge[], (data) => {
+      const linksOffset = state.nodes.length * 3
+      const positions = new Float32Array(state.links.length * 6)
+      for (let i = 0; i < state.links.length; i++) {
         const currentLinkIndex = i * 6
         positions[currentLinkIndex] = data[linksOffset + currentLinkIndex] * graphScale
         positions[currentLinkIndex + 1] = data[linksOffset + currentLinkIndex + 1] * graphScale
@@ -230,25 +243,122 @@ const reactor = () => {
       const line = getComponent(lineEntity, ObjectComponent) as Line
       line.geometry.setAttribute('position', new BufferAttribute(positions, 3))
       lastBuffer = data
-    }).then(([worker, cleanup]) => {
-      if (abortController.signal.aborted) {
-        cleanup()
-        return
-      }
-
-      cleanupWorker = cleanup
     })
 
-    try {
-      // webworker
-    } catch (e) {
-      console.log(e)
-      getMutableState(d3State).nodes.set([])
-      getMutableState(d3State).links.set([])
-      getMutableState(d3State).meshEntity.set(UndefinedEntity)
-      getMutableState(d3State).lineEntity.set(UndefinedEntity)
-      return
+    /** UI */
+    const gui = new dat.GUI()
+    gui.domElement.style.pointerEvents = 'all'
+    const folder1 = gui.addFolder('Options')
+    folder1.closed = false
+    const options = {
+      repulsion: 10,
+      distanceMax: 100,
+      relationship: 'exponential',
+      iconSize: 1,
+      restart: () => {
+        update({
+          restart: true,
+          repulsion: repulsionProperty.getValue(),
+          distanceMax: maxDistanceProperty.getValue(),
+          relationship: relationshipProperty.getValue()
+        })
+      },
+      reset: () => {
+        repulsionProperty.setValue(10)
+        maxDistanceProperty.setValue(100)
+        relationshipProperty.setValue('exponential')
+        update({ repulsion: 10, distanceMax: 100, relationship: 'exponential' })
+        // connectionCagetogriesProperties[0].setValue(0.05)
+        // connectionCagetogriesProperties[1].setValue(0.1)
+        // connectionCagetogriesProperties[2].setValue(0.2)
+        // connectionCagetogriesProperties[3].setValue(0.5)
+        options.restart()
+      }
     }
+    const repulsionProperty = folder1
+      .add(options, 'repulsion', 0, 100)
+      .onFinishChange((value) => {
+        update({ repulsion: value })
+        // options.restart()
+      })
+      .name('Repulsion')
+    const maxDistanceProperty = folder1
+      .add(options, 'distanceMax', 0, 100)
+      .onFinishChange((value) => {
+        update({ distanceMax: value })
+        // options.restart()
+      })
+      .name('Max Repulsion Distance')
+
+    const relationshipProperty = folder1
+      .add(options, 'relationship', ['equal', 'linear', 'exponential', 'quadratic'])
+      .onFinishChange((value) => {
+        update({ relationship: value })
+        // options.restart()
+      })
+      .name('Relationship Strength')
+
+    // const groups = state.nodes.map((node) => node.group)
+    // const uniqueGroups = [...new Set(groups)]
+
+    // const enabledGroups = Object.fromEntries(uniqueGroups.map((group) => [group, true]))
+
+    // // add folder containing all connection categories that will shown/hidden
+    // const groupFolder = folder1.addFolder('Groups')
+    // const enabledAll = groupFolder
+    //   .add(
+    //     {
+    //       all: (value) => {
+    //         uniqueGroups.forEach((group) => {
+    //           connectionCagetogriesProperties[group].setValue(true)
+    //         })
+    //         worker.postMessage({
+    //           id,
+    //           type: 'update',
+    //           enabledGroups,
+    //           restart: true
+    //         })
+    //       }
+    //     },
+    //     'all'
+    //   )
+    //   .name('All')
+    // const disabledAll = groupFolder
+    //   .add(
+    //     {
+    //       none: (value) => {
+    //         uniqueGroups.forEach((group) => {
+    //           connectionCagetogriesProperties[group].setValue(false)
+    //         })
+    //         worker.postMessage({
+    //           id,
+    //           type: 'update',
+    //           enabledGroups,
+    //           restart: true
+    //         })
+    //       }
+    //     },
+    //     'none'
+    //   )
+    //   .name('None')
+    // const connectionCagetogriesProperties = Object.fromEntries(
+    //   uniqueGroups.map((group) => {
+    //     return [
+    //       group,
+    //       groupFolder.add(enabledGroups, group).onFinishChange((value) => {
+    //         worker.postMessage({
+    //           id,
+    //           type: 'update',
+    //           enabledGroups,
+    //           restart: true
+    //         })
+    //       })
+    //     ]
+    //   })
+    // )
+
+    folder1.add(options, 'restart').name('Restart Simulation')
+    folder1.add(options, 'reset').name('Reset Parameters')
 
     const entity = createEntity()
     setComponent(entity, NameComponent, 'Node')
@@ -258,16 +368,16 @@ const reactor = () => {
     const circleGeom = new CircleGeometry(graphScale, 16)
     const material = new MeshBasicMaterial({ side: DoubleSide })
 
-    const mesh = new InstancedMesh(circleGeom, material, nodes.length)
+    const mesh = new InstancedMesh(circleGeom, material, state.nodes.length)
     // colors are a quick way to visualize group data
 
     const colors = new Map<string, Color>()
 
     // set the color for each node using mesh.setColorAt
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i]
+    for (let i = 0; i < state.nodes.length; i++) {
+      const node = state.nodes[i]
       if (!node.group) continue // will be white
-      if (!colors.has(node.group)) colors.set(node.group, new Color(randomColor(node.group)))
+      if (!colors.has(node.group)) colors.set(node.group, new Color(stringToColor(node.group)))
       const color = colors.get(node.group)!
       mesh.setColorAt(i, color)
     }
@@ -359,12 +469,12 @@ void main()	{
     })
 
     return () => {
-      if (cleanupWorker) cleanupWorker()
+      destroy()
+      gui.destroy()
       removeEntity(entity)
       removeEntity(lineEntity)
       getMutableState(d3State).meshEntity.set(UndefinedEntity)
       getMutableState(d3State).lineEntity.set(UndefinedEntity)
-      abortController.abort()
     }
   }, [d3.nodes, d3.links, originEntity, viewerEntity])
 
@@ -449,7 +559,7 @@ type ForceGraphShape = {
   }>
 }
 
-const ForceGraphSchema = {
+export const ForceGraphSchema = {
   id: 'hexafield.conjure.graph-tool.ForceGraph',
   label: 'Force Graph',
   value: forcegraphSchema,
@@ -497,7 +607,7 @@ const ForceGraphSchema = {
       maxWeight = Math.max(maxWeight, edge.weight)
     }
 
-    const minConnections = 3
+    const minConnections = 1
 
     // quick hack, remove all nodes that only have one edge
     const nodeCounts = new Map<string | number, number>()
@@ -508,7 +618,7 @@ const ForceGraphSchema = {
       edge.weight = edge.weight! / maxWeight
     }
     finalData.nodes = finalData.nodes.filter(
-      (node) => nodeCounts.get(node.id) // && nodeCounts.get(node.id)! >= minConnections
+      (node) => nodeCounts.get(node.id) && nodeCounts.get(node.id)! >= minConnections
     )
     // and now remove all edges that don't have both nodes
     finalData.edges = finalData.edges.filter(

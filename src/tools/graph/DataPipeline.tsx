@@ -18,9 +18,10 @@ import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
 import { Vector3 } from 'three'
 import { JSONPreview } from './components/JSONPreview'
 
+import './forcegraph/ForceGraph'
+
 import { useSearchParam } from '../../utils/useSearchParam'
 import { DataToolRegistry, Tool } from './DataState'
-import './forcegraph/ForceGraph'
 import { DnDURLAndFileUpload } from './MappingUI'
 
 export default function Template() {
@@ -61,7 +62,6 @@ export default function Template() {
     </>
   )
 }
-
 /**
  * @todo
  * - pipeline needs two input fields: a pipeline name and input data
@@ -69,7 +69,7 @@ export default function Template() {
 const Pipeline = () => {
   const showMappingUI = useHookstate(true)
   const currentPipeline = useHookstate('')
-  const pipeline = useMutableState(DataToolRegistry)[currentPipeline.value].get(NO_PROXY) as Tool<true>
+  const pipeline = useMutableState(DataToolRegistry).get(NO_PROXY)[currentPipeline.value] as Tool<true>
 
   const pipelineArgs = useHookstate({ type: null as string | null, sources: [] as string[], mapping: {} })
   const loading = useHookstate(false)
@@ -77,11 +77,12 @@ const Pipeline = () => {
   useEffect(() => {
     if (!pipelineArgs.type.value || !pipelineArgs.sources.value.length) return
     loading.set(true)
+    if (!pipeline) return
     pipeline.implementation(pipelineArgs.get(NO_PROXY)).then(() => {
       loading.set(false)
       showMappingUI.set(false)
     })
-  }, [pipelineArgs])
+  }, [pipeline, pipelineArgs])
 
   const loadArgsFile = (file: string) => {
     fetch(file)
@@ -122,7 +123,7 @@ const Pipeline = () => {
           className="h-full overflow-auto overflow-y-auto p-4"
           style={{ display: showMappingUI.value ? 'block' : 'none' }}
         >
-          <h2 className="mb-4 text-2xl font-semibold">{pipeline.label}</h2>
+          {pipeline && <h2 className="mb-4 text-2xl font-semibold">{pipeline.label}</h2>}
           {loading.value && <div className="rounded-r bg-gray-200 p-2">Loading {inputField.value}...</div>}
           <DnDURLAndFileUpload selectedURL={inputField.value} onChange={inputField.set} />
           <Button className="rounded-r" variant="primary" onClick={() => loadArgsFile(inputField.value.trim())}>

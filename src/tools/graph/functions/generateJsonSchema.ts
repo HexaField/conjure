@@ -17,6 +17,24 @@ export interface JSONMappingSchema {
   format?: string
 }
 
+export type JSONSchemaToType<T extends JSONSchema> = T extends { type: 'string' }
+  ? string
+  : T extends { type: 'number' }
+  ? number
+  : T extends { type: 'integer' }
+  ? number
+  : T extends { type: 'boolean' }
+  ? boolean
+  : T extends { type: 'array'; items: infer Item }
+  ? Item extends JSONSchema
+    ? JSONSchemaToType<Item>[]
+    : unknown[]
+  : T extends { type: 'object'; properties: infer Props }
+  ? {
+      [K in keyof Props]: Props[K] extends JSONSchema ? JSONSchemaToType<Props[K]> : unknown
+    }
+  : unknown
+
 /**
  * Recursively infers a JSON Schema for a given value.
  * @param value - The value to inspect.

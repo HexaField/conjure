@@ -1,15 +1,27 @@
 import { createWorkerFromCrossOriginURL } from '@ir-engine/spatial/src/common/functions/createWorkerFromCrossOriginURL'
-import * as dat from 'dat.gui'
 import { ID, UpdateMessage } from './ForcegraphMessages'
 
 let worker: Worker
 
-export const createWorker = async () => {
+export const createWorker = () => {
   // @ts-ignore
   const workerPath = new URL('./ForceGraphWorker.bundle.js', import.meta.url).href
   const worker = createWorkerFromCrossOriginURL(workerPath, true, { name: 'ForceGraphWorker' })
+  return worker
+}
 
-  await new Promise<void>((resolve, reject) => {
+let graphCounter = 0
+
+export const startWebworker = (
+  nodes: Array<{ id: ID; group: string }>,
+  links: Array<{ source: ID; target: ID; weight: number }>,
+  onData: (data: ArrayBuffer) => void
+) => {
+  if (!worker) {
+    worker = createWorker()
+  }
+
+  const readyPromise = new Promise<void>((resolve, reject) => {
     worker.onmessage = () => {
       resolve()
     }
@@ -19,101 +31,35 @@ export const createWorker = async () => {
     }
   })
 
-  return worker
-}
-
-let graphCounter = 0
-
-export const startWebworker = async (
-  nodes: Array<{ id: ID }>,
-  links: Array<{ source: ID; target: ID; weight: number }>,
-  onData: (data: ArrayBuffer) => void
-) => {
-  if (!worker) {
-    worker = await createWorker()
-  }
-
   const id = graphCounter++
 
-  /** UI */
-  const gui = new dat.GUI()
-  gui.domElement.style.pointerEvents = 'all'
-  const folder1 = gui.addFolder('Options')
-  folder1.closed = false
-  const options = {
-    repulsion: 10,
-    distanceMax: 100,
-    relationship: 'exponential',
-    iconSize: 1,
-    restart: () => {
-      update({
-        restart: true,
-        repulsion: repulsionProperty.getValue(),
-        distanceMax: maxDistanceProperty.getValue(),
-        relationship: relationshipProperty.getValue()
-      })
-    },
-    reset: () => {
-      repulsionProperty.setValue(10)
-      maxDistanceProperty.setValue(100)
-      relationshipProperty.setValue('exponential')
-      update({ repulsion: 10, distanceMax: 100, relationship: 'exponential' })
-      // connectionCagetogriesProperties[0].setValue(0.05)
-      // connectionCagetogriesProperties[1].setValue(0.1)
-      // connectionCagetogriesProperties[2].setValue(0.2)
-      // connectionCagetogriesProperties[3].setValue(0.5)
-      options.restart()
-    }
-  }
-  const repulsionProperty = folder1
-    .add(options, 'repulsion', 0, 100)
-    .onFinishChange((value) => {
-      update({ repulsion: value })
-      // options.restart()
-    })
-    .name('Repulsion')
-  const maxDistanceProperty = folder1
-    .add(options, 'distanceMax', 0, 100)
-    .onFinishChange((value) => {
-      update({ distanceMax: value })
-      // options.restart()
-    })
-    .name('Max Repulsion Distance')
-
-  const relationshipProperty = folder1
-    .add(options, 'relationship', ['equal', 'linear', 'exponential', 'quadratic'])
-    .onFinishChange((value) => {
-      update({ relationship: value })
-      // options.restart()
-    })
-    .name('Relationship Strength')
-
-  // folder1
-  //   .add(options, 'iconSize', 0.1, 10)
-  //   .name('Icon Size')
-  //   .onChange((value) => {
-  //      // todo
-  //   })
-
-  folder1.add(options, 'restart').name('Restart Simulation')
-  folder1.add(options, 'reset').name('Reset Parameters')
-
-  worker.postMessage({ id, type: 'start', nodes, links })
+  readyPromise.then(() => {
+    worker.postMessage({ id, type: 'start', nodes, links })
+  })
 
   const update = (properties: Omit<Omit<UpdateMessage, 'type'>, 'id'>) => {
-    worker.postMessage({ id, type: 'update', ...properties })
+    readyPromise.then(() => {
+      worker.postMessage({ id, type: 'update', ...properties })
+    })
   }
-  worker.onmessage = (e) => {
-    const data = e.data as ArrayBuffer
-    if (data.slice(-1)[0] !== id) return
-    onData(e.data)
-  }
-
-  return [
-    worker,
-    () => {
+  const destroy = () => {
+    readyPromise.then(() => {
       worker.postMessage({ id, type: 'stop' })
-      gui.destroy()
+    })
+  }
+  readyPromise.then(() => {
+    worker.onmessage = (e) => {
+      const data = e.data as ArrayBuffer
+      if (data.slice(-1)[0] !== id) return
+      onData(e.data)
     }
-  ] as const
+  })
+
+  return {
+    worker,
+    id,
+    readyPromise,
+    update,
+    destroy
+  }
 }

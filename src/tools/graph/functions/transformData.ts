@@ -1,5 +1,5 @@
 import { JSONPath } from 'jsonpath-plus'
-import { JSONMappingSchema } from './generateJsonSchema'
+import { JSONMappingSchema, JSONSchemaToType } from './generateJsonSchema'
 
 /**
  * Transforms input JSON data using a valid JSON Schema transformation definition.
@@ -7,14 +7,19 @@ import { JSONMappingSchema } from './generateJsonSchema'
  * @param {Object} schema - A valid JSON Schema defining the output structure.
  * @returns {Object} - The transformed JSON output.
  */
-export function transformData(inputData: unknown, schema: JSONMappingSchema) {
-  if (!schema.type || schema.type !== 'object') {
+export function transformData<T extends JSONMappingSchema>(inputData: any, schema: T) {
+  if (!schema.type) {
     throw new Error('Schema must define an object structure.')
   }
 
   // Function to process each item based on schema
   function processItem(data: any, schemaDef: JSONMappingSchema) {
     let transformedItem = {}
+
+    if (schema.type === 'array') {
+      const sourceArray = JSONPath({ path: `$..${schemaDef.value}`, json: data })[0] || []
+      return sourceArray.map((item) => processItem(item, schemaDef.items!))
+    }
 
     for (const [key, definition] of Object.entries(schemaDef.properties || {}) as [string, JSONMappingSchema][]) {
       if (
@@ -36,5 +41,5 @@ export function transformData(inputData: unknown, schema: JSONMappingSchema) {
     return transformedItem
   }
 
-  return processItem(inputData, schema)
+  return processItem(inputData, schema) as JSONSchemaToType<T>
 }

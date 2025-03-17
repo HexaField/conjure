@@ -114,12 +114,12 @@ export const SchemaFlattenTool = {
 export const MappingRequirementsTool = {
   id: 'mapping-requirements',
   label: 'Mapping Requirements',
-  input: { type: 'object', properties: { targetSchema: { type: 'object' }, mapping: { type: 'object' } } },
+  input: { type: 'object', properties: { mapping: { type: 'object' } } },
   output: { type: 'object', properties: { meetsRequirements: { type: 'boolean' } } },
   isAsync: false,
-  implementation: (args: { targetSchema: JSONSchema; mapping: any }) => {
-    const { targetSchema, mapping } = args
-    const requirements = allRequirementsMet(targetSchema, mapping)
+  implementation: (args: { mapping: any }) => {
+    const { mapping } = args
+    const requirements = allRequirementsMet(mapping)
     if (!requirements) {
       return { meetsRequirements: false }
     }
@@ -133,7 +133,7 @@ export const MappedTransformationTool = {
   input: { type: 'object', properties: { mapping: { type: 'object' }, data: { type: 'object' } } },
   output: { type: 'object', properties: { transformedData: { type: 'object' } } },
   isAsync: false,
-  implementation: (args: { data: any; mapping: JSONMappingSchema }) => {
+  implementation: <T extends JSONMappingSchema>(args: { data: any; mapping: T }) => {
     const { mapping, data } = args
     const transformedData = transformData(data, mapping)
     return { transformedData }
@@ -226,6 +226,9 @@ export const IterationTool = {
   }
 }
 
+/**
+ * @deprecated redundant, just replace with fetch tool
+ */
 export const QueryTool = {
   id: 'core.query',
   label: 'Query',

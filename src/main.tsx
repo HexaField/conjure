@@ -50,6 +50,7 @@ createHyperStore()
 // API.instance = createAd4mAPIAdapter()
 
 const CustomLocationPage = lazy(() => import('./CustomLocationPage'))
+const ForceGraph = lazy(() => import('./tools/graph/ForceGraphRaw'))
 const DataGrapher = lazy(() => import('./tools/graph/DataGrapher'))
 const DataPipeline = lazy(() => import('./tools/graph/DataPipeline'))
 
@@ -64,6 +65,15 @@ const App = () => {
             element={
               <Suspense>
                 <DataPipeline />
+              </Suspense>
+            }
+          />
+          <Route
+            key="default"
+            path="/forcegraph"
+            element={
+              <Suspense>
+                <ForceGraph />
               </Suspense>
             }
           />

@@ -24,7 +24,7 @@ export const MappingUI = () => {
 
   const showMappingUI = useHookstate(true)
 
-  const mapSourceResults = useHookstate({} as {})
+  const mapSourceResults = useHookstate({} as unknown)
 
   const onSourceChanged = (data: { mapping: JSONMappingSchema; data: any }) => {
     try {

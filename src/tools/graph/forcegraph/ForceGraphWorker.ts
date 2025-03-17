@@ -26,6 +26,7 @@ type d3_type = {
 
 type d3Node = {
   id: number
+  group: string
   index: 1
   vx: number
   vy: number
@@ -71,12 +72,12 @@ const startForceGraph = (data: StartMessage) => {
     quadratic: calculateStrengthsQuadratic
   }
 
-  const charge = d3.forceManyBody().strength(-10).distanceMax(100)
+  const charge = d3.forceManyBody().strength(-10)
   const collide = d3.forceCollide().strength(0.2).radius(10).iterations(1)
-  // const xForce = d3.forceX().x(0).strength(0.1)
-  // const yForce = d3.forceY().y(0).strength(0.1)
-  // const zForce = d3.forceZ().z(0).strength(0.1)
-  const center = d3.forceCenter(0, 0, 0).strength(0.1)
+  const xForce = d3.forceX().x(0).strength(0.1)
+  const yForce = d3.forceY().y(0).strength(0.1)
+  const zForce = d3.forceZ().z(0).strength(0.1)
+  // const center = d3.forceCenter(0, 0, 0).strength(0.1)
 
   const link = d3.forceLink(data.links).id(getID).strength(strengthFuncs.linear)
 
@@ -85,10 +86,10 @@ const startForceGraph = (data: StartMessage) => {
   simulation.force('link', link)
   simulation.force('charge', charge)
   simulation.force('collide', collide)
-  simulation.force('center', center)
-  // simulation.force('forceX', xForce)
-  // simulation.force('forceY', yForce)
-  // simulation.force('forceZ', zForce)
+  // simulation.force('center', center)
+  simulation.force('forceX', xForce)
+  simulation.force('forceY', yForce)
+  simulation.force('forceZ', zForce)
 
   simulation.on('tick', () => {
     const nodes = data.nodes as d3Node[]
@@ -146,7 +147,7 @@ const updateForceGraph = (data: UpdateMessage) => {
   }
   if (data.restart) {
     // wipe sim data
-    const nodes = forceGraph._nodes
+    const nodes = forceGraph._nodes.filter((n) => (data.enabledGroups ? data.enabledGroups[n.group] : true))
     for (let i = 0; i < nodes.length; i++) {
       // NaN specifies a phyllotaxis layout https://observablehq.com/@d3/force-layout-phyllotaxis
       nodes[i].x = NaN
