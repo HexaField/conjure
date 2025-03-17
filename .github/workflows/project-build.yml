@@ -69,7 +69,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18.x
+          node-version: 22.x
       - name: restore lerna
         uses: actions/cache@v3
         with:
@@ -104,6 +104,10 @@ jobs:
         with:
           path: .
           key: dir-${{github.sha}}
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22.x
       - run: mkdir -p ./packages/projects/projects/ir-engine && cp -r ./packages/projects/default-project ./packages/projects/projects/ir-engine/default-project
       - run: npm install --loglevel notice --legacy-peer-deps
       - run: npx lerna run --scope '@${{ needs.secrets-gate.outputs.repo }}' lint
@@ -123,6 +127,10 @@ jobs:
         with:
           path: .
           key: dir-${{github.sha}}
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22.x
       - run: npm run dev-docker
       - run: npm run dev-reinit
       - run: npx cross-env TEST=true npx lerna run --scope '@${{ needs.secrets-gate.outputs.repo }}' test
