@@ -14,7 +14,7 @@ import SchemaDisplay from './SchemaDisplay'
 export const MappingUI = () => {
   // Global visualization type state.
   const visualizationType = useHookstate('hexafield.conjure.graph-tool.ForceGraph') // todo put in search params once we have multiple
-  const targetSchema = getState(TargetVisualizationState)[visualizationType.get()].value
+  const targetSchema = getState(TargetVisualizationState)[visualizationType.get()]?.value
 
   const onConfirm = () => {
     if (!finalDataState.value) return
