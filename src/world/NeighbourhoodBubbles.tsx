@@ -1,9 +1,9 @@
-import { getMutableState, getState, NO_PROXY_STEALTH, useHookstate } from '@ir-engine/hyperflux'
+import { getMutableState, getState, NetworkID, NO_PROXY_STEALTH, useHookstate } from '@ir-engine/hyperflux'
 import { NetworkTopics } from '@ir-engine/network'
 import * as d3 from 'd3'
 import React, { useEffect, useMemo, useRef } from 'react'
+import { NeighbourhoodNetworkState } from '../ad4m/NeighbourhoodNetworkTransport'
 import { AgentState } from '../ad4m/useADAM'
-import { NeighbourhoodNetworkState } from '../ad4m/useNeighbourhoodNetwork'
 import { PerspectivesState } from '../ad4m/usePerspectives'
 import { stringToColor } from '../utils/stringToColor'
 
@@ -228,14 +228,26 @@ const NeighbourhoodBubbles = () => {
   }, [neighbourhoodsState])
 
   const onJoinNeighbourhood = (sharedURL: string) => {
-    getMutableState(NeighbourhoodNetworkState).set([{ topic: NetworkTopics.world, sharedUrl: sharedURL }])
+    getMutableState(NeighbourhoodNetworkState).set([
+      {
+        topic: NetworkTopics.world,
+        networkID: (NetworkTopics.world + '-' + sharedURL) as NetworkID,
+        neighbourhoodUrl: sharedURL
+      }
+    ])
 
     /**
      * @todo to get around the pubsub subscription race condition,
      * use a significant delay to connect to the media server a few seconds late
      */
     setTimeout(() => {
-      getMutableState(NeighbourhoodNetworkState).merge([{ topic: NetworkTopics.media, sharedUrl: sharedURL }])
+      getMutableState(NeighbourhoodNetworkState).merge([
+        {
+          topic: NetworkTopics.media,
+          networkID: (NetworkTopics.media + '-' + sharedURL) as NetworkID,
+          neighbourhoodUrl: sharedURL
+        }
+      ])
     }, 1000)
   }
 

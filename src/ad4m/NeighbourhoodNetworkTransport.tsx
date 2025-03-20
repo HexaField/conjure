@@ -48,22 +48,22 @@ type SignalData = {
 
 export const NeighbourhoodNetworkState = defineState({
   name: 'hexafield.adam-template.NeighbourhoodNetworkState',
-  initial: [] as Array<{ topic: Topic; sharedUrl: string }>,
+  initial: [] as Array<{ topic: Topic; networkID: NetworkID; neighbourhoodUrl: string }>,
   reactor: () => {
-    const joinedNeighbourhoods = useMutableState(NeighbourhoodNetworkState).value
+    const networks = useMutableState(NeighbourhoodNetworkState).value
 
     useEffect(() => {
-      /** @todo it's probably fine that we override this every time we connect to a new server, but we should maybe handle this smarter */
       getMutableState(StunServerState).set(PUBLIC_STUN_SERVERS)
     }, [])
 
     return (
       <>
-        {joinedNeighbourhoods.map((neighbourhood) => (
+        {networks.map((network) => (
           <ConnectionReactor
-            key={neighbourhood.topic + '_' + neighbourhood.sharedUrl}
-            sharedUrl={neighbourhood.sharedUrl}
-            topic={neighbourhood.topic}
+            key={network.networkID}
+            networkID={network.networkID}
+            sharedUrl={network.neighbourhoodUrl}
+            topic={network.topic}
           />
         ))}
       </>
@@ -75,8 +75,8 @@ const array = new Uint32Array(1)
 self.crypto.getRandomValues(array)
 const myPeerIndex = array[0]
 
-const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
-  const { sharedUrl, topic } = props
+const ConnectionReactor = (props: { sharedUrl: string; networkID: NetworkID; topic: Topic }) => {
+  const { sharedUrl, networkID, topic } = props
 
   useEffect(() => {
     const url = new URL(window.location.href)
@@ -84,8 +84,6 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
     url.search = url.searchParams.toString()
     window.history.replaceState({}, '', url.toString())
   }, [])
-
-  const networkID = (sharedUrl + '_' + topic) as NetworkID
 
   const perspective = getState(PerspectivesState).neighbourhoods[sharedUrl]
 
