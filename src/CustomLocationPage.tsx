@@ -14,8 +14,8 @@ import { DomainConfigState } from '@ir-engine/engine/src/assets/state/DomainConf
 import { MediaSettingsState } from '@ir-engine/engine/src/audio/MediaSettingsState'
 import { NetworkState } from '@ir-engine/network'
 import React, { useEffect } from 'react'
+import { NeighbourhoodNetworkState } from './ad4m/NeighbourhoodNetworkTransport'
 import { AgentState } from './ad4m/useADAM'
-import { NeighbourhoodNetworkState } from './ad4m/useNeighbourhoodNetwork'
 
 import { LocationState } from '@ir-engine/client-core/src/social/services/LocationService'
 import '@ir-engine/client-core/src/systems/AvatarUISystem'

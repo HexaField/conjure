@@ -2,7 +2,7 @@ import { defineSystem, PresentationSystemGroup } from '@ir-engine/ecs'
 import { useHookstate, useMutableState } from '@ir-engine/hyperflux'
 import { NetworkState, NetworkTopics } from '@ir-engine/network'
 import React from 'react'
-import { NeighbourhoodNetworkState } from '../ad4m/useNeighbourhoodNetwork'
+import { NeighbourhoodNetworkState } from '../ad4m/NeighbourhoodNetworkTransport'
 import { useBasicScene } from './BasicScene'
 import { useSpawnAvatar } from './useSpawnAvatar'
 
@@ -18,7 +18,7 @@ export const NeighbourhoodWorldSystem = defineSystem({
         {neighbourhoods
           .filter((n) => n.topic === NetworkTopics.world)
           .map((neighbourhood) => (
-            <NeighbourhoodWorldReactor key={neighbourhood.sharedUrl} sharedUrl={neighbourhood.sharedUrl} />
+            <NeighbourhoodWorldReactor key={neighbourhood.networkID} sharedUrl={neighbourhood.networkID} />
           ))}
       </>
     )
