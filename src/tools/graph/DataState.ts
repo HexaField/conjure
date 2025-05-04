@@ -38,7 +38,7 @@ export const DataToolRegistry = defineState({
 export type TargetSchema<T> = {
   id: string
   label: string
-  value: JSONSchema
+  schema: JSONSchema
   onData: (data: Record<string, Partial<T>>) => T
   onConfirm: (data: T) => void
 }

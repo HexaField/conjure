@@ -562,7 +562,7 @@ type ForceGraphShape = {
 export const ForceGraphSchema = {
   id: 'hexafield.conjure.graph-tool.ForceGraph',
   label: 'Force Graph',
-  value: forcegraphSchema,
+  schema: forcegraphSchema,
   onData: (data: Record<string, ForceGraphShape>) => {
     const finalData: ForceGraphShape = { nodes: [], edges: [] }
     const seenLabels = new Map<string, { source: string; id: number | string }>()
