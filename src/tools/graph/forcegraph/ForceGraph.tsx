@@ -30,7 +30,6 @@ import { setVisibleComponent } from '@ir-engine/spatial/src/renderer/components/
 import * as dat from 'dat.gui'
 import React, { useEffect } from 'react'
 import {
-  AdditiveBlending,
   BackSide,
   BufferAttribute,
   BufferGeometry,
@@ -43,6 +42,7 @@ import {
   Line,
   Matrix4,
   MeshBasicMaterial,
+  NormalBlending,
   Quaternion,
   RawShaderMaterial,
   Sphere,
@@ -167,12 +167,16 @@ const execute = () => {
   const rayhits = [] as { x: number; y: number; z: number; i: number; distance: number }[]
 
   const inputSources = InputComponent.getInputSourceEntities(viewer)
+
   if (!inputSources.length) {
     if (selectedNodeIndex === -1) nodeFocusTransition.setState('OUT')
     return
   }
 
-  const inputSource = getComponent(inputSources[0], InputSourceComponent)
+  const buttons = InputComponent.getButtons(viewer)
+  if (!buttons.PrimaryClick?.inputSourceEntity) return
+
+  const inputSource = getComponent(buttons.PrimaryClick?.inputSourceEntity, InputSourceComponent)
   const ray = inputSource.raycaster.ray
 
   for (let i = 0; i < nodes.length; i++) {
@@ -192,7 +196,6 @@ const execute = () => {
     hoveredNodeIndex = -1
   }
 
-  const buttons = InputComponent.getMergedButtons(viewer)
   if (buttons.PrimaryClick?.down) {
     selectedNodeIndex = selectedNodeIndex === hoveredNodeIndex ? -1 : hoveredNodeIndex
   }
@@ -445,7 +448,7 @@ void main()	{
         vertexColors: true,
         transparent: true,
         depthTest: false,
-        blending: AdditiveBlending,
+        blending: NormalBlending, //AdditiveBlending,
         fragmentShader: lineFragmentShader,
         vertexShader: lineVertexShader
       })
@@ -462,11 +465,7 @@ void main()	{
 
     // this is ridiculous
     getMutableState(EngineState).isEditing.set(true)
-    setComponent(viewerEntity, CameraOrbitComponent, {
-      focusedEntities: [entity]
-      // refocus: true,
-      // isOrbiting: true
-    })
+    setComponent(viewerEntity, CameraOrbitComponent)
 
     return () => {
       destroy()

@@ -1,5 +1,5 @@
 import { GLTF } from '@gltf-transform/core'
-import { EntityUUID, getMutableComponent, setComponent, UndefinedEntity } from '@ir-engine/ecs'
+import { EntityID, getMutableComponent, setComponent, UndefinedEntity } from '@ir-engine/ecs'
 import { AssetState, SceneState } from '@ir-engine/engine/src/gltf/GLTFState'
 import { getMutableState, useHookstate, useMutableState } from '@ir-engine/hyperflux'
 import { ReferenceSpaceState } from '@ir-engine/spatial'
@@ -122,7 +122,7 @@ export const useBasicScene = (sceneID: string) => {
     Cache.enabled = true
     Cache.add(sceneURL, gltf)
 
-    const gltfEntity = AssetState.load(sceneURL, sceneID as EntityUUID, originEntity)
+    const gltfEntity = AssetState.load(sceneURL, sceneID as EntityID, originEntity)
     getMutableComponent(viewerEntity, RendererComponent).scenes.merge([gltfEntity])
     setComponent(gltfEntity, SceneComponent, { active: true })
     getMutableState(SceneState)[sceneURL].set(gltfEntity)
