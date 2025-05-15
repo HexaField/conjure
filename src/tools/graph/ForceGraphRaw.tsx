@@ -35,7 +35,7 @@ export default function ForceGraphRaw() {
     setComponent(viewerEntity, TransformComponent, {
       position: new Vector3(10, 10, 20)
     })
-    setComponent(viewerEntity, CameraOrbitComponent, { isOrbiting: true })
+    setComponent(viewerEntity, CameraOrbitComponent)
     getMutableState(RendererState).useShadows.set(false)
 
     const ambientLightEntity = createEntity()

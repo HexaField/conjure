@@ -30,7 +30,6 @@ import { setVisibleComponent } from '@ir-engine/spatial/src/renderer/components/
 import * as dat from 'dat.gui'
 import React, { useEffect } from 'react'
 import {
-  AdditiveBlending,
   BackSide,
   BufferAttribute,
   BufferGeometry,
@@ -43,6 +42,7 @@ import {
   Line,
   Matrix4,
   MeshBasicMaterial,
+  NormalBlending,
   Quaternion,
   RawShaderMaterial,
   Sphere,
@@ -167,12 +167,16 @@ const execute = () => {
   const rayhits = [] as { x: number; y: number; z: number; i: number; distance: number }[]
 
   const inputSources = InputComponent.getInputSourceEntities(viewer)
+
   if (!inputSources.length) {
     if (selectedNodeIndex === -1) nodeFocusTransition.setState('OUT')
     return
   }
 
-  const inputSource = getComponent(inputSources[0], InputSourceComponent)
+  const buttons = InputComponent.getButtons(viewer)
+  if (!buttons.PrimaryClick?.inputSourceEntity) return
+
+  const inputSource = getComponent(buttons.PrimaryClick?.inputSourceEntity, InputSourceComponent)
   const ray = inputSource.raycaster.ray
 
   for (let i = 0; i < nodes.length; i++) {
@@ -192,7 +196,6 @@ const execute = () => {
     hoveredNodeIndex = -1
   }
 
-  const buttons = InputComponent.getMergedButtons(viewer)
   if (buttons.PrimaryClick?.down) {
     selectedNodeIndex = selectedNodeIndex === hoveredNodeIndex ? -1 : hoveredNodeIndex
   }
@@ -212,21 +215,6 @@ const reactor = () => {
     const state = getState(d3State)
 
     if (!state.nodes.length || !state.links.length || !originEntity || !viewerEntity) return
-
-    const minConnections = 1
-
-    // quick hack, remove all nodes that only have one edge
-    const nodeCounts = new Map<string | number, number>()
-    for (const edge of state.links) {
-      nodeCounts.set(edge.source, (nodeCounts.get(edge.source) || 0) + 1)
-      nodeCounts.set(edge.target, (nodeCounts.get(edge.target) || 0) + 1)
-    }
-    state.nodes = state.nodes.filter((node) => nodeCounts.get(node.id) && nodeCounts.get(node.id)! >= minConnections)
-    // and now remove all edges that don't have both nodes
-    state.links = state.links.filter(
-      (edge) =>
-        state.nodes.find((node) => node.id === edge.source) && state.nodes.find((node) => node.id === edge.target)
-    )
 
     const { worker, id, update, destroy } = startWebworker(state.nodes as Node[], state.links as Edge[], (data) => {
       const linksOffset = state.nodes.length * 3
@@ -445,7 +433,7 @@ void main()	{
         vertexColors: true,
         transparent: true,
         depthTest: false,
-        blending: AdditiveBlending,
+        blending: NormalBlending,
         fragmentShader: lineFragmentShader,
         vertexShader: lineVertexShader
       })
@@ -462,11 +450,7 @@ void main()	{
 
     // this is ridiculous
     getMutableState(EngineState).isEditing.set(true)
-    setComponent(viewerEntity, CameraOrbitComponent, {
-      focusedEntities: [entity]
-      // refocus: true,
-      // isOrbiting: true
-    })
+    setComponent(viewerEntity, CameraOrbitComponent)
 
     return () => {
       destroy()
@@ -527,7 +511,7 @@ const forcegraphSchema: JSONSchema = {
         properties: {
           id: { type: 'string' },
           label: { type: 'string' },
-          image: { type: 'string', optional: true }
+          image: { type: 'string', optional: true, default: '' }
         }
       }
     },
@@ -538,10 +522,15 @@ const forcegraphSchema: JSONSchema = {
         properties: {
           source: { type: 'string' },
           target: { type: 'string' },
-          weight: { type: 'number', optional: true }
+          weight: { type: 'number', optional: true, default: 1 }
         }
       }
     }
+    // maxConnections: {
+    //   type: 'number',
+    //   optional: true,
+    //   default: 1
+    // }
   }
 }
 
