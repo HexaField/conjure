@@ -2,7 +2,7 @@ import { JSONMappingSchema } from './generateJsonSchema'
 
 export const getRequirements = (schema: JSONMappingSchema, path: string): string[] => {
   let result: string[] = []
-  if (schema.optional) return result
+  if (!schema || schema.optional) return result
   if (schema.type === 'object' && schema.properties) {
     for (const key in schema.properties) {
       const childSchema = schema.properties[key]

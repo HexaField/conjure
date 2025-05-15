@@ -4,6 +4,7 @@ export interface JSONSchema {
   items?: JSONSchema
   optional?: boolean
   format?: string
+  default?: any
 }
 
 export type JSONPathPartial = string | number | boolean
