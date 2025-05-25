@@ -1,5 +1,4 @@
-import { getMutableState, getState, NO_PROXY_STEALTH, useHookstate } from '@ir-engine/hyperflux'
-import { NetworkTopics } from '@ir-engine/network'
+import { getMutableState, getState, NetworkTopics, NO_PROXY_STEALTH, useHookstate } from '@ir-engine/hyperflux'
 import * as d3 from 'd3'
 import React, { useEffect, useMemo, useRef } from 'react'
 import { AgentState } from '../ad4m/useADAM'
