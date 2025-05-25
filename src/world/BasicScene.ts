@@ -3,8 +3,8 @@ import { EntityID, getMutableComponent, setComponent, UndefinedEntity } from '@i
 import { AssetState, SceneState } from '@ir-engine/engine/src/gltf/GLTFState'
 import { getMutableState, useHookstate, useMutableState } from '@ir-engine/hyperflux'
 import { ReferenceSpaceState } from '@ir-engine/spatial'
+import { RendererComponent } from '@ir-engine/spatial/src/renderer/components/RendererComponent'
 import { SceneComponent } from '@ir-engine/spatial/src/renderer/components/SceneComponents'
-import { RendererComponent } from '@ir-engine/spatial/src/renderer/WebGLRendererSystem'
 import { useEffect } from 'react'
 import { Cache } from 'three'
 

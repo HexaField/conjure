@@ -1,6 +1,5 @@
 import { defineSystem, PresentationSystemGroup } from '@ir-engine/ecs'
-import { useHookstate, useMutableState } from '@ir-engine/hyperflux'
-import { NetworkState, NetworkTopics } from '@ir-engine/network'
+import { NetworkState, NetworkTopics, useHookstate, useMutableState } from '@ir-engine/hyperflux'
 import React from 'react'
 import { NeighbourhoodNetworkState } from '../ad4m/useNeighbourhoodNetwork'
 import { useBasicScene } from './BasicScene'

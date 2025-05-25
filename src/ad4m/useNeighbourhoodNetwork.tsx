@@ -2,33 +2,30 @@ import { Literal, NeighbourhoodProxy, PerspectiveExpression } from '@coasys/ad4m
 import { PUBLIC_STUN_SERVERS } from '@ir-engine/common/src/constants/STUNServers'
 import { Engine } from '@ir-engine/ecs'
 import {
+  MessageTypes,
+  NetworkActions,
   NetworkID,
+  NetworkPeerState,
+  NetworkState,
   PeerID,
+  RTCPeerConnectionState,
+  SendMessageType,
   State,
+  StunServerState,
   Topic,
   UserID,
+  WebRTCPeerConnection,
+  WebRTCTransportFunctions,
   defineState,
   dispatchAction,
   getMutableState,
   getState,
+  joinNetwork,
+  leaveNetwork,
   none,
   useHookstate,
   useMutableState
 } from '@ir-engine/hyperflux'
-import {
-  MessageTypes,
-  NetworkActions,
-  NetworkState,
-  RTCPeerConnectionState,
-  SendMessageType,
-  StunServerState,
-  WebRTCPeerConnection,
-  WebRTCTransportFunctions,
-  addNetwork,
-  createNetwork,
-  removeNetwork
-} from '@ir-engine/network'
-import { NetworkPeerState } from '@ir-engine/network/src/NetworkPeerState'
 import React, { useEffect } from 'react'
 import { AgentState } from './useADAM'
 import { PerspectivesState } from './usePerspectives'
@@ -121,8 +118,7 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
   useEffect(() => {
     getMutableState(NetworkState).hostIds[topic].set(networkID)
 
-    const network = createNetwork(networkID, null, topic, {})
-    addNetwork(network)
+    const network = joinNetwork(networkID, null, topic, {})
 
     network.ready = true
 
@@ -266,7 +262,7 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
           userID: Engine.instance.userID
         })
       )
-      removeNetwork(network)
+      leaveNetwork(network)
       getMutableState(NetworkState).hostIds[topic].set(none)
     }
   }, [])
