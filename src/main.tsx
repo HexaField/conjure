@@ -53,6 +53,7 @@ const CustomLocationPage = lazy(() => import('./CustomLocationPage'))
 const ForceGraph = lazy(() => import('./tools/graph/ForceGraphRaw'))
 const DataGrapher = lazy(() => import('./tools/graph/DataGrapher'))
 const DataPipeline = lazy(() => import('./tools/graph/DataPipeline'))
+const LLMGrapher = lazy(() => import('./tools/App'))
 
 const App = () => {
   return (
@@ -74,6 +75,15 @@ const App = () => {
             element={
               <Suspense>
                 <ForceGraph />
+              </Suspense>
+            }
+          />
+          <Route
+            key="default"
+            path="/llm"
+            element={
+              <Suspense>
+                <LLMGrapher />
               </Suspense>
             }
           />

@@ -22,13 +22,14 @@
   "dependencies": {
     "@coasys/ad4m": "0.10.1-release-candidate-1",
     "@coasys/ad4m-connect": "0.10.1-release-candidate-1",
+    "@mlc-ai/web-llm": "^0.2.79",
     "d3": "7.9.0",
     "d3-force-3d": "^3.0.5",
     "dat.gui": "^0.7.9",
     "jsonpath-plus": "10.3.0",
-    "maxrects-packer": "2.7.3"
+    "maxrects-packer": "2.7.3",
+    "ts-morph": "^26.0.0"
   },
-  "devDependencies": {},
   "license": "ISC",
   "pre-commit": [
     "format-staged"
