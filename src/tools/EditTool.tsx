@@ -55,7 +55,9 @@ function App(): JSX.Element {
     outputData: null as object | null,
     llmLoadProgress: 0,
     additionalPrompt: '',
-    selectedModel: getStoredModel()
+    selectedModel: getStoredModel(),
+    toolLabel: 'New Tool', // Added for tool label entry
+    toolDescription: 'A new tool created from the current state' // Added for tool description entry
   })
 
   const llm = useLLM({
@@ -325,13 +327,13 @@ function App(): JSX.Element {
   const onCreateTool = () => {
     const toolRegistry = getMutableState(ToolRegistry)
     ToolRegistry.create({
-      label: 'New Tool',
-      description: 'A new tool created from the current state',
+      label: state.toolLabel.get(), // Use state value
+      description: state.toolDescription.get(), // Use state value
       input: state.inputSchema.get(NO_PROXY) as JSONSchemaType<unknown>,
       output: state.selectedTargetSchema.get(NO_PROXY) as JSONSchemaType<unknown>,
       transformation: state.transformFunction.get() as Stringify<(input: unknown) => Promise<unknown>>
-    }).then((newTool) => {
-      toolRegistry[newTool.hash].set(newTool)
+    }).then(() => {
+      //
     })
   }
 
@@ -385,6 +387,26 @@ function App(): JSX.Element {
           onTransform={onTransformClick}
           onOutputDataChange={handleOutputDataChange}
         />
+
+        {/* Tool label and description entry fields */}
+        <div className="mt-4 flex flex-col gap-2">
+          <label className="font-medium">Tool Label</label>
+          <input
+            className="rounded border px-2 py-1"
+            type="text"
+            value={state.toolLabel.get()}
+            onChange={(e) => state.toolLabel.set(e.target.value)}
+            placeholder="Enter tool label"
+          />
+          <label className="mt-2 font-medium">Tool Description</label>
+          <input
+            className="rounded border px-2 py-1"
+            type="text"
+            value={state.toolDescription.get()}
+            onChange={(e) => state.toolDescription.set(e.target.value)}
+            placeholder="Enter tool description"
+          />
+        </div>
 
         <Button
           className="mt-4"
