@@ -100,39 +100,35 @@ export function TransformFunctionSection({
           {llmInitializing ? 'Loading Model...' : 'Create Function'}
         </button>
       </div>
-      {transformFunction && (
-        <>
-          <JsonDisplay
-            title="Transform Function"
-            data={transformFunction}
-            format="javascript"
-            copyButtonText="Copy Function"
-            editable={true}
-            onDataChange={onTransformFunctionChange}
-          />
+      <JsonDisplay
+        title="Transform Function"
+        data={transformFunction}
+        format="javascript"
+        copyButtonText="Copy Function"
+        editable={true}
+        onDataChange={onTransformFunctionChange}
+      />
 
-          {/* Function Hash Display */}
-          {transformFunctionHash && (
-            <div className="mt-4 rounded-lg border bg-gray-50 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="mb-1 text-sm font-medium text-gray-700">Function Hash (SHA-256)</h4>
-                  <p className="mb-2 text-xs text-gray-500">Implementation-agnostic hash for semantic comparison</p>
-                  <code className="break-all rounded border bg-white px-2 py-1 font-mono text-xs text-gray-800">
-                    {transformFunctionHash}
-                  </code>
-                </div>
-                <button
-                  onClick={() => navigator.clipboard.writeText(transformFunctionHash)}
-                  className="ml-4 rounded bg-gray-200 px-3 py-1 text-xs text-gray-700 transition-colors hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  title="Copy hash to clipboard"
-                >
-                  Copy Hash
-                </button>
-              </div>
+      {/* Function Hash Display */}
+      {transformFunctionHash && (
+        <div className="mt-4 rounded-lg border bg-gray-50 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="mb-1 text-sm font-medium text-gray-700">Function Hash (SHA-256)</h4>
+              <p className="mb-2 text-xs text-gray-500">Implementation-agnostic hash for semantic comparison</p>
+              <code className="break-all rounded border bg-white px-2 py-1 font-mono text-xs text-gray-800">
+                {transformFunctionHash}
+              </code>
             </div>
-          )}
-        </>
+            <button
+              onClick={() => navigator.clipboard.writeText(transformFunctionHash)}
+              className="ml-4 rounded bg-gray-200 px-3 py-1 text-xs text-gray-700 transition-colors hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              title="Copy hash to clipboard"
+            >
+              Copy Hash
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -8,9 +8,9 @@ import { TargetSchemas } from './TargetRegistry'
 import { Stringify, ToolRegistry } from './ToolRegistry'
 import { DataTransformSection } from './components/DataTransformSection'
 import { Header } from './components/Header'
-import { MultipleDataSourcesSection } from './components/MultipleDataSourcesSection'
 import { TargetSchemaSection } from './components/TargetSchemaSection'
 import { TransformFunctionSection } from './components/TransformFunctionSection'
+import { UrlInputSection } from './components/URLInputSection'
 import type { JSONSchemaType } from './json-schema/JSONSchema'
 import { createJSONTransformFunctionPrompt } from './json-schema/createJSONTransformFunctionPrompt'
 import { generateJsonSchema } from './json-schema/generateJsonSchema'
@@ -19,8 +19,6 @@ import { createDynamicWebworker } from './utils/createDynamicWebworker'
 import { hashFunctionSource } from './utils/hashFunction'
 
 interface DataSource {
-  id: string
-  label: string
   url: string
   data: object | null
   loading: boolean
@@ -42,8 +40,12 @@ function App(): JSX.Element {
   }
 
   const state = useHookstate({
-    dataSources: [] as DataSource[],
-    combinedData: null as object | null,
+    dataSources: {
+      url: '',
+      data: null as object | null,
+      loading: false,
+      errorMessage: null as string | null
+    } as DataSource,
     inputSchema: null as JSONSchemaType<any> | null,
     loading: false,
     errorMessage: null as string | null,
@@ -66,23 +68,16 @@ function App(): JSX.Element {
   // Load data sources from URL parameters on mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
-    const sourcesFromUrl: DataSource[] = []
 
-    // Parse sources from URL parameters (source_0_label, source_0_url, source_1_label, etc.)
-    let index = 0
-    while (urlParams.has(`source_${index}_label`) || urlParams.has(`source_${index}_url`)) {
-      const label = urlParams.get(`source_${index}_label`) || `source_${index + 1}`
-      const url = urlParams.get(`source_${index}_url`) || ''
+    if (urlParams.has(`source_url`)) {
+      const url = urlParams.get(`source_url`) || ''
 
-      sourcesFromUrl.push({
-        id: crypto.randomUUID(),
-        label,
+      state.dataSources.set({
         url,
         data: null,
         loading: false,
         errorMessage: null
       })
-      index++
     }
 
     // Load additional prompt from URL
@@ -105,38 +100,25 @@ function App(): JSX.Element {
       localStorage.setItem('selectedModel', modelFromUrl)
     }
 
-    // If no sources in URL, create one empty source
-    if (sourcesFromUrl.length === 0) {
-      sourcesFromUrl.push({
-        id: crypto.randomUUID(),
-        label: `source_1`,
-        url: '',
-        data: null,
-        loading: false,
-        errorMessage: null
-      })
-    }
-
-    state.dataSources.set(sourcesFromUrl)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    state.dataSources.set({
+      url: '',
+      data: null,
+      loading: false,
+      errorMessage: null
+    })
   }, [])
 
   // Update URL parameters whenever data sources, additional prompt, target schema, or model change
   useEffect(() => {
-    const sources = state.dataSources.get(NO_PROXY)
+    const source = state.dataSources.get(NO_PROXY)
     const additionalPrompt = state.additionalPrompt.get()
     const selectedTargetSchema = state.selectedTargetSchema.get(NO_PROXY)
     const selectedModel = state.selectedModel.get()
     const urlParams = new URLSearchParams()
 
-    sources.forEach((source, index) => {
-      if (source.label.trim()) {
-        urlParams.set(`source_${index}_label`, source.label)
-      }
-      if (source.url.trim()) {
-        urlParams.set(`source_${index}_url`, source.url)
-      }
-    })
+    // if (source.url.trim()) {
+    //   urlParams.set(`source_url`, source.url)
+    // }
 
     // Add additional prompt if it exists
     if (additionalPrompt.trim()) {
@@ -166,45 +148,18 @@ function App(): JSX.Element {
     window.history.replaceState({}, '', newUrl)
   }, [state.dataSources, state.additionalPrompt, state.selectedTargetSchema, state.selectedModel])
 
-  const addDataSource = () => {
-    const newSource: DataSource = {
-      id: crypto.randomUUID(),
-      label: `source_${state.dataSources.length + 1}`,
-      url: '',
-      data: null,
-      loading: false,
-      errorMessage: null
+  const fetchDataForSource = async () => {
+    const source = state.dataSources
+    if (!source.get(NO_PROXY)?.url) {
+      state.errorMessage.set('No data source selected')
+      return
     }
-    state.dataSources.merge([newSource])
-  }
 
-  const removeDataSource = (id: string) => {
-    const currentSources = state.dataSources.get(NO_PROXY)
-    const filteredSources = currentSources.filter((source) => source.id !== id)
-    state.dataSources.set(filteredSources)
-    updateCombinedData()
-  }
-
-  const updateDataSource = (id: string, updates: Partial<DataSource>) => {
-    const sourceIndex = state.dataSources.findIndex((source) => source.id.get() === id)
-    if (sourceIndex !== -1) {
-      state.dataSources[sourceIndex].merge(updates)
-      // If label changed and source has data, update combined data
-      if (updates.label && state.dataSources[sourceIndex].data.get()) {
-        updateCombinedData()
-      }
-    }
-  }
-
-  const fetchDataForSource = async (sourceId: string) => {
-    const sourceIndex = state.dataSources.findIndex((source) => source.id.get() === sourceId)
-    if (sourceIndex === -1) return
-
-    const source = state.dataSources[sourceIndex]
+    // Ensure URL is trimmed and valid
     const url = source.url.get().trim()
 
     if (!url) {
-      source.errorMessage.set('Please enter a URL')
+      state.dataSources.errorMessage.set('Please enter a URL')
       return
     }
 
@@ -212,13 +167,13 @@ function App(): JSX.Element {
     try {
       new URL(url)
     } catch {
-      source.errorMessage.set('Please enter a valid URL')
+      state.dataSources.errorMessage.set('Please enter a valid URL')
       return
     }
 
-    source.loading.set(true)
-    source.errorMessage.set(null)
-    source.data.set(null)
+    state.dataSources.loading.set(true)
+    state.dataSources.errorMessage.set(null)
+    state.dataSources.data.set(null)
 
     try {
       const response = await fetch(url)
@@ -233,40 +188,20 @@ function App(): JSX.Element {
         const text = await response.text()
         try {
           const data = JSON.parse(text)
-          source.data.set(data)
+          state.dataSources.data.set(data)
         } catch {
           throw new Error('Response is not valid JSON')
         }
       } else {
         const data = await response.json()
-        source.data.set(data)
+        const schema = generateJsonSchema(data)
+        state.inputSchema.set(schema)
+        state.dataSources.data.set(data)
       }
-
-      updateCombinedData()
     } catch (error) {
-      source.errorMessage.set(error instanceof Error ? error.message : 'Failed to fetch data')
+      state.dataSources.errorMessage.set(error instanceof Error ? error.message : 'Failed to fetch data')
     } finally {
-      source.loading.set(false)
-    }
-  }
-
-  const updateCombinedData = () => {
-    const sources = state.dataSources.get(NO_PROXY)
-    const combined: Record<string, object> = {}
-
-    for (const source of sources) {
-      if (source.data && source.label) {
-        combined[source.label] = source.data
-      }
-    }
-
-    if (Object.keys(combined).length > 0) {
-      state.combinedData.set(combined)
-      const schema = generateJsonSchema(combined)
-      state.inputSchema.set(schema)
-    } else {
-      state.combinedData.set(null)
-      state.inputSchema.set(null)
+      state.dataSources.loading.set(false)
     }
   }
 
@@ -281,7 +216,7 @@ function App(): JSX.Element {
       return
     }
 
-    if (!state.combinedData.get()) {
+    if (!state.dataSources.data.get()) {
       state.errorMessage.set('No JSON data to transform')
       return
     }
@@ -326,14 +261,14 @@ function App(): JSX.Element {
   const onTransformClick = () => {
     const cleanFunctionScript = state.transformFunction.get() as string
     createDynamicWebworker(cleanFunctionScript).then((worker) => {
-      worker.call(state.combinedData.get(NO_PROXY)!).then((response) => {
+      worker.call(state.dataSources.data.get(NO_PROXY)!).then((response) => {
         state.outputData.set(response)
       })
     })
   }
 
   const handleCombinedDataChange = (newData: object) => {
-    state.combinedData.set(newData)
+    state.dataSources.data.set(newData)
     // Regenerate schema when combined data changes
     const schema = generateJsonSchema(newData)
     state.inputSchema.set(schema)
@@ -405,16 +340,14 @@ function App(): JSX.Element {
       <div className="mx-auto max-w-4xl space-y-6">
         <Header />
 
-        <MultipleDataSourcesSection
-          dataSources={state.dataSources.get(NO_PROXY) as DataSource[]}
-          combinedData={state.combinedData.get(NO_PROXY) as object | null}
-          inputSchema={state.inputSchema.get(NO_PROXY) as JSONSchemaType<any> | null}
-          onAddSource={addDataSource}
-          onRemoveSource={removeDataSource}
-          onUpdateSource={updateDataSource}
-          onFetchData={fetchDataForSource}
-          onCombinedDataChange={handleCombinedDataChange}
-          onInputSchemaChange={handleInputSchemaChange}
+        <UrlInputSection
+          url={state.dataSources.url.get()}
+          loading={state.dataSources.loading.get()}
+          errorMessage={state.dataSources.errorMessage.get()}
+          jsonData={state.dataSources.data.get({ noproxy: true }) as object | null}
+          inputSchema={state.inputSchema.get({ noproxy: true }) as JSONSchemaType<unknown> | null}
+          onUrlChange={(url: string) => state.dataSources.url.set(url)}
+          onSubmit={fetchDataForSource}
         />
 
         <TargetSchemaSection
