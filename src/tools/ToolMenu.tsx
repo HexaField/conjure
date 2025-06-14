@@ -6,7 +6,7 @@ import EditTool from './EditTool'
 import { ToolRegistry } from './ToolRegistry'
 
 const UseToolsMenu = () => {
-  const tools = useHookstate(getMutableState(ToolRegistry))
+  const tools = useHookstate(getMutableState(ToolRegistry).tools)
 
   return (
     <div className="rounded-lg bg-white p-6 shadow-md">

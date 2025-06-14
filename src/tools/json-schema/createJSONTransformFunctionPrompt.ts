@@ -15,7 +15,7 @@ Output Schema: ${JSON.stringify(props.outputSchema, null, 2)}`
     ? `\n\nAdditional Requirements:\n${props.additionalInstructions.trim()}`
     : ''
 
-  const endingInstructions = `\n\nYour response must be a valid javascript synchronous pure function named 'transformData', taking exactly one argument (the input data) that returns the output data.
+  const endingInstructions = `\n\nYour response must be a valid javascript synchronous pure function named 'transform', taking exactly one argument (the input data) that returns the output data.
 
 The input data may have multiple sources, in which case they must be combined.
 Ignore any data that is not included in the output. 

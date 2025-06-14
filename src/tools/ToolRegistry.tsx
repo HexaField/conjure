@@ -1,4 +1,4 @@
-import { defineState, getMutableState, none } from '@ir-engine/hyperflux'
+import { defineState, getMutableState, none, syncStateWithLocalStorage } from '@ir-engine/hyperflux'
 import { JSONSchemaType } from './json-schema/JSONSchema'
 import { contentHash } from './json-schema/contentHash'
 import { hashFunctionSource } from './utils/hashFunction'
@@ -24,7 +24,7 @@ export type Tool<Input = unknown, Output = unknown> = {
 
 export const ToolRegistry = defineState({
   name: 'hexafield.conjure.ToolRegistry',
-  initial: {} as Record<SHA256Hash, Tool>,
+  initial: { tools: {} as Record<SHA256Hash, Tool> },
 
   create: async (tool: Omit<Tool, 'hash' | 'inputHash' | 'outputHash' | 'transformationHash'>): Promise<SHA256Hash> => {
     const { label, description, input, output, transformation } = tool
@@ -50,12 +50,14 @@ export const ToolRegistry = defineState({
       transformationHash
     }
 
-    getMutableState(ToolRegistry)[serializedTool.hash].set(serializedTool)
+    getMutableState(ToolRegistry).tools[serializedTool.hash].set(serializedTool)
 
     return serializedTool.hash
   },
 
   forget: (id: SHA256Hash) => {
-    getMutableState(ToolRegistry)[id].set(none)
-  }
+    getMutableState(ToolRegistry).tools[id].set(none)
+  },
+
+  extension: syncStateWithLocalStorage(['tools'])
 })

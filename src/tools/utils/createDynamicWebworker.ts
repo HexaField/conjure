@@ -5,12 +5,14 @@
  * @returns
  */
 export const createDynamicWebworker = async (functionString: string) => {
+  const functionName = functionString.match(/function\s+(\w+)/)?.[1] || 'transform'
+
   const fnString = `
 ${functionString}
 self.postMessage({});
 self.onmessage = function(e) {
   try {
-    const output = transformData(e.data);
+    const output = ${functionName}(e.data);
     self.postMessage({ output });
   } catch (e) {
     self.postMessage({ error: e.message });

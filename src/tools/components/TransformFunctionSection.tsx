@@ -1,4 +1,5 @@
-import React from 'react'
+import { useHookstate } from '@hookstate/core'
+import React, { useEffect } from 'react'
 import type { JSONSchemaType } from '../json-schema/JSONSchema'
 import { CODING_MODELS } from '../llm/useLLM'
 import { JsonDisplay } from './JsonDisplay'
@@ -16,6 +17,10 @@ interface TransformFunctionSectionProps {
   onModelChange: (modelId: string) => void
   llmLoadProgress: number
   llmInitializing: boolean
+  setApiKey?: (key: string) => void
+  setOllamaUrl?: (url: string) => void
+  apiKey?: string
+  ollamaUrl?: string
 }
 
 export function TransformFunctionSection({
@@ -30,9 +35,27 @@ export function TransformFunctionSection({
   onTransformFunctionChange,
   onModelChange,
   llmLoadProgress,
-  llmInitializing
+  llmInitializing,
+  setApiKey,
+  setOllamaUrl,
+  apiKey,
+  ollamaUrl
 }: TransformFunctionSectionProps) {
   const selectedModelInfo = CODING_MODELS.find((m) => m.id === selectedModel)
+
+  const localApiKey = useHookstate(apiKey || '')
+  const localOllamaUrl = useHookstate(
+    ollamaUrl || (selectedModelInfo?.provider === 'ollama' ? selectedModelInfo.apiUrl || '' : '')
+  )
+
+  useEffect(() => {
+    if (apiKey !== undefined) localApiKey.set(apiKey)
+  }, [apiKey])
+  useEffect(() => {
+    if (ollamaUrl !== undefined) localOllamaUrl.set(ollamaUrl)
+  }, [ollamaUrl])
+
+  const llmReady = selectedModelInfo?.provider === 'mlc' ? llmLoadProgress >= 1 && !llmInitializing : true
 
   return (
     <div className="rounded-xl bg-white p-6 shadow-lg">
@@ -70,6 +93,71 @@ export function TransformFunctionSection({
             Size: {selectedModelInfo.size} | Parameters: {selectedModelInfo.parameters}
           </p>
         )}
+        {/* Remote LLM API key or URL input */}
+        {selectedModelInfo?.provider === 'openai' && (
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-gray-700">OpenAI API Key</label>
+            <input
+              type="password"
+              className="w-full rounded border px-2 py-1 text-xs"
+              value={localApiKey.get()}
+              onChange={(e) => {
+                localApiKey.set(e.target.value)
+                setApiKey?.(e.target.value)
+              }}
+              placeholder="sk-..."
+              autoComplete="off"
+            />
+          </div>
+        )}
+        {selectedModelInfo?.provider === 'anthropic' && (
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-gray-700">Anthropic API Key</label>
+            <input
+              type="password"
+              className="w-full rounded border px-2 py-1 text-xs"
+              value={localApiKey.get()}
+              onChange={(e) => {
+                localApiKey.set(e.target.value)
+                setApiKey?.(e.target.value)
+              }}
+              placeholder="claude-..."
+              autoComplete="off"
+            />
+          </div>
+        )}
+        {selectedModelInfo?.provider === 'google' && (
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-gray-700">Google API Key</label>
+            <input
+              type="password"
+              className="w-full rounded border px-2 py-1 text-xs"
+              value={localApiKey.get()}
+              onChange={(e) => {
+                localApiKey.set(e.target.value)
+                setApiKey?.(e.target.value)
+              }}
+              placeholder="AIza..."
+              autoComplete="off"
+            />
+          </div>
+        )}
+        {selectedModelInfo?.provider === 'ollama' && (
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-gray-700">Ollama LAN URL</label>
+            <input
+              type="text"
+              className="w-full rounded border px-2 py-1 text-xs"
+              value={localOllamaUrl.get()}
+              onChange={(e) => {
+                localOllamaUrl.set(e.target.value)
+                setOllamaUrl?.(e.target.value)
+              }}
+              placeholder="http://192.168.1.100:11434/api/chat"
+              autoComplete="off"
+            />
+          </div>
+        )}
       </div>
 
       {/* Additional Prompt Input */}
@@ -94,7 +182,7 @@ export function TransformFunctionSection({
       <div className="mt-4">
         <button
           className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400"
-          disabled={!selectedTargetSchema || !inputSchema || llmInitializing || llmLoadProgress < 1}
+          disabled={!selectedTargetSchema || !inputSchema || !llmReady}
           onClick={onCreateFunction}
         >
           {llmInitializing ? 'Loading Model...' : 'Create Function'}

@@ -54,6 +54,9 @@ export interface CodingModel {
   description: string
   size: string
   parameters: string
+  provider?: 'mlc' | 'openai' | 'anthropic' | 'google' | 'ollama'
+  apiUrl?: string // For remote models
+  apiKeyEnvVar?: string // For remote models
 }
 
 /**
@@ -104,6 +107,46 @@ export const CODING_MODELS: CodingModel[] = [
     description: 'Advanced reasoning capabilities for complex coding problems',
     size: 'Medium',
     parameters: '7B'
+  },
+  {
+    id: 'openai-o3-mini-high',
+    name: 'OpenAI o3-mini-high',
+    description: 'OpenAI GPT-4o (o3-mini-high) for high-quality code generation',
+    size: 'Cloud',
+    parameters: 'Proprietary',
+    provider: 'openai',
+    apiUrl: 'https://api.openai.com/v1/chat/completions',
+    apiKeyEnvVar: 'OPENAI_API_KEY'
+  },
+  {
+    id: 'claude-sonnet-3.7',
+    name: 'Claude Sonnet 3.7',
+    description: 'Anthropic Claude Sonnet 3.7 for advanced reasoning',
+    size: 'Cloud',
+    parameters: 'Proprietary',
+    provider: 'anthropic',
+    apiUrl: 'https://api.anthropic.com/v1/messages',
+    apiKeyEnvVar: 'ANTHROPIC_API_KEY'
+  },
+  {
+    id: 'gemini-2.5',
+    name: 'Gemini 2.5',
+    description: 'Google Gemini 2.5 for code and reasoning',
+    size: 'Cloud',
+    parameters: 'Proprietary',
+    provider: 'google',
+    apiUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent',
+    apiKeyEnvVar: 'GOOGLE_API_KEY'
+  },
+  {
+    id: 'ollama-deepseek-coder',
+    name: 'Ollama Deepseek Coder (LAN)',
+    description: 'Deepseek Coder via Ollama running on your LAN',
+    size: 'LAN',
+    parameters: 'Deepseek Coder',
+    provider: 'ollama',
+    apiUrl: 'http://localhost:11434/api/chat', // Default, user can override
+    apiKeyEnvVar: ''
   }
 ]
 
@@ -253,6 +296,95 @@ async function callLLM<T = unknown>(engine: MLCEngineInterface, options: LLMCall
   }
 }
 
+// Add remote LLM call support
+async function callRemoteLLM<T = unknown>(
+  model: CodingModel,
+  options: LLMCallOptions,
+  apiKey: string,
+  customUrl?: string
+): Promise<LLMResponse<T>> {
+  const { prompt, temperature = 0.7, maxTokens = 1000 } = options
+  let url = model.apiUrl
+  if (model.provider === 'ollama' && customUrl) url = customUrl
+
+  let headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  let body: any = {}
+
+  if (model.provider === 'openai') {
+    headers['Authorization'] = `Bearer ${apiKey}`
+    body = {
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      temperature,
+      max_tokens: maxTokens
+    }
+  } else if (model.provider === 'anthropic') {
+    headers['x-api-key'] = apiKey
+    body = {
+      model: 'claude-3-sonnet-20240229',
+      max_tokens: maxTokens,
+      temperature,
+      messages: [{ role: 'user', content: prompt }]
+    }
+  } else if (model.provider === 'google') {
+    url = `${url}?key=${apiKey}`
+    body = {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature, maxOutputTokens: maxTokens }
+    }
+  } else if (model.provider === 'ollama') {
+    body = {
+      model: 'deepseek-coder  ',
+      messages: [{ role: 'user', content: prompt }],
+      stream: false
+    }
+  }
+
+  const response = await fetch(url!, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  })
+  if (!response.ok) throw new Error(`Remote LLM error: ${response.status} ${response.statusText}`)
+  const data = await response.json()
+
+  let rawResponse = ''
+  if (model.provider === 'openai') rawResponse = data.choices?.[0]?.message?.content || ''
+  else if (model.provider === 'anthropic') rawResponse = data.content?.[0]?.text || ''
+  else if (model.provider === 'google') rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  else if (model.provider === 'ollama') rawResponse = data.message?.content || ''
+
+  if (options.output === 'json') {
+    let parsedData: unknown
+    try {
+      parsedData = extractJSON(rawResponse)
+    } catch (error) {
+      return {
+        data: null,
+        rawResponse,
+        isValid: false,
+        validationErrors: [`JSON parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`]
+      }
+    }
+    return { data: parsedData as T, rawResponse, isValid: true }
+  }
+  if (options.output === 'javascript') {
+    let parsedData: unknown
+    try {
+      parsedData = extractJavascript(rawResponse)
+    } catch (error) {
+      return {
+        data: null,
+        rawResponse,
+        isValid: false,
+        validationErrors: [`Javascript parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`]
+      }
+    }
+    return { data: parsedData as T, rawResponse, isValid: true }
+  }
+  return { data: rawResponse as T, rawResponse, isValid: true }
+}
+
 const llm = hookstate({
   engine: null as null | MLCEngineInterface,
   initializing: false,
@@ -285,13 +417,14 @@ export async function reloadLLM(
 /**
  * Main initialization function that returns the LLM module interface
  */
-export function useLLM(options: LLMInitOptions = {}): LLMModule {
-  const { modelId, onProgress } = options
-
+export function useLLM(options: LLMInitOptions & { apiKey?: string; ollamaUrl?: string } = {}): LLMModule {
+  const { modelId, onProgress, apiKey, ollamaUrl } = options
   const ready = !!useHookstate(llm.engine).value
   const initializing = useHookstate(llm.initializing).value
+  const selectedModel = CODING_MODELS.find((m) => m.id === modelId)
 
   useEffect(() => {
+    if (!selectedModel || selectedModel.provider !== 'mlc') return
     if (llm.initializing.value || llm.engine.value) return
     llm.initializing.set(true)
     initializeEngine(modelId, onProgress)
@@ -308,11 +441,21 @@ export function useLLM(options: LLMInitOptions = {}): LLMModule {
 
   return {
     call: (options: LLMCallOptions) => {
-      if (!llm.engine.value) throw new Error('LLM not initialized')
-      return callLLM(llm.engine.value as MLCEngineInterface, options)
+      if (!selectedModel) throw new Error('No model selected')
+      if (selectedModel.provider === 'mlc') {
+        if (!llm.engine.value) throw new Error('LLM not initialized')
+        return callLLM(llm.engine.value as MLCEngineInterface, options)
+      } else {
+        // For remote models, require apiKey or ollamaUrl as needed
+        if (selectedModel.provider === 'ollama') {
+          return callRemoteLLM(selectedModel, options, '', ollamaUrl)
+        }
+        if (!apiKey) throw new Error('API key required for remote LLM')
+        return callRemoteLLM(selectedModel, options, apiKey, ollamaUrl)
+      }
     },
-    ready,
-    initializing,
+    ready: selectedModel?.provider === 'mlc' ? ready : true,
+    initializing: selectedModel?.provider === 'mlc' ? initializing : false,
     getModelInfo: () => ({
       modelId: llm.currentModelId.value || modelId || 'Llama-3.2-3B-Instruct-q4f32_1-MLC'
     })

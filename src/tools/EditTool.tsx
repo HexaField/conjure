@@ -1,7 +1,7 @@
 import { useHookstate } from '@hookstate/core'
 import { useEffect } from 'react'
 
-import { getMutableState, NO_PROXY } from '@ir-engine/hyperflux'
+import { NO_PROXY } from '@ir-engine/hyperflux'
 import { Button } from '@ir-engine/ui'
 import React from 'react'
 import { TargetSchemas } from './TargetRegistry'
@@ -60,11 +60,17 @@ function App(): JSX.Element {
     toolDescription: 'A new tool created from the current state' // Added for tool description entry
   })
 
+  // Remote LLM state for API keys and LAN URLs
+  const apiKey = useHookstate('')
+  const ollamaUrl = useHookstate('http://localhost:11434/api/chat')
+
   const llm = useLLM({
     modelId: state.selectedModel.get(),
     onProgress: (progress) => {
       state.llmLoadProgress.set(progress.progress ?? 0)
-    }
+    },
+    apiKey: apiKey.get(),
+    ollamaUrl: ollamaUrl.get()
   })
 
   // Load data sources from URL parameters on mount
@@ -110,7 +116,7 @@ function App(): JSX.Element {
     })
   }, [])
 
-  // Update URL parameters whenever data sources, additional prompt, target schema, or model change
+  // Update URL parameters whenever data sources, additional prompt, target schema, model, or ollamaUrl change
   useEffect(() => {
     const source = state.dataSources.get(NO_PROXY)
     const additionalPrompt = state.additionalPrompt.get()
@@ -142,13 +148,18 @@ function App(): JSX.Element {
       urlParams.set('model', selectedModel)
     }
 
+    // Add ollamaUrl if it's not the default
+    if (ollamaUrl.get() && ollamaUrl.get() !== 'http://localhost:11434/api/chat') {
+      urlParams.set('ollama_url', ollamaUrl.get())
+    }
+
     // Update URL without triggering a page reload
     const newUrl = urlParams.toString()
       ? `${window.location.pathname}?${urlParams.toString()}`
       : window.location.pathname
 
     window.history.replaceState({}, '', newUrl)
-  }, [state.dataSources, state.additionalPrompt, state.selectedTargetSchema, state.selectedModel])
+  }, [state.dataSources, state.additionalPrompt, state.selectedTargetSchema, state.selectedModel, ollamaUrl])
 
   const fetchDataForSource = async () => {
     const source = state.dataSources
@@ -325,15 +336,15 @@ function App(): JSX.Element {
   }
 
   const onCreateTool = () => {
-    const toolRegistry = getMutableState(ToolRegistry)
     ToolRegistry.create({
       label: state.toolLabel.get(), // Use state value
       description: state.toolDescription.get(), // Use state value
       input: state.inputSchema.get(NO_PROXY) as JSONSchemaType<unknown>,
       output: state.selectedTargetSchema.get(NO_PROXY) as JSONSchemaType<unknown>,
       transformation: state.transformFunction.get() as Stringify<(input: unknown) => Promise<unknown>>
-    }).then(() => {
-      //
+    }).then((hash) => {
+      // done - @todo add UI feedback
+      console.log('Tool created successfully:', hash)
     })
   }
 
@@ -379,6 +390,11 @@ function App(): JSX.Element {
           onModelChange={handleModelChange}
           llmLoadProgress={state.llmLoadProgress.value}
           llmInitializing={llm.initializing}
+          // Pass API key and LAN URL setters for remote LLMs
+          setApiKey={apiKey.set}
+          setOllamaUrl={ollamaUrl.set}
+          apiKey={apiKey.get()}
+          ollamaUrl={ollamaUrl.get()}
         />
 
         <DataTransformSection
