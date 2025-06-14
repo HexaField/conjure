@@ -1,6 +1,7 @@
-import { defineState, getMutableState, none, syncStateWithLocalStorage } from '@ir-engine/hyperflux'
+import { defineState, getMutableState, getState, none, syncStateWithLocalStorage } from '@ir-engine/hyperflux'
 import { JSONSchemaType } from './json-schema/JSONSchema'
 import { contentHash } from './json-schema/contentHash'
+import { createDynamicWebworker } from './utils/createDynamicWebworker'
 import { hashFunctionSource } from './utils/hashFunction'
 
 export type Stringify<Signature = unknown> = string & {
@@ -59,5 +60,32 @@ export const ToolRegistry = defineState({
     getMutableState(ToolRegistry).tools[id].set(none)
   },
 
+  run: async <Input, Output>(id: SHA256Hash, input: Input): Promise<Output> => {
+    const tool = getState(ToolRegistry).tools[id]
+    if (!tool) {
+      throw new Error(`Tool with id ${id} not found`)
+    }
+    const { transformation } = tool
+    if (typeof transformation !== 'string') {
+      throw new Error(`Tool with id ${id} has invalid transformation function`)
+    }
+
+    if (!workers[id]) {
+      console.warn(`Creating new worker for tool ${id}`)
+      workers[id] = await createDynamicWebworker(transformation)
+    }
+
+    const worker = workers[id]
+    try {
+      return (await worker.call(input as object)) as Output
+    } catch (error) {
+      worker.terminate()
+      delete workers[id]
+      throw error
+    }
+  },
+
   extension: syncStateWithLocalStorage(['tools'])
 })
+
+const workers = {} as Record<SHA256Hash, Awaited<ReturnType<typeof createDynamicWebworker>>>

@@ -274,9 +274,17 @@ function App(): JSX.Element {
   const onTransformClick = () => {
     const cleanFunctionScript = state.transformFunction.get() as string
     createDynamicWebworker(cleanFunctionScript).then((worker) => {
-      worker.call(state.dataSources.data.get(NO_PROXY)!).then((response) => {
-        state.outputData.set(response)
-      })
+      worker
+        .call(state.dataSources.data.get(NO_PROXY)!)
+        .then((response) => {
+          state.outputData.set(response)
+          worker.terminate()
+        })
+        .catch((error) => {
+          console.error('Error during transformation:', error)
+          state.errorMessage.set(error instanceof Error ? error.message : 'Transformation failed')
+          worker.terminate()
+        })
     })
   }
 
