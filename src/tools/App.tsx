@@ -17,6 +17,8 @@ import { Vector3 } from 'three'
 
 import ToolMenu from './ToolMenu'
 
+import './graph/forcegraph/ForceGraph'
+
 export default function Template() {
   const [ref, setRef] = useReactiveRef()
 

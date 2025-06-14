@@ -1,20 +1,21 @@
-import { getMutableState, useHookstate } from '@ir-engine/hyperflux'
+import { getMutableState, getState, NO_PROXY, useHookstate } from '@ir-engine/hyperflux'
 import { Button } from '@ir-engine/ui'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
 import EditTool from './EditTool'
-import { TargetSchemas } from './TargetRegistry'
-import { ToolRegistry } from './ToolRegistry'
+import { Tool, ToolRegistry } from './ToolRegistry'
+import { TargetVisualizationState } from './graph/DataState'
+import { JSONSchemaType } from './json-schema/JSONSchema'
 import { contentHash } from './json-schema/contentHash'
 import { generateJsonSchema } from './json-schema/generateJsonSchema'
 
 // Type for input state
 interface InputSource {
   url: string
-  data: any
+  data: unknown | null
   loading: boolean
   errorMessage: string | null
-  schema: any | null
+  schema: JSONSchemaType<any> | null
   hash: string | null
 }
 
@@ -25,7 +26,62 @@ const UseToolsMenu: React.FC = () => {
     { url: '', data: null, loading: false, errorMessage: null, schema: null, hash: null }
   ])
   // Output schema selection
-  const outputSchemaIdx = useHookstate(0)
+  const visualizationType = useHookstate('hexafield.conjure.graph-tool.ForceGraph') // todo put in search params once we have multiple
+  const targetGraph = getState(TargetVisualizationState)[visualizationType.get()]
+  const targetSchema = targetGraph?.value
+
+  // On mount, initialize from search params if present
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    // Collect urlN params in order
+    const urlParams: string[] = []
+    let i = 0
+    while (true) {
+      const url = params.get(`url${i}`)
+      if (!url) break
+      urlParams.push(url)
+      i++
+    }
+    const graphTypeParam = params.get('graphType')
+    if (urlParams.length > 0) {
+      // Set input URLs from params
+      const arr = urlParams.map((url) => ({
+        url,
+        data: null,
+        loading: false,
+        errorMessage: null,
+        schema: null,
+        hash: null
+      }))
+      inputs.set(arr)
+      // Fetch each input URL
+      for (let i = 0; i < arr.length; i++) fetchInput(i)
+    }
+    if (graphTypeParam) {
+      // Set output schema index from params
+      const schemaIndex = getState(TargetVisualizationState)[graphTypeParam]
+      if (schemaIndex) {
+        visualizationType.set(graphTypeParam)
+      }
+    }
+  }, [])
+
+  // Persist each input URL and output graph type to search params individually (not as a list)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    // Remove all urlN params first
+    Array.from(params.keys())
+      .filter((k) => /^url\d+$/.test(k))
+      .forEach((k) => params.delete(k))
+    // Set each url as url0, url1, ...
+    inputs.forEach((input, idx) => {
+      const url = input.url.get()
+      if (url) params.set(`url${idx}`, url)
+    })
+    // Set graphType param
+    params.set('graphType', visualizationType.get())
+    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
+  }, [inputs.map((input) => input.url.get()).join(','), visualizationType.get()])
 
   // Fetch and process a single input
   const fetchInput = async (idx: number) => {
@@ -59,8 +115,7 @@ const UseToolsMenu: React.FC = () => {
   }
 
   // Output schema and hash
-  const outputSchema = TargetSchemas[outputSchemaIdx.get()]
-  const outputHash = outputSchema ? contentHash(outputSchema) : null
+  const outputHash = targetSchema ? contentHash(targetSchema) : null
 
   // Find matching tools
   const inputHashes = inputs
@@ -69,7 +124,52 @@ const UseToolsMenu: React.FC = () => {
     .filter((h): h is string => !!h)
   const matchingTools = Object.values(tools.value as Record<string, any>).filter(
     (tool) => inputHashes.includes(tool.inputHash) && outputHash && tool.outputHash === outputHash
-  )
+  ) as Tool[]
+
+  // New: Check if all inputs have a matching tool
+  const allInputsHaveTool =
+    inputs.every((input) => input.hash.get() && matchingTools.some((tool) => tool.inputHash === input.hash.get())) &&
+    matchingTools.length > 0 &&
+    outputHash
+
+  // New: Run transformation tool and create graph
+  const runToolAndCreateGraph = async () => {
+    // For each input, find the matching tool and run it
+    const results = await Promise.all(
+      inputs.get(NO_PROXY).map((input) => {
+        if (!input.hash || !input.data) return null // Skip if no hash or data
+        const tool = matchingTools.find((t) => t.inputHash === input.hash && t.outputHash === outputHash)
+        if (!tool) {
+          console.error(`No matching tool found for input hash ${input.hash}`)
+          return null
+        }
+        try {
+          return ToolRegistry.run(tool.hash, input.data)
+        } catch (e) {
+          // Optionally handle error
+          console.error('Tool run failed', e)
+        }
+      })
+    )
+    // Now, create the graph using the output schema's onConfirm/onData logic
+    // (see MappingUI.tsx for reference)
+    if (targetGraph && typeof targetGraph.onData === 'function') {
+      // Compose data as MappingUI does: { [url]: transformedData }
+      const dataObj: Record<string, any> = {}
+      inputs.forEach((input, i) => {
+        const url = input.url.get()
+        dataObj[url] = results[i]
+      })
+      try {
+        const finalData = targetGraph.onData(dataObj)
+        if (typeof targetGraph.onConfirm === 'function') {
+          targetGraph.onConfirm(finalData)
+        }
+      } catch (e) {
+        console.error('Graph creation failed', e)
+      }
+    }
+  }
 
   return (
     <div className="rounded-lg bg-white p-6 shadow-md">
@@ -118,12 +218,13 @@ const UseToolsMenu: React.FC = () => {
         <h3 className="mb-2 font-medium">Output Graph Type</h3>
         <select
           className="w-72 rounded border px-2 py-1 text-sm"
-          value={outputSchemaIdx.get()}
-          onChange={(e) => outputSchemaIdx.set(Number(e.target.value))}
+          value={targetGraph?.id || ''}
+          onChange={(e) => visualizationType.set(e.target.value)}
+          disabled={!targetGraph}
         >
-          {TargetSchemas.map((schema, i) => (
-            <option key={i} value={i}>
-              {schema.label || `Graph ${i + 1}`}
+          {Object.values(getState(TargetVisualizationState)).map((schema) => (
+            <option key={schema.id} value={schema.id}>
+              {schema.label || schema.id}
             </option>
           ))}
         </select>
@@ -152,6 +253,14 @@ const UseToolsMenu: React.FC = () => {
             ))}
           </ul>
         )}
+        {/* New: Run Tool button */}
+        <button
+          className="mt-4 rounded bg-green-600 px-4 py-2 font-semibold text-white disabled:bg-gray-300"
+          onClick={runToolAndCreateGraph}
+          disabled={!allInputsHaveTool}
+        >
+          Run Tool & Create Graph
+        </button>
       </div>
     </div>
   )
