@@ -17,6 +17,7 @@ import { Vector3 } from 'three'
 
 import ToolMenu from './ToolMenu'
 
+import { GithubOriginalFalse } from '@ir-engine/ui/src/icons'
 import './graph/forcegraph/ForceGraph'
 
 export default function Template() {
@@ -54,7 +55,23 @@ export default function Template() {
     <>
       <div ref={setRef} style={{ width: '100%', height: '100%', position: 'absolute' }} />
       <ToolMenu />
+      <GithubLink />
       <Debug />
     </>
+  )
+}
+
+const GithubLink = () => {
+  return (
+    <div className="pointer-events-auto absolute bottom-4 right-4 rounded-lg bg-black px-4 py-2 text-white">
+      <a
+        href="https://github.com/hexafield/conjure"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center"
+      >
+        <GithubOriginalFalse className="mr-2 inline-block" />
+      </a>
+    </div>
   )
 }
