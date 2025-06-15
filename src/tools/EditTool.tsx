@@ -18,13 +18,6 @@ import { CODING_MODELS, reloadLLM, useLLM } from './llm/useLLM'
 import { createDynamicWebworker } from './utils/createDynamicWebworker'
 import { hashFunctionSource } from './utils/hashFunction'
 
-interface DataSource {
-  url: string
-  data: object | null
-  loading: boolean
-  errorMessage: string | null
-}
-
 // Generic interface for schema selection
 export type SchemaSelector =
   | { kind: 'url'; url: string; schema: JSONSchemaType<any> | null; loading: boolean; errorMessage: string | null }
@@ -48,12 +41,7 @@ function App(): JSX.Element {
   const state = useHookstate({
     inputSchemaSelector: { kind: 'url', url: '', schema: null, loading: false, errorMessage: null } as SchemaSelector,
     outputSchemaSelector: { kind: 'url', url: '', schema: null, loading: false, errorMessage: null } as SchemaSelector,
-    inputData: {
-      url: '',
-      data: null as object | null,
-      loading: false,
-      errorMessage: null as string | null
-    } as DataSource,
+    inputData: null as object | null,
     loading: false,
     errorMessage: null as string | null,
     selectedModel: getStoredModel(),
@@ -174,16 +162,13 @@ function App(): JSX.Element {
   const onCreateFunctionClick = () => {
     if (!llm.ready) {
       state.errorMessage.set('LLM not initialized')
+      console.error('LLM not initialized')
       return
     }
 
     if (!state.outputSchemaSelector.get().schema) {
       state.errorMessage.set('Please select a target schema')
-      return
-    }
-
-    if (!state.inputData.data.get()) {
-      state.errorMessage.set('No JSON data to transform')
+      console.error('No target schema selected')
       return
     }
 
@@ -228,7 +213,7 @@ function App(): JSX.Element {
     const cleanFunctionScript = state.transformFunction.get() as string
     createDynamicWebworker(cleanFunctionScript).then((worker) => {
       worker
-        .call(state.inputData.data.get(NO_PROXY)!)
+        .call(state.inputData.get(NO_PROXY)!)
         .then((response) => {
           state.outputData.set(response)
           worker.terminate()
@@ -289,6 +274,7 @@ function App(): JSX.Element {
       const response = await fetch(url)
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       const data = await response.json()
+      state.inputData.set(data) // Store fetched data for transformation
       const schema = generateJsonSchema(data)
       state[selectorKey].set({ kind: 'url', url, schema, loading: false, errorMessage: null })
       // Add to knownSchemas
@@ -348,7 +334,7 @@ function App(): JSX.Element {
           onUrlChange={(url) => fetchSchemaFromUrl(url, true)}
           onKnownSchemaSelect={(schemaId) => handleKnownSchemaSelect(schemaId, true)}
           inputSchema={state.inputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
-          jsonData={state.inputData.data.get(NO_PROXY) as object | null}
+          jsonData={state.inputData.get(NO_PROXY) as object | null}
         />
         <SchemaSelectorInput
           label="Output Schema"
@@ -356,7 +342,6 @@ function App(): JSX.Element {
           onUrlChange={(url) => fetchSchemaFromUrl(url, false)}
           onKnownSchemaSelect={(schemaId) => handleKnownSchemaSelect(schemaId, false)}
           inputSchema={state.outputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
-          jsonData={state.inputData.data.get(NO_PROXY) as object | null}
         />
 
         <TransformFunctionSection
