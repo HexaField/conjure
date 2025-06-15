@@ -2,8 +2,6 @@
 
 Decentralized immersive collaboration powered by iR Engine and ADAM/Holochain
 
-## ADAM Connector
-
 https://conjure.world
 
 ## ADAM Integration
