@@ -52,6 +52,7 @@ https://conjure.world/graph
   - [ ] Web search
   - [ ] https://exa.ai/
   - [ ] look at what unit does
+- [ ] Semantic search for tools
 
 ### Progress - More graph types
 
