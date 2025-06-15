@@ -1,5 +1,14 @@
-import { defineState, getMutableState, getNestedObject, getState, setNestedObject } from '@ir-engine/hyperflux'
+import {
+  defineState,
+  getMutableState,
+  getNestedObject,
+  getState,
+  setNestedObject,
+  useHookstate
+} from '@ir-engine/hyperflux'
 import { useEffect } from 'react'
+import { SchemaRegistry } from '../SchemaRegistry'
+import { JSONSchemaType } from '../json-schema/JSONSchema'
 import { allRequirementsMet } from './functions/allRequirementsMet'
 import { flattenSchema } from './functions/flattenSchema'
 import { generateJsonSchema, JSONMappingSchema, JSONSchema } from './functions/generateJsonSchema'
@@ -45,7 +54,22 @@ export type TargetSchema<T> = {
 
 export const TargetVisualizationState = defineState({
   name: 'hexafield.conjure.graph-tool.TargetSchemaState',
-  initial: {} as Record<string, TargetSchema<any>>
+  initial: {} as Record<string, TargetSchema<any>>,
+
+  reactor: () => {
+    const state = useHookstate(getMutableState(TargetVisualizationState))
+
+    useEffect(() => {
+      const tools = getState(TargetVisualizationState)
+      for (const [hash, tool] of Object.entries(tools)) {
+        SchemaRegistry.register(
+          tool.value as any as JSONSchemaType<unknown>,
+          '3D Force Graph',
+          '3D force-directed graph visualization'
+        )
+      }
+    }, [state])
+  }
 })
 
 export const SourceFetchTool = {

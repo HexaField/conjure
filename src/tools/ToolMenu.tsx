@@ -267,13 +267,14 @@ const UseToolsMenu: React.FC = () => {
 }
 
 const tabs = [
-  { name: 'Graph', value: 'graph' },
-  { name: 'Edit', value: 'edit' }
+  { name: 'Graphs', value: 'graph' },
+  { name: 'Tools', value: 'tool' },
+  { name: 'Schemas', value: 'schema' }
 ] as const
 
 function ToolMenus(): JSX.Element {
-  const tab = useHookstate('graph' as 'graph' | 'edit')
-  const setTab = (value: 'graph' | 'edit') => {
+  const tab = useHookstate('graph' as 'graph' | 'tool' | 'schema')
+  const setTab = (value: 'graph' | 'tool' | 'schema') => {
     tab.set(value)
   }
 
@@ -292,7 +293,11 @@ function ToolMenus(): JSX.Element {
           </button>
         ))}
       </div>
-      <div className="mx-auto max-w-4xl space-y-6">{tab.value === 'graph' ? <UseToolsMenu /> : <EditTool />}</div>
+      <div className="mx-auto max-w-4xl space-y-6">
+        {tab.value === 'graph' && <UseToolsMenu />}
+        {tab.value === 'tool' && <EditTool />}
+        {tab.value === 'schema' && <SchemaEditor />}
+      </div>
     </div>
   )
 }

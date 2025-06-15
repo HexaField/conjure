@@ -1,16 +1,16 @@
 import { useHookstate } from '@hookstate/core'
 import { useEffect } from 'react'
 
-import { NO_PROXY } from '@ir-engine/hyperflux'
+import { getState, NO_PROXY } from '@ir-engine/hyperflux'
 import { Button } from '@ir-engine/ui'
 import React from 'react'
+import { SchemaRegistry, SHA256Hash } from './SchemaRegistry'
 import { TargetSchemas } from './TargetRegistry'
 import { Stringify, ToolRegistry } from './ToolRegistry'
 import { DataTransformSection } from './components/DataTransformSection'
 import { Header } from './components/Header'
-import { TargetSchemaSection } from './components/TargetSchemaSection'
+import SchemaSelectorInput from './components/SchemaSelectorInput'
 import { TransformFunctionSection } from './components/TransformFunctionSection'
-import { UrlInputSection } from './components/URLInputSection'
 import type { JSONSchemaType } from './json-schema/JSONSchema'
 import { createJSONTransformFunctionPrompt } from './json-schema/createJSONTransformFunctionPrompt'
 import { generateJsonSchema } from './json-schema/generateJsonSchema'
@@ -24,6 +24,12 @@ interface DataSource {
   loading: boolean
   errorMessage: string | null
 }
+
+// Generic interface for schema selection
+export type SchemaSelector =
+  | { kind: 'url'; url: string; schema: JSONSchemaType<any> | null; loading: boolean; errorMessage: string | null }
+  | { kind: 'known'; hash: string; schema: JSONSchemaType<any> }
+  | { kind: 'custom'; schema: JSONSchemaType<any> }
 
 function App(): JSX.Element {
   // Load selected model from localStorage or use default
@@ -40,22 +46,22 @@ function App(): JSX.Element {
   }
 
   const state = useHookstate({
-    dataSources: {
+    inputSchemaSelector: { kind: 'url', url: '', schema: null, loading: false, errorMessage: null } as SchemaSelector,
+    outputSchemaSelector: { kind: 'url', url: '', schema: null, loading: false, errorMessage: null } as SchemaSelector,
+    inputData: {
       url: '',
       data: null as object | null,
       loading: false,
       errorMessage: null as string | null
     } as DataSource,
-    inputSchema: null as JSONSchemaType<any> | null,
     loading: false,
     errorMessage: null as string | null,
-    selectedTargetSchema: null as JSONSchemaType<any> | null,
+    selectedModel: getStoredModel(),
     transformFunction: null as string | null,
     transformFunctionHash: null as string | null,
     outputData: null as object | null,
     llmLoadProgress: 0,
     additionalPrompt: '',
-    selectedModel: getStoredModel(),
     toolLabel: 'New Tool', // Added for tool label entry
     toolDescription: 'A new tool created from the current state' // Added for tool description entry
   })
@@ -80,7 +86,7 @@ function App(): JSX.Element {
     if (urlParams.has(`source_url`)) {
       const url = urlParams.get(`source_url`) || ''
 
-      state.dataSources.set({
+      state.inputData.set({
         url,
         data: null,
         loading: false,
@@ -97,7 +103,11 @@ function App(): JSX.Element {
     if (targetSchemaIndex !== null) {
       const index = parseInt(targetSchemaIndex)
       if (!isNaN(index) && TargetSchemas[index]) {
-        state.selectedTargetSchema.set(TargetSchemas[index])
+        state.outputSchemaSelector.set({
+          kind: 'known',
+          hash: TargetSchemas[index].id,
+          schema: TargetSchemas[index]
+        })
       }
     }
 
@@ -108,7 +118,7 @@ function App(): JSX.Element {
       localStorage.setItem('selectedModel', modelFromUrl)
     }
 
-    state.dataSources.set({
+    state.inputData.set({
       url: '',
       data: null,
       loading: false,
@@ -118,9 +128,9 @@ function App(): JSX.Element {
 
   // Update URL parameters whenever data sources, additional prompt, target schema, model, or ollamaUrl change
   useEffect(() => {
-    const source = state.dataSources.get(NO_PROXY)
+    const source = state.inputData.get(NO_PROXY)
     const additionalPrompt = state.additionalPrompt.get()
-    const selectedTargetSchema = state.selectedTargetSchema.get(NO_PROXY)
+    const selectedTargetSchema = state.outputSchemaSelector.get(NO_PROXY)
     const selectedModel = state.selectedModel.get()
     const urlParams = new URLSearchParams()
 
@@ -159,64 +169,7 @@ function App(): JSX.Element {
       : window.location.pathname
 
     window.history.replaceState({}, '', newUrl)
-  }, [state.dataSources, state.additionalPrompt, state.selectedTargetSchema, state.selectedModel, ollamaUrl])
-
-  const fetchDataForSource = async () => {
-    const source = state.dataSources
-    if (!source.get(NO_PROXY)?.url) {
-      state.errorMessage.set('No data source selected')
-      return
-    }
-
-    // Ensure URL is trimmed and valid
-    const url = source.url.get().trim()
-
-    if (!url) {
-      state.dataSources.errorMessage.set('Please enter a URL')
-      return
-    }
-
-    // Basic URL validation
-    try {
-      new URL(url)
-    } catch {
-      state.dataSources.errorMessage.set('Please enter a valid URL')
-      return
-    }
-
-    state.dataSources.loading.set(true)
-    state.dataSources.errorMessage.set(null)
-    state.dataSources.data.set(null)
-
-    try {
-      const response = await fetch(url)
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const contentType = response.headers.get('content-type')
-      if (!contentType?.includes('application/json')) {
-        // Try to parse as JSON anyway, in case the content-type is wrong
-        const text = await response.text()
-        try {
-          const data = JSON.parse(text)
-          state.dataSources.data.set(data)
-        } catch {
-          throw new Error('Response is not valid JSON')
-        }
-      } else {
-        const data = await response.json()
-        const schema = generateJsonSchema(data)
-        state.inputSchema.set(schema)
-        state.dataSources.data.set(data)
-      }
-    } catch (error) {
-      state.dataSources.errorMessage.set(error instanceof Error ? error.message : 'Failed to fetch data')
-    } finally {
-      state.dataSources.loading.set(false)
-    }
-  }
+  }, [state.inputData, state.additionalPrompt, state.outputSchemaSelector, state.selectedModel, ollamaUrl])
 
   const onCreateFunctionClick = () => {
     if (!llm.ready) {
@@ -224,12 +177,12 @@ function App(): JSX.Element {
       return
     }
 
-    if (!state.selectedTargetSchema.get()) {
+    if (!state.outputSchemaSelector.get().schema) {
       state.errorMessage.set('Please select a target schema')
       return
     }
 
-    if (!state.dataSources.data.get()) {
+    if (!state.inputData.data.get()) {
       state.errorMessage.set('No JSON data to transform')
       return
     }
@@ -237,8 +190,8 @@ function App(): JSX.Element {
     state.loading.set(true)
     state.errorMessage.set(null)
 
-    const selectedTargetSchema = state.get(NO_PROXY).selectedTargetSchema as JSONSchemaType<any>
-    const inputSchema = state.get(NO_PROXY).inputSchema as JSONSchemaType<any>
+    const selectedTargetSchema = state.get(NO_PROXY).outputSchemaSelector.schema as JSONSchemaType<any>
+    const inputSchema = state.get(NO_PROXY).inputSchemaSelector.schema as JSONSchemaType<any>
 
     llm
       .call({
@@ -275,7 +228,7 @@ function App(): JSX.Element {
     const cleanFunctionScript = state.transformFunction.get() as string
     createDynamicWebworker(cleanFunctionScript).then((worker) => {
       worker
-        .call(state.dataSources.data.get(NO_PROXY)!)
+        .call(state.inputData.data.get(NO_PROXY)!)
         .then((response) => {
           state.outputData.set(response)
           worker.terminate()
@@ -286,21 +239,6 @@ function App(): JSX.Element {
           worker.terminate()
         })
     })
-  }
-
-  const handleCombinedDataChange = (newData: object) => {
-    state.dataSources.data.set(newData)
-    // Regenerate schema when combined data changes
-    const schema = generateJsonSchema(newData)
-    state.inputSchema.set(schema)
-  }
-
-  const handleInputSchemaChange = (newSchema: JSONSchemaType<any>) => {
-    state.inputSchema.set(newSchema)
-  }
-
-  const handleTargetSchemaChange = (newSchema: JSONSchemaType<any>) => {
-    state.selectedTargetSchema.set(newSchema)
   }
 
   const handleTransformFunctionChange = async (newFunction: string) => {
@@ -343,12 +281,54 @@ function App(): JSX.Element {
     }
   }
 
+  // Fetch and generate schema from URL for input/output
+  const fetchSchemaFromUrl = async (url: string, isInput: boolean) => {
+    const selectorKey = isInput ? 'inputSchemaSelector' : 'outputSchemaSelector'
+    state[selectorKey].set({ kind: 'url', url, schema: null, loading: true, errorMessage: null })
+    try {
+      const response = await fetch(url)
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      const data = await response.json()
+      const schema = generateJsonSchema(data)
+      state[selectorKey].set({ kind: 'url', url, schema, loading: false, errorMessage: null })
+      // Add to knownSchemas
+      SchemaRegistry.register(schema, `${url.split('/').pop()}`, `Automatically fetched schema from ${url}`)
+    } catch (error) {
+      state[selectorKey].set({
+        kind: 'url',
+        url,
+        schema: null,
+        loading: false,
+        errorMessage: error instanceof Error ? error.message : 'Failed to fetch schema'
+      })
+    }
+  }
+
+  // Handler for selecting a known schema
+  const handleKnownSchemaSelect = (hash: SHA256Hash, isInput: boolean) => {
+    const schema = getState(SchemaRegistry).schemas[hash]?.schema
+    if (!schema) return
+    const selectorKey = isInput ? 'inputSchemaSelector' : 'outputSchemaSelector'
+    state[selectorKey].set({ kind: 'known', hash, schema })
+  }
+
+  // Update onCreateTool to use selected schemas
   const onCreateTool = () => {
+    const inputSel = state.inputSchemaSelector.get()
+    const outputSel = state.outputSchemaSelector.get()
+    const inputSchema =
+      inputSel.kind === 'custom' || inputSel.kind === 'known' || inputSel.kind === 'url' ? inputSel.schema : null
+    const outputSchema =
+      outputSel.kind === 'custom' || outputSel.kind === 'known' || outputSel.kind === 'url' ? outputSel.schema : null
+    if (!inputSchema || !outputSchema) {
+      state.errorMessage.set('Input and output schemas must be selected')
+      return
+    }
     ToolRegistry.create({
-      label: state.toolLabel.get(), // Use state value
-      description: state.toolDescription.get(), // Use state value
-      input: state.inputSchema.get(NO_PROXY) as JSONSchemaType<unknown>,
-      output: state.selectedTargetSchema.get(NO_PROXY) as JSONSchemaType<unknown>,
+      label: state.toolLabel.get(),
+      description: state.toolDescription.get(),
+      input: inputSchema as JSONSchemaType<unknown>,
+      output: outputSchema as JSONSchemaType<unknown>,
       transformation: state.transformFunction.get() as Stringify<(input: unknown) => Promise<unknown>>
     }).then((hash) => {
       // done - @todo add UI feedback
@@ -361,33 +341,27 @@ function App(): JSX.Element {
       <div className="mx-auto max-w-4xl space-y-6">
         <Header />
 
-        <UrlInputSection
-          url={state.dataSources.url.get()}
-          loading={state.dataSources.loading.get()}
-          errorMessage={state.dataSources.errorMessage.get()}
-          jsonData={state.dataSources.data.get({ noproxy: true }) as object | null}
-          inputSchema={state.inputSchema.get({ noproxy: true }) as JSONSchemaType<unknown> | null}
-          onUrlChange={(url: string) => state.dataSources.url.set(url)}
-          onSubmit={fetchDataForSource}
+        {/* Schema selection UI */}
+        <SchemaSelectorInput
+          label="Input Schema"
+          selectorState={state.inputSchemaSelector.get()}
+          onUrlChange={(url) => fetchSchemaFromUrl(url, true)}
+          onKnownSchemaSelect={(schemaId) => handleKnownSchemaSelect(schemaId, true)}
+          inputSchema={state.inputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
+          jsonData={state.inputData.data.get(NO_PROXY) as object | null}
         />
-
-        <TargetSchemaSection
-          selectedTargetSchema={
-            state.selectedTargetSchema.get({
-              noproxy: true
-            }) as JSONSchemaType<any> | null
-          }
-          onTargetSchemaChange={(schema: JSONSchemaType<any> | null) => state.selectedTargetSchema.set(schema)}
-          onTargetSchemaEdit={handleTargetSchemaChange}
+        <SchemaSelectorInput
+          label="Output Schema"
+          selectorState={state.outputSchemaSelector.get()}
+          onUrlChange={(url) => fetchSchemaFromUrl(url, false)}
+          onKnownSchemaSelect={(schemaId) => handleKnownSchemaSelect(schemaId, false)}
+          inputSchema={state.outputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
+          jsonData={state.inputData.data.get(NO_PROXY) as object | null}
         />
 
         <TransformFunctionSection
-          selectedTargetSchema={
-            state.selectedTargetSchema.get({
-              noproxy: true
-            }) as JSONSchemaType<any> | null
-          }
-          inputSchema={state.inputSchema.get(NO_PROXY) as JSONSchemaType<any> | null}
+          selectedTargetSchema={state.outputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
+          inputSchema={state.inputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
           transformFunction={state.transformFunction.get()}
           transformFunctionHash={state.transformFunctionHash.get()}
           additionalPrompt={state.additionalPrompt.get()}
@@ -435,7 +409,11 @@ function App(): JSX.Element {
         <Button
           className="mt-4"
           variant="primary"
-          disabled={!state.inputSchema.value || !state.selectedTargetSchema.value || !state.transformFunction.value}
+          disabled={
+            !state.inputSchemaSelector.get().schema ||
+            !state.outputSchemaSelector.get().schema ||
+            !state.transformFunction.value
+          }
           onClick={onCreateTool}
         >
           Create

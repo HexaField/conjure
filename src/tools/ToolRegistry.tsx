@@ -1,4 +1,13 @@
-import { defineState, getMutableState, getState, none, syncStateWithLocalStorage } from '@ir-engine/hyperflux'
+import {
+  defineState,
+  getMutableState,
+  getState,
+  none,
+  syncStateWithLocalStorage,
+  useHookstate
+} from '@ir-engine/hyperflux'
+import { useEffect } from 'react'
+import { SchemaRegistry, SHA256Hash } from './SchemaRegistry'
 import { JSONSchemaType } from './json-schema/JSONSchema'
 import { contentHash } from './json-schema/contentHash'
 import { createDynamicWebworker } from './utils/createDynamicWebworker'
@@ -8,7 +17,6 @@ export type Stringify<Signature = unknown> = string & {
   __fnSignature: Signature
 }
 
-export type SHA256Hash = string
 export type FunctionHash = string
 
 export type Tool<Input = unknown, Output = unknown> = {
@@ -33,14 +41,14 @@ export const ToolRegistry = defineState({
     const inputHash = contentHash(input) as SHA256Hash
     const outputHash = contentHash(output) as SHA256Hash
     const transformationHash = (await hashFunctionSource(transformation)) as FunctionHash
-    const id = contentHash({
+    const hash = contentHash({
       input: inputHash,
       output: outputHash,
       transformation: transformationHash
     }) as SHA256Hash
 
     const serializedTool = {
-      hash: id,
+      hash,
       label,
       description,
       input,
@@ -56,36 +64,48 @@ export const ToolRegistry = defineState({
     return serializedTool.hash
   },
 
-  forget: (id: SHA256Hash) => {
-    getMutableState(ToolRegistry).tools[id].set(none)
+  forget: (hash: SHA256Hash) => {
+    getMutableState(ToolRegistry).tools[hash].set(none)
   },
 
-  run: async <Input, Output>(id: SHA256Hash, input: Input): Promise<Output> => {
-    const tool = getState(ToolRegistry).tools[id]
+  run: async <Input, Output>(hash: SHA256Hash, input: Input): Promise<Output> => {
+    const tool = getState(ToolRegistry).tools[hash]
     if (!tool) {
-      throw new Error(`Tool with id ${id} not found`)
+      throw new Error(`Tool with hash ${hash} not found`)
     }
     const { transformation } = tool
     if (typeof transformation !== 'string') {
-      throw new Error(`Tool with id ${id} has invalid transformation function`)
+      throw new Error(`Tool with hash ${hash} has invalid transformation function`)
     }
 
-    if (!workers[id]) {
-      console.warn(`Creating new worker for tool ${id}`)
-      workers[id] = await createDynamicWebworker(transformation)
+    if (!workers[hash]) {
+      console.warn(`Creating new worker for tool ${hash}`)
+      workers[hash] = await createDynamicWebworker(transformation)
     }
 
-    const worker = workers[id]
+    const worker = workers[hash]
     try {
       return (await worker.call(input as object)) as Output
     } catch (error) {
       worker.terminate()
-      delete workers[id]
+      delete workers[hash]
       throw error
     }
   },
 
-  extension: syncStateWithLocalStorage(['tools'])
+  extension: syncStateWithLocalStorage(['tools']),
+
+  reactor: () => {
+    const state = useHookstate(getMutableState(ToolRegistry).tools)
+
+    useEffect(() => {
+      const tools = getState(ToolRegistry).tools
+      for (const [hash, tool] of Object.entries(tools)) {
+        SchemaRegistry.register(tool.input, 'Unknown', 'Unknown tool schema')
+        SchemaRegistry.register(tool.output, 'Unknown', 'Unknown tool schema')
+      }
+    }, [state])
+  }
 })
 
 const workers = {} as Record<SHA256Hash, Awaited<ReturnType<typeof createDynamicWebworker>>>

@@ -53,7 +53,7 @@ function inferJsonSchemaForValue(value: any): JSONSchemaType<any> {
  * @param rawData - The raw data fetched from the endpoint.
  * @returns A JSONSchema object representing the data structure.
  */
-export function generateJsonSchema(rawData: any): JSONSchemaType<any> {
+export function generateJsonSchema(rawData: any): JSONSchemaType<unknown> {
   if (Array.isArray(rawData)) {
     // Infer the schema from the first item (assuming homogeneity).
     const itemSchema = inferJsonSchemaForValue(rawData[0])
