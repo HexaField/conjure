@@ -1,7 +1,7 @@
 import { EntityUUID, SourceID } from '@ir-engine/ecs'
-import { DomainConfigState } from '@ir-engine/engine/src/assets/state/DomainConfigState'
 import { AvatarNetworkAction } from '@ir-engine/engine/src/avatar/state/AvatarNetworkActions'
 import { dispatchAction, getState } from '@ir-engine/hyperflux'
+import { DomainConfigState } from '@ir-engine/spatial/src/resources/DomainConfigState'
 import { useEffect } from 'react'
 import { AgentState } from '../ad4m/useADAM'
 

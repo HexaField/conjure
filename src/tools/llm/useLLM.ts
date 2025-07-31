@@ -54,7 +54,7 @@ export interface CodingModel {
   description: string
   size: string
   parameters: string
-  provider?: 'mlc' | 'openai' | 'anthropic' | 'google' | 'ollama'
+  provider: 'mlc' | 'openai' | 'anthropic' | 'google' | 'ollama'
   apiUrl?: string // For remote models
   apiKeyEnvVar?: string // For remote models
 }
@@ -78,6 +78,7 @@ export const CODING_MODELS: CodingModel[] = [
     name: 'Qwen2.5 Coder 1.5B',
     description: 'Fast and efficient coding model for quick tasks',
     size: 'Small',
+    provider: 'mlc',
     parameters: '1.5B'
   },
   {
@@ -85,6 +86,7 @@ export const CODING_MODELS: CodingModel[] = [
     name: 'Qwen2.5 Coder 7B',
     description: 'Balanced performance and speed for most coding tasks',
     size: 'Medium',
+    provider: 'mlc',
     parameters: '7B'
   },
   {
@@ -92,6 +94,7 @@ export const CODING_MODELS: CodingModel[] = [
     name: 'Hermes 3 Llama 8B',
     description: 'Excellent instruction following and code reasoning',
     size: 'Medium-Large',
+    provider: 'mlc',
     parameters: '8B'
   },
   {
@@ -99,6 +102,7 @@ export const CODING_MODELS: CodingModel[] = [
     name: 'Qwen2.5 Coder 14B',
     description: 'High-quality code generation for complex tasks',
     size: 'Large',
+    provider: 'mlc',
     parameters: '14B'
   },
   {
@@ -106,6 +110,7 @@ export const CODING_MODELS: CodingModel[] = [
     name: 'DeepSeek R1 Distill 7B',
     description: 'Advanced reasoning capabilities for complex coding problems',
     size: 'Medium',
+    provider: 'mlc',
     parameters: '7B'
   },
   {
