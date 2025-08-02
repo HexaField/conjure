@@ -4,19 +4,19 @@ import { useEffect } from 'react'
 import { getState, NO_PROXY } from '@ir-engine/hyperflux'
 import { Button } from '@ir-engine/ui'
 import React from 'react'
-import { SchemaRegistry, SHA256Hash } from './SchemaRegistry'
-import { TargetSchemas } from './TargetRegistry'
-import { Stringify, ToolRegistry } from './ToolRegistry'
-import { DataTransformSection } from './components/DataTransformSection'
-import { Header } from './components/Header'
-import SchemaSelectorInput from './components/SchemaSelectorInput'
-import { TransformFunctionSection } from './components/TransformFunctionSection'
-import type { JSONSchemaType } from './json-schema/JSONSchema'
-import { createJSONTransformFunctionPrompt } from './json-schema/createJSONTransformFunctionPrompt'
-import { generateJsonSchema } from './json-schema/generateJsonSchema'
-import { CODING_MODELS, reloadLLM, useLLM } from './llm/useLLM'
-import { createDynamicWebworker } from './utils/createDynamicWebworker'
-import { hashFunctionSource } from './utils/hashFunction'
+import { DataTransformSection } from '../components/DataTransformSection'
+import { Header } from '../components/Header'
+import SchemaSelectorInput from '../components/SchemaSelectorInput'
+import { TransformFunctionSection } from '../components/TransformFunctionSection'
+import type { JSONSchemaType } from '../json-schema/JSONSchema'
+import { createJSONTransformFunctionPrompt } from '../json-schema/createJSONTransformFunctionPrompt'
+import { generateJsonSchema } from '../json-schema/generateJsonSchema'
+import { CODING_MODELS, reloadLLM, useLLM } from '../llm/useLLM'
+import { SchemaRegistry, SHA256Hash } from '../registries/SchemaRegistry'
+import { TargetSchemas } from '../registries/TargetRegistry'
+import { Stringify, ToolRegistry } from '../registries/ToolRegistry'
+import { createDynamicWebworker } from '../utils/createDynamicWebworker'
+import { hashFunctionSource } from '../utils/hashFunction'
 
 // Generic interface for schema selection
 export type SchemaSelector =
@@ -24,7 +24,7 @@ export type SchemaSelector =
   | { kind: 'known'; hash: string; schema: JSONSchemaType<any> }
   | { kind: 'custom'; schema: JSONSchemaType<any> }
 
-function App(): JSX.Element {
+function EditView(): JSX.Element {
   // Load selected model from localStorage or use default
   const getStoredModel = () => {
     try {
@@ -408,4 +408,4 @@ function App(): JSX.Element {
   )
 }
 
-export default App
+export default EditView

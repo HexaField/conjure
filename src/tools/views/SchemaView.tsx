@@ -1,7 +1,7 @@
 import { useMutableState } from '@ir-engine/hyperflux'
 import React from 'react'
-import { SchemaRegistry, SchemaType } from '../SchemaRegistry'
-import { SchemaCard } from './SchemaCard'
+import { SchemaCard } from '../components/SchemaCard'
+import { SchemaRegistry, SchemaType } from '../registries/SchemaRegistry'
 
 const SchemaView: React.FC = () => {
   const schemas = Object.values(useMutableState(SchemaRegistry).schemas.value) as SchemaType[]

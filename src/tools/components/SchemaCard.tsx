@@ -1,5 +1,5 @@
 import React from 'react'
-import { SchemaType } from '../SchemaRegistry'
+import { SchemaType } from '../registries/SchemaRegistry'
 import { JsonDisplay } from './JsonDisplay'
 
 export const SchemaCard = ({ schema }: { schema: SchemaType }) => {

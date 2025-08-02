@@ -1,5 +1,5 @@
 import React from 'react'
-import { Tool } from '../ToolRegistry'
+import { Tool } from '../registries/ToolRegistry'
 
 export const ToolCard = ({ tool }: { tool: Tool }) => {
   return (

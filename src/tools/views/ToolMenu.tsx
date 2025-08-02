@@ -2,9 +2,9 @@ import { useHookstate } from '@ir-engine/hyperflux'
 import { Button } from '@ir-engine/ui'
 import React from 'react'
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
-import EditTool from './EditTool'
-import { PipelineView } from './components/PipelineView'
-import SchemaView from './components/SchemaView'
+import EditTool from './EditView'
+import { PipelineView } from './PipelineView'
+import SchemaView from './SchemaView'
 
 const tabs = [
   { name: 'Graphs', value: 'graph' },

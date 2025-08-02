@@ -1,6 +1,6 @@
 import { defineState, getMutableState, none, syncStateWithLocalStorage } from '@ir-engine/hyperflux'
-import { JSONSchemaType } from './json-schema/JSONSchema'
-import { contentHash } from './json-schema/contentHash'
+import { JSONSchemaType } from '../json-schema/JSONSchema'
+import { contentHash } from '../json-schema/contentHash'
 
 export type SHA256Hash = string
 

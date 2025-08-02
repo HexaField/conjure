@@ -1,12 +1,12 @@
 import { useHookstate } from '@hookstate/core'
 import { getMutableState, getState, NO_PROXY } from '@ir-engine/hyperflux'
 import React, { useEffect } from 'react'
+import { ToolCard } from '../components/ToolCard'
 import { TargetVisualizationState } from '../graph/TargetVisualizationState'
 import { contentHash } from '../json-schema/contentHash'
 import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
-import { Tool, ToolRegistry } from '../ToolRegistry'
-import { ToolCard } from './ToolCard'
+import { Tool, ToolRegistry } from '../registries/ToolRegistry'
 
 // Type for input state
 interface InputSource {
@@ -105,6 +105,7 @@ export const PipelineView: React.FC = () => {
   // Add/remove input sources
   const addInput = () =>
     inputs.merge([{ url: '', data: null, loading: false, errorMessage: null, schema: null, hash: null }])
+
   const removeInput = (idx: number) => {
     if (inputs.length > 1) {
       const arr = inputs.get({ noproxy: true }).slice()

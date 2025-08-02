@@ -2,7 +2,7 @@ import { useHookstate } from '@hookstate/core'
 import { defineState, getMutableState, getState } from '@ir-engine/hyperflux'
 import { useEffect } from 'react'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
-import { SchemaRegistry } from '../SchemaRegistry'
+import { SchemaRegistry } from '../registries/SchemaRegistry'
 
 export type TargetSchema<T> = {
   id: string

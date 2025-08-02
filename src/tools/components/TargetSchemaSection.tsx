@@ -1,6 +1,6 @@
 import React from 'react'
-import { TargetSchemas } from '../TargetRegistry'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
+import { TargetSchemas } from '../registries/TargetRegistry'
 import { JsonDisplay } from './JsonDisplay'
 
 interface TargetSchemaSectionProps {

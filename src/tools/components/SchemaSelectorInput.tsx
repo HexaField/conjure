@@ -1,6 +1,6 @@
 import { getMutableState, NO_PROXY, useHookstate } from '@ir-engine/hyperflux'
 import React, { useState } from 'react'
-import { SchemaRegistry } from '../SchemaRegistry'
+import { SchemaRegistry } from '../registries/SchemaRegistry'
 import { JsonDisplay } from './JsonDisplay'
 
 interface KnownSchema {

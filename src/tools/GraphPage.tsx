@@ -15,9 +15,9 @@ import { setVisibleComponent } from '@ir-engine/spatial/src/renderer/components/
 import { RendererState } from '@ir-engine/spatial/src/renderer/RendererState'
 import { Vector3 } from 'three'
 
-import ToolMenu from './ToolMenu'
+import ToolMenu from './views/ToolMenu'
 
-import { GithubOriginalFalse } from '@ir-engine/ui/src/icons'
+import GithubLink from './components/GithubLink'
 import './graph/forcegraph/ForceGraph'
 
 export default function Template() {
@@ -58,20 +58,5 @@ export default function Template() {
       <GithubLink />
       <Debug />
     </>
-  )
-}
-
-const GithubLink = () => {
-  return (
-    <div className="pointer-events-auto absolute bottom-4 right-4 rounded-lg bg-black px-4 py-2 text-white">
-      <a
-        href="https://github.com/hexafield/conjure"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center"
-      >
-        <GithubOriginalFalse className="mr-2 inline-block" />
-      </a>
-    </div>
   )
 }

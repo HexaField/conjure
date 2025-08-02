@@ -51,6 +51,7 @@ export function TransformFunctionSection({
   useEffect(() => {
     if (apiKey !== undefined) localApiKey.set(apiKey)
   }, [apiKey])
+
   useEffect(() => {
     if (ollamaUrl !== undefined) localOllamaUrl.set(ollamaUrl)
   }, [ollamaUrl])

@@ -25,7 +25,7 @@ createHyperStore()
 // API.instance = createAd4mAPIAdapter()
 
 const CustomLocationPage = lazy(() => import('./CustomLocationPage'))
-const LLMGrapher = lazy(() => import('./tools/App'))
+const LLMGrapher = lazy(() => import('./tools/GraphPage'))
 
 const App = () => {
   return (
