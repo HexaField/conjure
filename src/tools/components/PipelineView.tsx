@@ -1,7 +1,7 @@
 import { useHookstate } from '@hookstate/core'
 import { getMutableState, getState, NO_PROXY } from '@ir-engine/hyperflux'
 import React, { useEffect } from 'react'
-import { TargetVisualizationState } from '../graph/DataState'
+import { TargetVisualizationState } from '../graph/TargetVisualizationState'
 import { contentHash } from '../json-schema/contentHash'
 import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { JSONSchemaType } from '../json-schema/JSONSchema'

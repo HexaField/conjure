@@ -50,8 +50,8 @@ import {
   Vector3
 } from 'three'
 import { stringToColor } from '../../../utils/stringToColor'
-import { TargetVisualizationState } from '../DataState'
-import { JSONSchema } from '../functions/generateJsonSchema'
+import { JSONSchemaType } from '../../json-schema/JSONSchema'
+import { TargetVisualizationState } from '../TargetVisualizationState'
 import { startWebworker } from './createWorker'
 
 export interface Node {
@@ -501,7 +501,7 @@ export const ControlHelper = () => {
   )
 }
 
-const forcegraphSchema: JSONSchema = {
+const forcegraphSchema: JSONSchemaType<ForceGraphShape> = {
   type: 'object',
   properties: {
     nodes: {
@@ -511,6 +511,7 @@ const forcegraphSchema: JSONSchema = {
         properties: {
           id: { type: 'string' },
           label: { type: 'string' },
+          group: { type: 'string', optional: true, default: '' },
           image: { type: 'string', optional: true, default: '' }
         }
       }
