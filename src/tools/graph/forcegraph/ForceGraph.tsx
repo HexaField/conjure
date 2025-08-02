@@ -51,7 +51,7 @@ import {
 } from 'three'
 import { stringToColor } from '../../../utils/stringToColor'
 import { JSONSchemaType } from '../../json-schema/JSONSchema'
-import { TargetVisualizationState } from '../TargetVisualizationState'
+import { TargetRegistry } from '../../registries/TargetRegistry'
 import { startWebworker } from './createWorker'
 
 export interface Node {
@@ -205,7 +205,7 @@ const execute = () => {
 
 const reactor = () => {
   useEffect(() => {
-    getMutableState(TargetVisualizationState).merge({ [ForceGraphSchema.id]: ForceGraphSchema })
+    TargetRegistry.register(ForceGraphSchema)
   }, [])
 
   const d3 = useHookstate(getMutableState(d3State))
@@ -550,7 +550,6 @@ type ForceGraphShape = {
 }
 
 export const ForceGraphSchema = {
-  id: 'hexafield.conjure.graph-tool.ForceGraph',
   label: 'Force Graph',
   value: forcegraphSchema,
   onData: (data: Record<string, ForceGraphShape>) => {

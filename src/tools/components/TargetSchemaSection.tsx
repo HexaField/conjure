@@ -1,6 +1,7 @@
+import { getState } from '@ir-engine/hyperflux'
 import React from 'react'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
-import { TargetSchemas } from '../registries/TargetRegistry'
+import { TargetRegistry } from '../registries/TargetRegistry'
 import { JsonDisplay } from './JsonDisplay'
 
 interface TargetSchemaSectionProps {
@@ -25,8 +26,8 @@ export function TargetSchemaSection({
           value={selectedTargetSchema ? '0' : ''}
           onChange={(e) => {
             const index = parseInt(e.target.value)
-            if (!isNaN(index) && TargetSchemas[index]) {
-              onTargetSchemaChange(TargetSchemas[index])
+            if (!isNaN(index) && getState(TargetRegistry)[index]) {
+              onTargetSchemaChange(getState(TargetRegistry)[index].value)
             } else {
               onTargetSchemaChange(null)
             }
@@ -34,9 +35,9 @@ export function TargetSchemaSection({
           className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
         >
           <option value="">Select a target schema...</option>
-          {TargetSchemas.map((_, index) => (
+          {Object.values(getState(TargetRegistry)).map((schema, index) => (
             <option key={index} value={index}>
-              Graph Schema (Nodes & Edges)
+              {schema.label}
             </option>
           ))}
         </select>

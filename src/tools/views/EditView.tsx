@@ -13,7 +13,7 @@ import { createJSONTransformFunctionPrompt } from '../json-schema/createJSONTran
 import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { CODING_MODELS, reloadLLM, useLLM } from '../llm/useLLM'
 import { SchemaRegistry, SHA256Hash } from '../registries/SchemaRegistry'
-import { TargetSchemas } from '../registries/TargetRegistry'
+import { TargetRegistry } from '../registries/TargetRegistry'
 import { Stringify, ToolRegistry } from '../registries/ToolRegistry'
 import { createDynamicWebworker } from '../utils/createDynamicWebworker'
 import { hashFunctionSource } from '../utils/hashFunction'
@@ -90,11 +90,11 @@ function EditView(): JSX.Element {
     const targetSchemaIndex = urlParams.get('target_schema')
     if (targetSchemaIndex !== null) {
       const index = parseInt(targetSchemaIndex)
-      if (!isNaN(index) && TargetSchemas[index]) {
+      if (!isNaN(index) && getState(TargetRegistry)[index]) {
         state.outputSchemaSelector.set({
           kind: 'known',
-          hash: TargetSchemas[index].id,
-          schema: TargetSchemas[index]
+          hash: getState(TargetRegistry)[index].id,
+          schema: getState(TargetRegistry)[index].value
         })
       }
     }
@@ -133,7 +133,7 @@ function EditView(): JSX.Element {
 
     // Add target schema index if one is selected
     if (selectedTargetSchema) {
-      const targetSchemaIndex = TargetSchemas.findIndex(
+      const targetSchemaIndex = Object.values(getState(TargetRegistry)).findIndex(
         (schema) => JSON.stringify(schema) === JSON.stringify(selectedTargetSchema)
       )
       if (targetSchemaIndex !== -1) {
