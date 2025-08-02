@@ -7,11 +7,11 @@ import {
   useHookstate
 } from '@ir-engine/hyperflux'
 import { useEffect } from 'react'
+import { JSONSchemaType } from '../json-schema/JSONSchema'
+import { contentHash } from '../json-schema/contentHash'
+import { createDynamicWebworker } from '../utils/createDynamicWebworker'
+import { hashFunctionSource } from '../utils/hashFunction'
 import { SchemaRegistry, SHA256Hash } from './SchemaRegistry'
-import { JSONSchemaType } from './json-schema/JSONSchema'
-import { contentHash } from './json-schema/contentHash'
-import { createDynamicWebworker } from './utils/createDynamicWebworker'
-import { hashFunctionSource } from './utils/hashFunction'
 
 export type Stringify<Signature = unknown> = string & {
   __fnSignature: Signature
