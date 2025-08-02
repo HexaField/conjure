@@ -42,24 +42,24 @@ jobs:
             echo "BRANCH_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
           fi
 
-      - name: Fetch branches from ir-engine
+      - name: Fetch branches from enchantmentengine
         run: |
-          git ls-remote --heads https://github.com/ir-engine/ir-engine.git | awk -F'/' '{print $3}' > engine-branches.txt
+          git ls-remote --heads https://github.com/enchantmentengine/enchantmentengine.git | awk -F'/' '{print $3}' > engine-branches.txt
 
-      - name: Check if current branch exists in ir-engine
+      - name: Check if current branch exists in enchantmentengine
         run: |
           if grep -q "^${{ env.BRANCH_NAME }}$" engine-branches.txt; then
-            echo "Branch '${{ env.BRANCH_NAME }}' exists in ir-engine."
+            echo "Branch '${{ env.BRANCH_NAME }}' exists in enchantmentengine."
             echo "checkout_branch=${{ env.BRANCH_NAME }}" >> $GITHUB_ENV
           else
-            echo "Branch '${{ env.BRANCH_NAME }}' does not exist in ir-engine. Using 'dev' branch."
+            echo "Branch '${{ env.BRANCH_NAME }}' does not exist in enchantmentengine. Using 'dev' branch."
             echo "checkout_branch=dev" >> $GITHUB_ENV
           fi
 
       - name: Checkout Infinite Reality Engine
         uses: actions/checkout@v3
         with:
-          repository: ir-engine/ir-engine
+          repository: enchantmentengine/enchantmentengine
           ref: ${{ env.checkout_branch }}
 
       - name: Checkout Project
@@ -108,7 +108,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 22.x
-      - run: mkdir -p ./packages/projects/projects/ir-engine && cp -r ./packages/projects/default-project ./packages/projects/projects/ir-engine/default-project
+      - run: mkdir -p ./packages/projects/projects/enchantmentengine && cp -r ./packages/projects/default-project ./packages/projects/projects/enchantmentengine/default-project
       - run: npm install --loglevel notice --legacy-peer-deps
       - run: npx lerna run --scope '@${{ needs.secrets-gate.outputs.repo }}' lint
       - run: npx lerna run --scope '@${{ needs.secrets-gate.outputs.repo }}' check-errors
