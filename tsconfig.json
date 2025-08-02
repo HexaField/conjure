@@ -25,6 +25,7 @@
     "emitDecoratorMetadata": true,
     "declaration": false,
     "types": ["@types/node", "@types/react", "@types/react-dom", "jest", "vitest"],
+    "erasableSyntaxOnly": true
   },
   "include": [
     "../../../../../__global.d.ts",
