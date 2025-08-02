@@ -4,7 +4,7 @@ import { contentHash } from '../json-schema/contentHash'
 
 export type SHA256Hash = string
 
-export type SchemaType<Data = unknown> = {
+export type SchemaType<Data = any> = {
   hash: SHA256Hash
   label: string
   description: string
@@ -15,7 +15,7 @@ export const SchemaRegistry = defineState({
   name: 'hexafield.conjure.SchemaRegistry',
   initial: { schemas: {} as Record<SHA256Hash, SchemaType> },
 
-  register: (schema: JSONSchemaType<unknown>, label?: string, description?: string) => {
+  register: (schema: JSONSchemaType<any>, label?: string, description?: string) => {
     const hash = contentHash(schema)
     getMutableState(SchemaRegistry).schemas[hash].set({
       hash,
@@ -23,6 +23,7 @@ export const SchemaRegistry = defineState({
       description: description || 'No description',
       schema
     })
+    return hash
   },
 
   forget: (hash: SHA256Hash) => {

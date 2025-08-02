@@ -7,6 +7,7 @@ import React from 'react'
 import { DataTransformSection } from '../components/DataTransformSection'
 import { Header } from '../components/Header'
 import SchemaSelectorInput from '../components/SchemaSelectorInput'
+import Tabs from '../components/Tabs'
 import { TransformFunctionSection } from '../components/TransformFunctionSection'
 import type { JSONSchemaType } from '../json-schema/JSONSchema'
 import { createJSONTransformFunctionPrompt } from '../json-schema/createJSONTransformFunctionPrompt'
@@ -17,6 +18,11 @@ import { TargetRegistry } from '../registries/TargetRegistry'
 import { Stringify, ToolRegistry } from '../registries/ToolRegistry'
 import { createDynamicWebworker } from '../utils/createDynamicWebworker'
 import { hashFunctionSource } from '../utils/hashFunction'
+
+const tabs = [
+  { label: 'Create', value: 'create' },
+  { label: 'Library', value: 'library' }
+]
 
 // Generic interface for schema selection
 export type SchemaSelector =
@@ -93,7 +99,7 @@ function ToolView(): JSX.Element {
       if (!isNaN(index) && getState(TargetRegistry)[index]) {
         state.outputSchemaSelector.set({
           kind: 'known',
-          hash: getState(TargetRegistry)[index].id,
+          hash: getState(TargetRegistry)[index].hash,
           schema: getState(TargetRegistry)[index].value
         })
       }
@@ -322,8 +328,11 @@ function ToolView(): JSX.Element {
     })
   }
 
+  const tab = useHookstate<string>('create' as 'create' | 'library')
+
   return (
     <div className="pointer-events-auto min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <Tabs tabs={tabs} onChange={tab.set} value={tab.value} />
       <div className="mx-auto max-w-4xl space-y-6">
         <Header />
 

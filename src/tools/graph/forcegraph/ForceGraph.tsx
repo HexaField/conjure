@@ -51,14 +51,14 @@ import {
 } from 'three'
 import { stringToColor } from '../../../utils/stringToColor'
 import { JSONSchemaType } from '../../json-schema/JSONSchema'
-import { TargetRegistry } from '../../registries/TargetRegistry'
+import { TargetRegistry, TargetSchemaDefinition } from '../../registries/TargetRegistry'
 import { startWebworker } from './createWorker'
 
 export interface Node {
-  id: number
+  id: string | number
   label: string
   group: string
-  imageSrc?: string
+  imageSrc: string
 }
 
 export interface Edge {
@@ -501,18 +501,20 @@ export const ControlHelper = () => {
   )
 }
 
-const forcegraphSchema: JSONSchemaType<ForceGraphShape> = {
+const forcegraphSchema: JSONSchemaType<SerializedForceGraphShape> = {
   type: 'object',
+  required: ['nodes', 'edges'],
   properties: {
     nodes: {
       type: 'array',
       items: {
         type: 'object',
+        required: ['id', 'label'],
         properties: {
           id: { type: 'string' },
           label: { type: 'string' },
-          group: { type: 'string', optional: true, default: '' },
-          image: { type: 'string', optional: true, default: '' }
+          group: { type: 'string', nullable: true, default: '' },
+          image: { type: 'string', nullable: true, default: '' }
         }
       }
     },
@@ -520,22 +522,23 @@ const forcegraphSchema: JSONSchemaType<ForceGraphShape> = {
       type: 'array',
       items: {
         type: 'object',
+        required: ['source', 'target'],
         properties: {
           source: { type: 'string' },
           target: { type: 'string' },
-          weight: { type: 'number', optional: true, default: 1 }
+          weight: { type: 'number', nullable: true, default: 1 }
         }
       }
     }
     // maxConnections: {
     //   type: 'number',
-    //   optional: true,
+    //   nullable: true,
     //   default: 1
     // }
   }
 }
 
-type ForceGraphShape = {
+type SerializedForceGraphShape = {
   nodes: Array<{
     id: string | number
     label: string
@@ -549,11 +552,11 @@ type ForceGraphShape = {
   }>
 }
 
-export const ForceGraphSchema = {
+export const ForceGraphSchema: TargetSchemaDefinition<SerializedForceGraphShape> = {
   label: 'Force Graph',
   value: forcegraphSchema,
-  onData: (data: Record<string, ForceGraphShape>) => {
-    const finalData: ForceGraphShape = { nodes: [], edges: [] }
+  deserialize: (data) => {
+    const finalData: SerializedForceGraphShape = { nodes: [], edges: [] }
     const seenLabels = new Map<string, { source: string; id: number | string }>()
     const replacedNodes = {} as Record<string, Map<number | string, number | string>>
     let maxWeight = 0
@@ -616,14 +619,10 @@ export const ForceGraphSchema = {
         finalData.nodes.find((node) => node.id === edge.target)
     )
 
-    if (!finalData.nodes.length) return null
+    if (!finalData.nodes.length) return null!
 
-    return finalData
-  },
-
-  onConfirm: (data) => {
-    getMutableState(d3State).nodes.set(data.nodes)
-    getMutableState(d3State).links.set(data.edges)
+    getMutableState(d3State).nodes.set(finalData.nodes as NodeData['nodes'])
+    getMutableState(d3State).links.set(finalData.edges as NodeData['edges'])
   }
 }
 

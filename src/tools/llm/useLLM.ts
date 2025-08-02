@@ -339,7 +339,7 @@ async function callRemoteLLM<T = unknown>(
     }
   } else if (model.provider === 'ollama') {
     body = {
-      model: 'deepseek-coder  ',
+      model: 'deepseek-coder',
       messages: [{ role: 'user', content: prompt }],
       stream: false
     }

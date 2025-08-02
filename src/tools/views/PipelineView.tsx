@@ -1,12 +1,17 @@
-import { useHookstate } from '@hookstate/core'
-import { getMutableState, getState, NO_PROXY } from '@ir-engine/hyperflux'
+import { getMutableState, getState, NO_PROXY, useHookstate } from '@ir-engine/hyperflux'
 import React, { useEffect } from 'react'
+import Tabs from '../components/Tabs'
 import { ToolCard } from '../components/ToolCard'
-import { TargetVisualizationState } from '../graph/TargetVisualizationState'
 import { contentHash } from '../json-schema/contentHash'
 import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
+import { TargetRegistry } from '../registries/TargetRegistry'
 import { Tool, ToolRegistry } from '../registries/ToolRegistry'
+
+const tabs = [
+  { label: 'Create', value: 'create' },
+  { label: 'Library', value: 'library' }
+]
 
 // Type for input state
 interface InputSource {
@@ -25,8 +30,8 @@ export const PipelineView: React.FC = () => {
     { url: '', data: null, loading: false, errorMessage: null, schema: null, hash: null }
   ])
   // Output schema selection
-  const visualizationType = useHookstate('hexafield.conjure.graph-tool.ForceGraph') // todo put in search params once we have multiple
-  const targetGraph = getState(TargetVisualizationState)[visualizationType.get()]
+  const visualizationType = useHookstate('') // todo put in search params once we have multiple
+  const targetGraph = getState(TargetRegistry)[visualizationType.get()]
   const targetSchema = targetGraph?.value
 
   // On mount, initialize from search params if present
@@ -58,7 +63,7 @@ export const PipelineView: React.FC = () => {
     }
     if (graphTypeParam) {
       // Set output schema index from params
-      const schemaIndex = getState(TargetVisualizationState)[graphTypeParam]
+      const schemaIndex = getState(TargetRegistry)[graphTypeParam]
       if (schemaIndex) {
         visualizationType.set(graphTypeParam)
       }
@@ -151,28 +156,26 @@ export const PipelineView: React.FC = () => {
         }
       })
     )
-    // Now, create the graph using the output schema's onConfirm/onData logic
-    // (see MappingUI.tsx for reference)
-    if (targetGraph && typeof targetGraph.onData === 'function') {
-      // Compose data as MappingUI does: { [url]: transformedData }
+    // Now, create the graph using the output schema's deserialize logic
+    if (targetGraph && typeof targetGraph.deserialize === 'function') {
       const dataObj: Record<string, any> = {}
       inputs.forEach((input, i) => {
         const url = input.url.get()
         dataObj[url] = results[i]
       })
       try {
-        const finalData = targetGraph.onData(dataObj)
-        if (typeof targetGraph.onConfirm === 'function') {
-          targetGraph.onConfirm(finalData)
-        }
+        targetGraph.deserialize(dataObj)
       } catch (e) {
         console.error('Graph creation failed', e)
       }
     }
   }
 
+  const tab = useHookstate<string>('create' as 'create' | 'library')
+
   return (
     <div className="rounded-lg bg-white p-6 shadow-md">
+      <Tabs tabs={tabs} onChange={tab.set} value={tab.value} />
       <h2 className="mb-4 text-xl font-semibold">Graph Tool Runner</h2>
       <div className="mb-6">
         <h3 className="mb-2 font-medium">Input Sources</h3>
@@ -218,13 +221,13 @@ export const PipelineView: React.FC = () => {
         <h3 className="mb-2 font-medium">Output Graph Type</h3>
         <select
           className="w-72 rounded border px-2 py-1 text-sm"
-          value={targetGraph?.id || ''}
+          value={targetGraph?.hash || ''}
           onChange={(e) => visualizationType.set(e.target.value)}
           disabled={!targetGraph}
         >
-          {Object.values(getState(TargetVisualizationState)).map((schema) => (
-            <option key={schema.id} value={schema.id}>
-              {schema.label || schema.id}
+          {Object.values(getState(TargetRegistry)).map((schema) => (
+            <option key={schema.hash} value={schema.hash}>
+              {schema.label || schema.hash}
             </option>
           ))}
         </select>

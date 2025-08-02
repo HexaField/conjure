@@ -2,7 +2,6 @@
  * Taken from AJV https://github.com/ajv-validator/ajv/blob/master/lib/types/json-schema.ts
  */
 
-/* eslint-disable @typescript-eslint/no-empty-interface */
 type StrictNullChecksWrapper<Name extends string, Type> = undefined extends null
   ? `strictNullChecks must be true in tsconfig to use ${Name}`
   : Type

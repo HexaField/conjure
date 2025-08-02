@@ -21,37 +21,23 @@ import { PipelineView } from './views/PipelineView'
 import SchemaView from './views/SchemaView'
 import ToolView from './views/ToolView'
 
+import Tabs from './components/Tabs'
 import './graph/forcegraph/ForceGraph'
 
 const tabs = [
-  { name: 'Graphs', value: 'graph' },
-  { name: 'Tools', value: 'tool' },
-  { name: 'Schemas', value: 'schema' }
-] as const
+  { label: 'Pipelines', value: 'pipeline' },
+  { label: 'Tools', value: 'tool' },
+  { label: 'Schemas', value: 'schema' }
+]
 
 function ToolMenus(): JSX.Element {
-  const tab = useHookstate('graph' as 'graph' | 'tool' | 'schema')
-  const setTab = (value: 'graph' | 'tool' | 'schema') => {
-    tab.set(value)
-  }
+  const tab = useHookstate('pipeline')
 
   return (
     <div className="pointer-events-auto min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="mb-4 flex items-center justify-center space-x-4">
-        {tabs.map((t) => (
-          <button
-            key={t.value}
-            onClick={() => setTab(t.value)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              tab.value === t.value ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            {t.name}
-          </button>
-        ))}
-      </div>
+      <Tabs tabs={tabs} onChange={tab.set} value={tab.value} />
       <div className="mx-auto max-w-4xl space-y-6">
-        {tab.value === 'graph' && <PipelineView />}
+        {tab.value === 'pipeline' && <PipelineView />}
         {tab.value === 'tool' && <ToolView />}
         {tab.value === 'schema' && <SchemaView />}
       </div>
