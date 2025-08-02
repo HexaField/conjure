@@ -17,10 +17,11 @@ import { RendererState } from '@ir-engine/spatial/src/renderer/RendererState'
 import { Button } from '@ir-engine/ui'
 
 import GithubLink from './components/GithubLink'
-import './graph/forcegraph/ForceGraph'
-import EditTool from './views/EditView'
 import { PipelineView } from './views/PipelineView'
 import SchemaView from './views/SchemaView'
+import ToolView from './views/ToolView'
+
+import './graph/forcegraph/ForceGraph'
 
 const tabs = [
   { name: 'Graphs', value: 'graph' },
@@ -51,7 +52,7 @@ function ToolMenus(): JSX.Element {
       </div>
       <div className="mx-auto max-w-4xl space-y-6">
         {tab.value === 'graph' && <PipelineView />}
-        {tab.value === 'tool' && <EditTool />}
+        {tab.value === 'tool' && <ToolView />}
         {tab.value === 'schema' && <SchemaView />}
       </div>
     </div>

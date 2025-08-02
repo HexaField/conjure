@@ -24,7 +24,7 @@ export type SchemaSelector =
   | { kind: 'known'; hash: string; schema: JSONSchemaType<any> }
   | { kind: 'custom'; schema: JSONSchemaType<any> }
 
-function EditView(): JSX.Element {
+function ToolView(): JSX.Element {
   // Load selected model from localStorage or use default
   const getStoredModel = () => {
     try {
@@ -408,4 +408,4 @@ function EditView(): JSX.Element {
   )
 }
 
-export default EditView
+export default ToolView
