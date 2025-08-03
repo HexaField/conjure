@@ -28,6 +28,7 @@
     "dat.gui": "^0.7.9",
     "jsonpath-plus": "10.3.0",
     "maxrects-packer": "2.7.3",
+    "@ts-morph/bootstrap": "0.27.0",
     "ts-morph": "^26.0.0"
   },
   "license": "ISC",

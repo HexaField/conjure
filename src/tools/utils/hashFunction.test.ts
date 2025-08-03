@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { hashFunctionSourceSync } from './hashFunction'
+import { hashFunctionSource } from './hashFunction'
 
-describe('hashFunctionSource', () => {
-  describe('basic functionality', () => {
-    it('should generate consistent hashes for identical functions', () => {
+describe('hashFunctionSource', async () => {
+  describe('basic functionality', async () => {
+    it('should generate consistent hashes for identical functions', async () => {
       const fnA = `
         function compute(x, y) {
           const sum = x + y;
@@ -17,14 +17,14 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
       expect(hashA).toMatch(/^[a-f0-9]+$/) // Should be hex string
     })
 
-    it('should generate same hash for functions with different formatting', () => {
+    it('should generate same hash for functions with different formatting', async () => {
       const fnA = `
         function compute({ x, y }) {
           const sum = x + y;
@@ -38,13 +38,13 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
 
-    it('should generate same hash for functions with different variable names', () => {
+    it('should generate same hash for functions with different variable names', async () => {
       const fnA = `
         function process(data) {
           const result = data.map(item => item * 2);
@@ -58,25 +58,25 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
   })
 
-  describe('arrow functions', () => {
-    it('should handle arrow functions correctly', () => {
+  describe('arrow functions', async () => {
+    it('should handle arrow functions correctly', async () => {
       const fnA = `(x, y) => x + y`
       const fnB = `(a, b) => a + b`
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
 
-    it('should handle arrow functions with blocks', () => {
+    it('should handle arrow functions with blocks', async () => {
       const fnA = `
         (x, y) => {
           const sum = x + y;
@@ -90,15 +90,15 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
   })
 
-  describe('function expressions', () => {
-    it('should handle function expressions', () => {
+  describe('function expressions', async () => {
+    it('should handle function expressions', async () => {
       const fnA = `
         function(x, y) {
           return x * y;
@@ -110,15 +110,15 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
   })
 
-  describe('complex scenarios', () => {
-    it('should handle nested functions', () => {
+  describe('complex scenarios', async () => {
+    it('should handle nested functions', async () => {
       const fnA = `
         function outer(x) {
           function inner(y) {
@@ -136,13 +136,13 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
 
-    it('should handle multiple variable declarations', () => {
+    it('should handle multiple variable declarations', async () => {
       const fnA = `
         function process(data) {
           const first = data[0];
@@ -160,13 +160,13 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
 
-    it('should preserve member expression property names', () => {
+    it('should preserve member expression property names', async () => {
       const fnA = `
         function process(obj) {
           return obj.property + obj.method();
@@ -178,13 +178,13 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
 
-    it('should handle computed member expressions', () => {
+    it('should handle computed member expressions', async () => {
       const fnA = `
         function process(obj, key) {
           return obj[key];
@@ -196,15 +196,15 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
   })
 
-  describe('different functions should have different hashes', () => {
-    it('should generate different hashes for functions with different logic', () => {
+  describe('different functions should have different hashes', async () => {
+    it('should generate different hashes for functions with different logic', async () => {
       const fnA = `
         function compute(x, y) {
           return x + y;
@@ -216,13 +216,13 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).not.toBe(hashB)
     })
 
-    it('should generate different hashes for functions with different parameter counts', () => {
+    it('should generate different hashes for functions with different parameter counts', async () => {
       const fnA = `
         function compute(x) {
           return x * 2;
@@ -234,34 +234,32 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).not.toBe(hashB)
     })
   })
 
-  describe('error handling', () => {
-    it('should throw error for invalid JavaScript', () => {
+  describe('error handling', async () => {
+    it('should throw error for invalid JavaScript', async () => {
       const invalidJs = 'function invalid( { return x + y; }'
 
-      expect(() => {
-        hashFunctionSourceSync(invalidJs)
-      }).toThrow('Failed to hash function source')
+      await expect(hashFunctionSource(invalidJs)).rejects.toThrow('Failed to hash function source')
     })
 
-    it('should handle empty function', () => {
+    it('should handle empty function', async () => {
       const emptyFn = 'function empty() {}'
 
-      expect(() => {
-        const hash = hashFunctionSourceSync(emptyFn)
+      expect(async () => {
+        const hash = await hashFunctionSource(emptyFn)
         expect(hash).toMatch(/^[a-f0-9]+$/)
       }).not.toThrow()
     })
   })
 
-  describe('edge cases', () => {
-    it('should handle functions with no parameters', () => {
+  describe('edge cases', async () => {
+    it('should handle functions with no parameters', async () => {
       const fnA = `
         function getValue() {
           const value = 42;
@@ -275,13 +273,13 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
 
-    it('should handle functions with destructured parameters', () => {
+    it('should handle functions with destructured parameters', async () => {
       const fnA = `
         function process({ x, y }) {
           return x + y;
@@ -295,17 +293,17 @@ describe('hashFunctionSource', () => {
 
       // Note: These might not be identical due to destructuring complexity
       // but they should at least not throw errors
-      expect(() => {
-        const hashA = hashFunctionSourceSync(fnA)
-        const hashB = hashFunctionSourceSync(fnB)
+      expect(async () => {
+        const hashA = await hashFunctionSource(fnA)
+        const hashB = await hashFunctionSource(fnB)
         expect(hashA).toMatch(/^[a-f0-9]+$/)
         expect(hashB).toMatch(/^[a-f0-9]+$/)
       }).not.toThrow()
     })
   })
 
-  describe('complex nested scenarios', () => {
-    it('should handle nested for loops with different variable names', () => {
+  describe('complex nested scenarios', async () => {
+    it('should handle nested for loops with different variable names', async () => {
       const fnA = `
         function processMatrix(matrix) {
           const result = [];
@@ -335,13 +333,13 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
 
-    it('should handle complex array.map compositions with nested functions', () => {
+    it('should handle complex array.map compositions with nested functions', async () => {
       const fnA = `
         function transformData(users) {
           return users
@@ -371,13 +369,13 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
 
-    it('should handle mixed for loops and array methods', () => {
+    it('should handle mixed for loops and array methods', async () => {
       const fnA = `
         function complexProcess(data) {
           const results = [];
@@ -423,13 +421,13 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
 
-    it('should handle deeply nested arrow functions with closures', () => {
+    it('should handle deeply nested arrow functions with closures', async () => {
       const fnA = `
         function createProcessor(config) {
           const multiplier = config.factor;
@@ -459,13 +457,13 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
 
-    it('should handle functions with multiple nested scopes and variable shadowing', () => {
+    it('should handle functions with multiple nested scopes and variable shadowing', async () => {
       const fnA = `
         function processLayers(data) {
           const result = [];
@@ -503,13 +501,13 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })
 
-    it('should handle async/await patterns with array methods', () => {
+    it('should handle async/await patterns with array methods', async () => {
       const fnA = `
         async function processAsync(items) {
           const results = [];
@@ -539,8 +537,8 @@ describe('hashFunctionSource', () => {
         }
       `
 
-      const hashA = hashFunctionSourceSync(fnA)
-      const hashB = hashFunctionSourceSync(fnB)
+      const hashA = await hashFunctionSource(fnA)
+      const hashB = await hashFunctionSource(fnB)
 
       expect(hashA).toBe(hashB)
     })

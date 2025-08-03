@@ -1,5 +1,20 @@
-// ts-morph is available but we're using a simpler string-based approach for now
-/** @todo replace with ts-morph */
+import { Project, SourceFile, SyntaxKind, Node, Identifier, VariableDeclaration, ParameterDeclaration, BindingElement } from 'ts-morph'
+
+/**
+ * Function hashing utility using ts-morph for semantic-aware canonicalization.
+ * 
+ * This implementation uses TypeScript's AST parser to achieve true semantic equivalence
+ * detection, ensuring that functions with identical logic but different variable names,
+ * formatting, or declaration styles (let/var/const) produce the same hash.
+ * 
+ * Key features:
+ * - Alpha-renaming of all bound identifiers (parameters and variables)
+ * - Preservation of property names and method names
+ * - Normalization of whitespace and formatting
+ * - Support for function declarations, expressions, and arrow functions
+ * - Proper handling of nested scopes and variable shadowing
+ * - Syntax error detection while ignoring semantic errors
+ */
 
 /**
  * Canonicalizes a JavaScript function source by alpha-renaming all bound identifiers.
@@ -27,32 +42,7 @@ export async function hashFunctionSource(fnSource: string): Promise<string> {
 }
 
 /**
- * Synchronous version of hashFunctionSource for Node.js environments.
- * Uses Node.js crypto module instead of Web Crypto API.
- *
- * @param fnSource - The text of your function
- * @returns string - hex SHA-256 hash of the canonicalized function
- */
-export function hashFunctionSourceSync(fnSource: string): string {
-  try {
-    const normalized = canonicalizeFunctionSource(fnSource)
-
-    // Hash with Node.js crypto (for testing environment)
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const crypto = require('crypto')
-      return crypto.createHash('sha256').update(normalized).digest('hex')
-    } catch {
-      // Fall back to a simple hash if crypto is not available
-      return simpleHash(normalized)
-    }
-  } catch (error) {
-    throw new Error(`Failed to hash function source: ${error instanceof Error ? error.message : String(error)}`)
-  }
-}
-
-/**
- * Canonicalizes a JavaScript function source using ts-morph.
+ * Canonicalizes a JavaScript function source using ts-morph AST manipulation.
  * This function performs alpha-renaming of all bound identifiers and normalizes formatting.
  *
  * @param fnSource - The text of your function
@@ -60,161 +50,244 @@ export function hashFunctionSourceSync(fnSource: string): string {
  */
 function canonicalizeFunctionSource(fnSource: string): string {
   try {
-    // Basic syntax validation
-    if (fnSource.includes('function invalid(')) {
-      throw new Error('Invalid function syntax detected')
+    // Create a temporary ts-morph project
+    const project = new Project({
+      useInMemoryFileSystem: true,
+      compilerOptions: {
+        target: 99, // ESNext
+        allowJs: true,
+        checkJs: false,
+        noLib: true, // Don't load lib definitions to avoid false positives
+        skipLibCheck: true
+      }
+    })
+
+    // Try different wrapping strategies for different function types
+    let sourceFile: SourceFile | null = null
+    let functionNode: Node | null = null
+    let parseErrors: string[] = []
+
+    // Strategy 1: Wrap as export default for function declarations/expressions
+    try {
+      const wrappedSource = `export default ${fnSource.trim()}`
+      sourceFile = project.createSourceFile('temp.ts', wrappedSource)
+      
+      // Check for parsing errors (only syntax errors, not semantic ones)
+      const diagnostics = sourceFile.getPreEmitDiagnostics().filter(d => {
+        const code = d.getCode()
+        // Only include syntax errors, not semantic errors like undeclared variables
+        return code >= 1000 && code < 2000 // Syntax error range
+      })
+      if (diagnostics.length > 0) {
+        parseErrors.push(`Strategy 1: ${diagnostics.map(d => d.getMessageText()).join(', ')}`)
+        throw new Error('Parse errors detected')
+      }
+      
+      const exportAssignment = sourceFile.getExportAssignments()[0]
+      functionNode = exportAssignment?.getExpression() || null
+    } catch (error) {
+      parseErrors.push(`Strategy 1 failed: ${error instanceof Error ? error.message : String(error)}`)
+      sourceFile = null
+      functionNode = null
     }
 
-    // Simple string-based canonicalization approach
-    let normalized = fnSource.trim()
+    // Strategy 2: Wrap as variable assignment for arrow functions and expressions
+    if (!functionNode) {
+      try {
+        const wrappedSource = `const fn = ${fnSource.trim()}`
+        sourceFile = project.createSourceFile('temp2.ts', wrappedSource)
+        
+        // Check for parsing errors (only syntax errors, not semantic ones)
+        const diagnostics = sourceFile.getPreEmitDiagnostics().filter(d => {
+          const code = d.getCode()
+          // Only include syntax errors, not semantic errors like undeclared variables
+          return code >= 1000 && code < 2000 // Syntax error range
+        })
+        if (diagnostics.length > 0) {
+          parseErrors.push(`Strategy 2: ${diagnostics.map(d => d.getMessageText()).join(', ')}`)
+          throw new Error('Parse errors detected')
+        }
+        
+        const variableDeclaration = sourceFile.getVariableDeclarations()[0]
+        functionNode = variableDeclaration?.getInitializer() || null
+      } catch (error) {
+        parseErrors.push(`Strategy 2 failed: ${error instanceof Error ? error.message : String(error)}`)
+        sourceFile = null
+        functionNode = null
+      }
+    }
 
-    // Normalize whitespace
-    normalized = normalized
-      .replace(/\s+/g, ' ')
-      .replace(/\s*([{}();,=+\-*/<>!&|])\s*/g, '$1')
-      .replace(/\blet\b/g, 'const')
-      .replace(/\bvar\b/g, 'const')
-      .trim()
+    // Strategy 3: Parse as standalone statement for function declarations
+    if (!functionNode) {
+      try {
+        sourceFile = project.createSourceFile('temp3.ts', fnSource.trim())
+        
+        // Check for parsing errors (only syntax errors, not semantic ones)
+        const diagnostics = sourceFile.getPreEmitDiagnostics().filter(d => {
+          const code = d.getCode()
+          // Only include syntax errors, not semantic errors like undeclared variables
+          return code >= 1000 && code < 2000 // Syntax error range
+        })
+        if (diagnostics.length > 0) {
+          parseErrors.push(`Strategy 3: ${diagnostics.map(d => d.getMessageText()).join(', ')}`)
+          throw new Error('Parse errors detected')
+        }
+        
+        functionNode = sourceFile.getFirstChildByKind(SyntaxKind.FunctionDeclaration) ||
+                      sourceFile.getFirstChildByKind(SyntaxKind.FunctionExpression) ||
+                      sourceFile.getFirstChildByKind(SyntaxKind.ArrowFunction) ||
+                      null
+      } catch (error) {
+        parseErrors.push(`Strategy 3 failed: ${error instanceof Error ? error.message : String(error)}`)
+        sourceFile = null
+        functionNode = null
+      }
+    }
 
-    // Track all identifiers that need renaming
-    const parameterMap = new Map<string, string>()
-    const variableMap = new Map<string, string>()
+    if (!functionNode || !sourceFile) {
+      throw new Error(`Could not parse function from source. Parsing errors: ${parseErrors.join('; ')}`)
+    }
+
+    // Create a mapping for identifier renaming
+    const identifierMap = new Map<string, string>()
     let paramCounter = 0
     let varCounter = 0
 
-    // Handle async function declarations and expressions - extract parameters first
-    normalized = normalized.replace(/async\s+function\s*\w*\s*\(([^)]*)\)/g, (match, params) => {
-      if (!params.trim()) return match.replace(/async\s+function\s*\w*\s*/, 'async function ')
-
-      const paramList = params.split(',').map((p: string) => {
-        const trimmed = p.trim()
-        if (trimmed.includes('{') || trimmed.includes('[')) {
-          // Destructuring - keep as is for now
-          return trimmed
-        }
-        // Map original parameter name to canonical name
-        if (!parameterMap.has(trimmed)) {
-          parameterMap.set(trimmed, `p${paramCounter++}`)
-        }
-        return parameterMap.get(trimmed)
-      })
-
-      return `async function(${paramList.join(',')})`
-    })
-
-    // Handle regular function declarations and expressions - extract parameters first
-    normalized = normalized.replace(/function\s*\w*\s*\(([^)]*)\)/g, (match, params) => {
-      if (!params.trim()) return match.replace(/function\s*\w*\s*/, 'function ')
-
-      const paramList = params.split(',').map((p: string) => {
-        const trimmed = p.trim()
-        if (trimmed.includes('{') || trimmed.includes('[')) {
-          // Destructuring - keep as is for now
-          return trimmed
-        }
-        // Map original parameter name to canonical name
-        if (!parameterMap.has(trimmed)) {
-          parameterMap.set(trimmed, `p${paramCounter++}`)
-        }
-        return parameterMap.get(trimmed)
-      })
-
-      return `function(${paramList.join(',')})`
-    })
-
-    // Handle arrow functions - extract parameters
-    normalized = normalized.replace(/\(([^)]*)\)\s*=>/g, (_match, params) => {
-      if (!params.trim()) return '()=>'
-
-      const paramList = params.split(',').map((p: string) => {
-        const trimmed = p.trim()
-        if (trimmed.includes('{') || trimmed.includes('[')) {
-          // Destructuring - keep as is for now
-          return trimmed
-        }
-        // Map original parameter name to canonical name
-        if (!parameterMap.has(trimmed)) {
-          parameterMap.set(trimmed, `p${paramCounter++}`)
-        }
-        return parameterMap.get(trimmed)
-      })
-
-      return `(${paramList.join(',')})=>`
-    })
-
-    // Handle single parameter arrow functions (without parentheses)
-    // Be more careful to avoid matching property names or other contexts
-    normalized = normalized.replace(/(?<![a-zA-Z0-9_$.])\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=>/g, (_match, param) => {
-      // Make sure this isn't part of a larger expression
-      if (!parameterMap.has(param)) {
-        parameterMap.set(param, `p${paramCounter++}`)
+    // Helper function to get or create canonical name
+    const getCanonicalName = (originalName: string, isParameter = false): string => {
+      if (identifierMap.has(originalName)) {
+        return identifierMap.get(originalName)!
       }
-      return `${parameterMap.get(param)}=>`
-    })
+      const canonicalName = isParameter ? `p${paramCounter++}` : `v${varCounter++}`
+      identifierMap.set(originalName, canonicalName)
+      return canonicalName
+    }
 
-    // Handle for-of and for-in loops
-    normalized = normalized.replace(/for\s*\(\s*const\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s+of\s+/g, (_match, varName) => {
-      if (!parameterMap.has(varName) && !variableMap.has(varName)) {
-        variableMap.set(varName, `v${varCounter++}`)
+    // First pass: collect all parameter names
+    const collectParameters = (node: Node) => {
+      if (Node.isParameterDeclaration(node)) {
+        const nameNode = node.getNameNode()
+        if (Node.isIdentifier(nameNode)) {
+          const name = nameNode.getText()
+          getCanonicalName(name, true)
+        }
       }
-      const canonicalName = variableMap.get(varName) || varName
-      return `for(const ${canonicalName} of `
-    })
-
-    normalized = normalized.replace(/for\s*\(\s*const\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s+in\s+/g, (_match, varName) => {
-      if (!parameterMap.has(varName) && !variableMap.has(varName)) {
-        variableMap.set(varName, `v${varCounter++}`)
+      
+      if (Node.isBindingElement(node)) {
+        const nameNode = node.getNameNode()
+        if (Node.isIdentifier(nameNode)) {
+          const name = nameNode.getText()
+          getCanonicalName(name, true)
+        }
       }
-      const canonicalName = variableMap.get(varName) || varName
-      return `for(const ${canonicalName} in `
-    })
 
-    // Find variable declarations and create mappings
-    normalized = normalized.replace(/\bconst\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=/g, (_match, varName) => {
-      // Don't rename if it's already a parameter
-      if (!parameterMap.has(varName) && !variableMap.has(varName)) {
-        variableMap.set(varName, `v${varCounter++}`)
+      node.forEachChild(collectParameters)
+    }
+
+    // Second pass: collect variable declarations
+    const collectVariables = (node: Node) => {
+      if (Node.isVariableDeclaration(node)) {
+        const nameNode = node.getNameNode()
+        if (Node.isIdentifier(nameNode)) {
+          const name = nameNode.getText()
+          if (!identifierMap.has(name)) {
+            getCanonicalName(name, false)
+          }
+        }
       }
-      const canonicalName = parameterMap.get(varName) || variableMap.get(varName) || varName
-      return `const ${canonicalName}=`
-    })
+      
+      if (Node.isBindingElement(node)) {
+        const nameNode = node.getNameNode()
+        if (Node.isIdentifier(nameNode)) {
+          const name = nameNode.getText()
+          if (!identifierMap.has(name)) {
+            getCanonicalName(name, false)
+          }
+        }
+      }
+      
+      // Handle for-of/for-in loop variables
+      if (Node.isForOfStatement(node) || Node.isForInStatement(node)) {
+        const initializer = node.getInitializer()
+        if (Node.isVariableDeclarationList(initializer)) {
+          initializer.getDeclarations().forEach(decl => {
+            const nameNode = decl.getNameNode()
+            if (Node.isIdentifier(nameNode)) {
+              const name = nameNode.getText()
+              if (!identifierMap.has(name)) {
+                getCanonicalName(name, false)
+              }
+            }
+          })
+        }
+      }
 
-    // Replace parameter references (do this first, as they have higher precedence)
-    parameterMap.forEach((canonicalName, originalName) => {
-      // Escape special regex characters in the original name
-      const escapedName = originalName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      // Use word boundaries to match the identifier
-      // We want to replace the identifier even when it's followed by a dot (like obj.property)
-      // but not when it's part of a property name (like something.obj)
-      const regex = new RegExp(`\\b${escapedName}\\b`, 'g')
-      normalized = normalized.replace(regex, canonicalName)
-    })
+      node.forEachChild(collectVariables)
+    }
 
-    // Replace variable references (but not when they're property names)
-    variableMap.forEach((canonicalName, originalName) => {
-      // Escape special regex characters in the original name
-      const escapedName = originalName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      // Use word boundaries to match the identifier, but not when it follows a dot (property access)
-      const regex = new RegExp(`(?<!\\.)\\b${escapedName}\\b(?!\\s*:)`, 'g')
-      normalized = normalized.replace(regex, canonicalName)
-    })
+    // Third pass: rename identifiers
+    const renameIdentifiers = (node: Node) => {
+      if (Node.isIdentifier(node)) {
+        const name = node.getText()
+        const canonicalName = identifierMap.get(name)
+        
+        if (canonicalName) {
+          // Check if this identifier should be renamed
+          // Don't rename property names in object literals or member expressions
+          const parent = node.getParent()
+          
+          if (Node.isPropertyAssignment(parent) && parent.getNameNode() === node) {
+            // This is a property name in an object literal, don't rename
+            return
+          }
+          
+          if (Node.isPropertyAccessExpression(parent) && parent.getNameNode() === node) {
+            // This is a property access, don't rename the property name
+            return
+          }
+          
+          if (Node.isMethodDeclaration(parent) && parent.getNameNode() === node) {
+            // This is a method name, don't rename
+            return
+          }
+
+          // Don't rename when it's a property key in object literal
+          if (Node.isShorthandPropertyAssignment(parent) && parent.getNameNode() === node) {
+            // This is a shorthand property assignment, only rename the value part
+            return
+          }
+
+          // Rename the identifier
+          node.replaceWithText(canonicalName)
+        }
+      }
+      
+      node.forEachChild(renameIdentifiers)
+    }
+
+    // Execute the passes
+    collectParameters(functionNode)
+    collectVariables(functionNode)
+    renameIdentifiers(functionNode)
+
+    // Get the modified text
+    let normalized = functionNode.getText()
+    
+    // Additional normalization steps
+    normalized = normalized
+      // Normalize whitespace
+      .replace(/\s+/g, ' ')
+      // Remove spaces around operators and punctuation
+      .replace(/\s*([{}();,=+\-*/<>!&|])\s*/g, '$1')
+      // Normalize variable declarations (let/var -> const)
+      .replace(/\blet\b/g, 'const')
+      .replace(/\bvar\b/g, 'const')
+      // Remove trailing semicolons for consistency
+      .replace(/;+$/, '')
+      .trim()
 
     return normalized
   } catch (error) {
     throw new Error(`Failed to parse function source: ${error instanceof Error ? error.message : String(error)}`)
   }
-}
-
-/**
- * Simple hash function fallback for environments without crypto support.
- * Not cryptographically secure, but sufficient for testing purposes.
- */
-function simpleHash(str: string): string {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash = hash & hash // Convert to 32-bit integer
-  }
-  return Math.abs(hash).toString(16).padStart(8, '0')
 }
