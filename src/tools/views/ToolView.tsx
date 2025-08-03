@@ -1,13 +1,13 @@
-import { useHookstate } from '@hookstate/core'
+import { hookstate, useHookstate } from '@hookstate/core'
 import { useEffect } from 'react'
 
 import { getState, NO_PROXY } from '@ir-engine/hyperflux'
 import { Button } from '@ir-engine/ui'
 import React from 'react'
 import { DataTransformSection } from '../components/DataTransformSection'
-import { Header } from '../components/Header'
 import SchemaSelectorInput from '../components/SchemaSelectorInput'
 import Tabs from '../components/Tabs'
+import { ToolCard } from '../components/ToolCard'
 import { TransformFunctionSection } from '../components/TransformFunctionSection'
 import type { JSONSchemaType } from '../json-schema/JSONSchema'
 import { createJSONTransformFunctionPrompt } from '../json-schema/createJSONTransformFunctionPrompt'
@@ -15,7 +15,7 @@ import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { CODING_MODELS, reloadLLM, useLLM } from '../llm/useLLM'
 import { SchemaRegistry, SHA256Hash } from '../registries/SchemaRegistry'
 import { TargetRegistry } from '../registries/TargetRegistry'
-import { Stringify, ToolRegistry } from '../registries/ToolRegistry'
+import { Stringify, Tool, ToolRegistry } from '../registries/ToolRegistry'
 import { createDynamicWebworker } from '../utils/createDynamicWebworker'
 import { hashFunctionSource } from '../utils/hashFunction'
 
@@ -30,7 +30,7 @@ export type SchemaSelector =
   | { kind: 'known'; hash: string; schema: JSONSchemaType<any> }
   | { kind: 'custom'; schema: JSONSchemaType<any> }
 
-function ToolView(): JSX.Element {
+function ToolCreateView(): JSX.Element {
   // Load selected model from localStorage or use default
   const getStoredModel = () => {
     try {
@@ -321,90 +321,112 @@ function ToolView(): JSX.Element {
     })
   }
 
-  const tab = useHookstate<string>('create' as 'create' | 'library')
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      {/* Schema selection UI */}
+      <SchemaSelectorInput
+        label="Input Schema"
+        selectorState={state.inputSchemaSelector.get()}
+        onUrlChange={(url) => fetchSchemaFromUrl(url, true)}
+        onKnownSchemaSelect={(schemaId) => handleKnownSchemaSelect(schemaId, true)}
+        inputSchema={state.inputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
+        jsonData={state.inputData.get(NO_PROXY) as object | null}
+      />
+      <SchemaSelectorInput
+        label="Output Schema"
+        selectorState={state.outputSchemaSelector.get()}
+        onUrlChange={(url) => fetchSchemaFromUrl(url, false)}
+        onKnownSchemaSelect={(schemaId) => handleKnownSchemaSelect(schemaId, false)}
+        inputSchema={state.outputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
+      />
 
+      <TransformFunctionSection
+        selectedTargetSchema={state.outputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
+        inputSchema={state.inputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
+        transformFunction={state.transformFunction.get()}
+        transformFunctionHash={state.transformFunctionHash.get()}
+        additionalPrompt={state.additionalPrompt.get()}
+        selectedModel={state.selectedModel.get()}
+        onCreateFunction={onCreateFunctionClick}
+        onAdditionalPromptChange={(prompt: string) => state.additionalPrompt.set(prompt)}
+        onTransformFunctionChange={handleTransformFunctionChange}
+        onModelChange={handleModelChange}
+        llmLoadProgress={llm.progress || 0}
+        llmInitializing={llm.initializing}
+        // Pass API key and LAN URL setters for remote LLMs
+        setApiKey={apiKey.set}
+        setOllamaUrl={ollamaUrl.set}
+        apiKey={apiKey.get()}
+        ollamaUrl={ollamaUrl.get()}
+      />
+
+      <DataTransformSection
+        transformFunction={state.transformFunction.get()}
+        outputData={state.outputData.get(NO_PROXY) as object | null}
+        onTransform={onTransformClick}
+        onOutputDataChange={handleOutputDataChange}
+      />
+
+      {/* Tool label and description entry fields */}
+      <div className="mt-4 flex flex-col gap-2">
+        <label className="font-medium">Tool Label</label>
+        <input
+          className="rounded border px-2 py-1"
+          type="text"
+          value={state.toolLabel.get()}
+          onChange={(e) => state.toolLabel.set(e.target.value)}
+          placeholder="Enter tool label"
+        />
+        <label className="mt-2 font-medium">Tool Description</label>
+        <input
+          className="rounded border px-2 py-1"
+          type="text"
+          value={state.toolDescription.get()}
+          onChange={(e) => state.toolDescription.set(e.target.value)}
+          placeholder="Enter tool description"
+        />
+      </div>
+
+      <Button
+        className="mt-4"
+        variant="primary"
+        disabled={
+          !state.inputSchemaSelector.get().schema ||
+          !state.outputSchemaSelector.get().schema ||
+          !state.transformFunction.value
+        }
+        onClick={onCreateTool}
+      >
+        Create
+      </Button>
+    </div>
+  )
+}
+
+function ToolRegistryView(): JSX.Element {
+  const tools = useHookstate(getState(ToolRegistry).tools)
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <h2 className="mb-4 text-xl font-semibold">Tool Library</h2>
+      <ul className="space-y-4">
+        {Object.values(tools.get(NO_PROXY)).map((tool: Tool) => (
+          <ToolCard key={tool.hash} tool={tool} />
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+const tabState = hookstate<string>('create' as 'create' | 'library')
+
+function ToolView(): JSX.Element {
+  const tab = useHookstate(tabState)
   return (
     <div className="pointer-events-auto min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Tabs tabs={tabs} onChange={tab.set} value={tab.value} />
       <div className="mx-auto max-w-4xl space-y-6">
-        <Header />
-
-        {/* Schema selection UI */}
-        <SchemaSelectorInput
-          label="Input Schema"
-          selectorState={state.inputSchemaSelector.get()}
-          onUrlChange={(url) => fetchSchemaFromUrl(url, true)}
-          onKnownSchemaSelect={(schemaId) => handleKnownSchemaSelect(schemaId, true)}
-          inputSchema={state.inputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
-          jsonData={state.inputData.get(NO_PROXY) as object | null}
-        />
-        <SchemaSelectorInput
-          label="Output Schema"
-          selectorState={state.outputSchemaSelector.get()}
-          onUrlChange={(url) => fetchSchemaFromUrl(url, false)}
-          onKnownSchemaSelect={(schemaId) => handleKnownSchemaSelect(schemaId, false)}
-          inputSchema={state.outputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
-        />
-
-        <TransformFunctionSection
-          selectedTargetSchema={state.outputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
-          inputSchema={state.inputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
-          transformFunction={state.transformFunction.get()}
-          transformFunctionHash={state.transformFunctionHash.get()}
-          additionalPrompt={state.additionalPrompt.get()}
-          selectedModel={state.selectedModel.get()}
-          onCreateFunction={onCreateFunctionClick}
-          onAdditionalPromptChange={(prompt: string) => state.additionalPrompt.set(prompt)}
-          onTransformFunctionChange={handleTransformFunctionChange}
-          onModelChange={handleModelChange}
-          llmLoadProgress={llm.progress || 0}
-          llmInitializing={llm.initializing}
-          // Pass API key and LAN URL setters for remote LLMs
-          setApiKey={apiKey.set}
-          setOllamaUrl={ollamaUrl.set}
-          apiKey={apiKey.get()}
-          ollamaUrl={ollamaUrl.get()}
-        />
-
-        <DataTransformSection
-          transformFunction={state.transformFunction.get()}
-          outputData={state.outputData.get(NO_PROXY) as object | null}
-          onTransform={onTransformClick}
-          onOutputDataChange={handleOutputDataChange}
-        />
-
-        {/* Tool label and description entry fields */}
-        <div className="mt-4 flex flex-col gap-2">
-          <label className="font-medium">Tool Label</label>
-          <input
-            className="rounded border px-2 py-1"
-            type="text"
-            value={state.toolLabel.get()}
-            onChange={(e) => state.toolLabel.set(e.target.value)}
-            placeholder="Enter tool label"
-          />
-          <label className="mt-2 font-medium">Tool Description</label>
-          <input
-            className="rounded border px-2 py-1"
-            type="text"
-            value={state.toolDescription.get()}
-            onChange={(e) => state.toolDescription.set(e.target.value)}
-            placeholder="Enter tool description"
-          />
-        </div>
-
-        <Button
-          className="mt-4"
-          variant="primary"
-          disabled={
-            !state.inputSchemaSelector.get().schema ||
-            !state.outputSchemaSelector.get().schema ||
-            !state.transformFunction.value
-          }
-          onClick={onCreateTool}
-        >
-          Create
-        </Button>
+        {tab.value === 'create' && <ToolCreateView />}
+        {tab.value === 'library' && <ToolRegistryView />}
       </div>
     </div>
   )

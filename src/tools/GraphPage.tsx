@@ -63,7 +63,7 @@ function ToolUI() {
           )}
         </Button>
         <div
-          className="h-full overflow-auto overflow-y-auto p-4"
+          className="h-full min-w-[600px] overflow-auto overflow-y-auto p-4"
           style={{ display: showMappingUI.value ? 'block' : 'none' }}
         >
           <h2 className="mb-4 text-2xl font-semibold">Tool Menu</h2>

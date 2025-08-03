@@ -1,4 +1,4 @@
-import { getMutableState, getState, NO_PROXY, useHookstate, useMutableState } from '@ir-engine/hyperflux'
+import { getMutableState, getState, hookstate, NO_PROXY, useHookstate, useMutableState } from '@ir-engine/hyperflux'
 import React, { useEffect } from 'react'
 import Tabs from '../components/Tabs'
 import { ToolCard } from '../components/ToolCard'
@@ -23,7 +23,7 @@ interface InputSource {
   hash: string | null
 }
 
-export const PipelineView: React.FC = () => {
+function PipelineUseView(): JSX.Element {
   const tools = useHookstate(getMutableState(ToolRegistry).tools)
   // State for multiple input sources
   const inputs = useHookstate<InputSource[]>([
@@ -32,7 +32,8 @@ export const PipelineView: React.FC = () => {
   // Output schema selection
   const defaultGraphType = Object.keys(getState(TargetRegistry))[0] || ''
   const visualizationType = useHookstate(defaultGraphType) // todo put in search params once we have multiple
-  const targetGraph = useMutableState(TargetRegistry)[visualizationType.value].get(NO_PROXY)
+  const targetRegistry = useMutableState(TargetRegistry).get(NO_PROXY)
+  const targetGraph = targetRegistry[visualizationType.value]
   const targetSchema = targetGraph?.value
 
   // On mount, initialize from search params if present
@@ -158,7 +159,7 @@ export const PipelineView: React.FC = () => {
       })
     )
     // Now, create the graph using the output schema's deserialize logic
-    if (targetGraph && typeof targetGraph.deserialize === 'function') {
+    if (targetGraph) {
       const dataObj: Record<string, any> = {}
       inputs.forEach((input, i) => {
         const url = input.url.get()
@@ -172,12 +173,8 @@ export const PipelineView: React.FC = () => {
     }
   }
 
-  const tab = useHookstate<string>('create' as 'create' | 'library')
-
   return (
-    <div className="rounded-lg bg-white p-6 shadow-md">
-      <Tabs tabs={tabs} onChange={tab.set} value={tab.value} />
-      <h2 className="mb-4 text-xl font-semibold">Graph Tool Runner</h2>
+    <>
       <div className="mb-6">
         <h3 className="mb-2 font-medium">Input Sources</h3>
         {inputs.map((input, idx) => (
@@ -226,7 +223,7 @@ export const PipelineView: React.FC = () => {
           onChange={(e) => visualizationType.set(e.target.value)}
           disabled={!targetGraph}
         >
-          {Object.values(getState(TargetRegistry)).map((schema) => (
+          {Object.values(targetRegistry).map((schema) => (
             <option key={schema.hash} value={schema.hash}>
               {schema.label || schema.hash}
             </option>
@@ -243,19 +240,44 @@ export const PipelineView: React.FC = () => {
         ) : (
           <ul className="space-y-2">
             {matchingTools.map((tool) => (
-              <ToolCard key={tool.hash} tool={tool} />
+              <ToolCard key={tool.hash} tool={tool} onUse={() => runToolAndCreateGraph()} />
             ))}
           </ul>
         )}
-        {/* New: Run Tool button */}
-        <button
-          className="mt-4 rounded bg-green-600 px-4 py-2 font-semibold text-white disabled:bg-gray-300"
-          onClick={runToolAndCreateGraph}
-          disabled={!allInputsHaveTool}
-        >
-          Run Tool & Create Graph
-        </button>
       </div>
+    </>
+  )
+}
+
+function PipelineLibraryView(): JSX.Element {
+  const tools = useHookstate(getMutableState(ToolRegistry).tools)
+  const toolList = Object.values(tools.value) as Tool[]
+
+  return (
+    <div className="mb-6">
+      <h3 className="mb-2 font-medium">Available Tools</h3>
+      {toolList.length === 0 ? (
+        <div className="text-sm text-gray-500">No tools found.</div>
+      ) : (
+        <ul className="space-y-2">
+          {toolList.map((tool) => (
+            <ToolCard key={tool.hash} tool={tool} />
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+const tabState = hookstate<string>('create' as 'create' | 'library')
+
+export const PipelineView: React.FC = () => {
+  const tab = useHookstate(tabState)
+  return (
+    <div className="rounded-lg bg-white p-6 shadow-md">
+      <h2 className="mb-4 text-xl font-semibold">Graph Tool Runner</h2>
+      <Tabs tabs={tabs} onChange={tab.set} value={tab.value} />
+      <div className="mt-4">{tab.value === 'create' ? <PipelineUseView /> : <PipelineLibraryView />}</div>
     </div>
   )
 }
