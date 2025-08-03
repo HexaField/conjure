@@ -23,6 +23,92 @@ interface InputSource {
   hash: string | null
 }
 
+// Type for shared configuration
+interface SharedConfig {
+  inputs: Array<{ url: string }>
+  graphType: string
+  autoRun?: boolean
+  tools: Record<string, Tool>
+  targetSchemas: Record<string, any>
+}
+
+// Props for ShareLinkComponent
+interface ShareLinkProps {
+  inputs: readonly InputSource[]
+  graphType: string
+  isVisible: boolean
+}
+
+// Share Link Component
+function ShareLinkComponent({ inputs, graphType, isVisible }: ShareLinkProps): JSX.Element | null {
+  const shareMessage = useHookstate<string | null>(null)
+
+  // Encode configuration for sharing
+  const createShareConfig = (): SharedConfig => {
+    // Get current tools and target schemas from registries
+    const currentTools = getState(ToolRegistry).tools
+    const currentTargetSchemas = getState(TargetRegistry)
+
+    const config: SharedConfig = {
+      inputs: inputs.map((input) => ({ url: input.url })),
+      graphType,
+      autoRun: true,
+      tools: currentTools,
+      targetSchemas: currentTargetSchemas
+    }
+    return config
+  }
+
+  // Generate share file and download it
+  const createShareFile = async () => {
+    try {
+      const config = createShareConfig()
+      const jsonString = JSON.stringify(config, null, 2)
+      const blob = new Blob([jsonString], { type: 'application/json' })
+
+      // Create download link
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `conjure-config-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      shareMessage.set('Configuration file downloaded!')
+      setTimeout(() => shareMessage.set(null), 3000)
+    } catch (e) {
+      console.error('Failed to create share file:', e)
+      shareMessage.set('Failed to create configuration file')
+      setTimeout(() => shareMessage.set(null), 5000)
+    }
+  }
+
+  if (!isVisible) return null
+
+  return (
+    <div className="mb-6">
+      <h3 className="mb-2 font-medium">Share Configuration</h3>
+      <button
+        className="rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
+        onClick={createShareFile}
+      >
+        � Download Config File
+      </button>
+      {shareMessage.get() && (
+        <div className="mt-2 rounded border border-green-400 bg-green-100 px-4 py-2 text-sm text-green-700">
+          {shareMessage.get()}
+        </div>
+      )}
+      <p className="mt-2 text-xs text-gray-600">
+        Downloads a configuration file that includes your input sources and selected graph type. Recipients can upload
+        this file to automatically load and run the tools.
+      </p>
+    </div>
+  )
+}
+
 function PipelineUseView(): JSX.Element {
   const tools = useHookstate(getMutableState(ToolRegistry).tools)
   // State for multiple input sources
@@ -36,9 +122,95 @@ function PipelineUseView(): JSX.Element {
   const targetGraph = targetRegistry[visualizationType.value]
   const targetSchema = targetGraph?.value
 
-  // On mount, initialize from search params if present
+  // Load shared configuration from file
+  const loadShareConfig = (config: SharedConfig) => {
+    try {
+      // Set inputs from shared config
+      const arr = config.inputs.map((input) => ({
+        url: input.url,
+        data: null,
+        loading: false,
+        errorMessage: null,
+        schema: null,
+        hash: null
+      }))
+      inputs.set(arr)
+
+      // Set graph type from shared config
+      if (config.graphType && getState(TargetRegistry)[config.graphType]) {
+        visualizationType.set(config.graphType)
+      }
+
+      // Fetch each input URL and auto-run if specified
+      const fetchAndRun = async () => {
+        // Fetch all inputs
+        const fetchPromises = arr.map((_, i) => fetchInput(i))
+        await Promise.all(fetchPromises)
+
+        // Auto-run if specified
+        if (config.autoRun) {
+          // Wait a bit for state to update
+          setTimeout(() => {
+            const currentInputs = inputs.get(NO_PROXY)
+            const allInputsReady = currentInputs.every((input) => input.hash && input.data)
+            if (allInputsReady) {
+              runToolAndCreateGraph()
+            }
+          }, 1000)
+        }
+      }
+
+      fetchAndRun()
+    } catch (e) {
+      console.error('Failed to load shared configuration:', e)
+    }
+  }
+
+  // Handle file upload
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const config = JSON.parse(e.target?.result as string) as SharedConfig
+        loadShareConfig(config)
+      } catch (error) {
+        console.error('Failed to parse configuration file:', error)
+        // You might want to show an error message to the user here
+      }
+    }
+    reader.readAsText(file)
+
+    // Clear the input so the same file can be selected again
+    event.target.value = ''
+  }
+
+  // Fetch and process a single input
+  const fetchInput = async (idx: number) => {
+    inputs[idx].merge({ loading: true, errorMessage: null })
+    const url = inputs[idx].url.get().trim()
+    if (!url) {
+      inputs[idx].merge({ loading: false, errorMessage: 'URL required' })
+      return
+    }
+    try {
+      const resp = await fetch(url)
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+      const data = await resp.json()
+      const schema = generateJsonSchema(data)
+      const hash = contentHash(schema)
+      inputs[idx].merge({ data, schema, hash, loading: false, errorMessage: null })
+    } catch (e: any) {
+      inputs[idx].merge({ loading: false, errorMessage: e.message || 'Fetch failed' })
+    }
+  }
+
+  // On mount, initialize from search params if present (legacy URL params only)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+
     // Collect urlN params in order
     const urlParams: string[] = []
     let i = 0
@@ -88,26 +260,6 @@ function PipelineUseView(): JSX.Element {
     params.set('graphType', visualizationType.get())
     window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
   }, [inputs.map((input) => input.url.get()).join(','), visualizationType.get()])
-
-  // Fetch and process a single input
-  const fetchInput = async (idx: number) => {
-    inputs[idx].merge({ loading: true, errorMessage: null })
-    const url = inputs[idx].url.get().trim()
-    if (!url) {
-      inputs[idx].merge({ loading: false, errorMessage: 'URL required' })
-      return
-    }
-    try {
-      const resp = await fetch(url)
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-      const data = await resp.json()
-      const schema = generateJsonSchema(data)
-      const hash = contentHash(schema)
-      inputs[idx].merge({ data, schema, hash, loading: false, errorMessage: null })
-    } catch (e: any) {
-      inputs[idx].merge({ loading: false, errorMessage: e.message || 'Fetch failed' })
-    }
-  }
 
   // Add/remove input sources
   const addInput = () =>
@@ -176,6 +328,18 @@ function PipelineUseView(): JSX.Element {
   return (
     <>
       <div className="mb-6">
+        <h3 className="mb-2 font-medium">Load Configuration</h3>
+        <div className="flex items-center space-x-2">
+          <input
+            type="file"
+            accept=".json"
+            onChange={handleFileUpload}
+            className="text-sm file:mr-2 file:rounded file:border-0 file:bg-blue-600 file:px-3 file:py-1 file:text-white file:hover:bg-blue-700"
+          />
+          <span className="text-xs text-gray-600">Upload a configuration file to restore a shared setup</span>
+        </div>
+      </div>
+      <div className="mb-6">
         <h3 className="mb-2 font-medium">Input Sources</h3>
         {inputs.map((input, idx) => (
           <div key={idx} className="mb-2 flex items-center space-x-2">
@@ -233,7 +397,7 @@ function PipelineUseView(): JSX.Element {
           <span className="ml-2 text-xs text-green-600">Output hash: {outputHash.slice(0, 8)}...</span>
         )}
       </div>
-      <div>
+      <div className="mb-6">
         <h3 className="mb-2 font-medium">Matching Tools</h3>
         {matchingTools.length === 0 ? (
           <div className="text-sm text-gray-500">No matching tools found for the selected schemas.</div>
@@ -245,6 +409,11 @@ function PipelineUseView(): JSX.Element {
           </ul>
         )}
       </div>
+      <ShareLinkComponent
+        inputs={inputs.get(NO_PROXY)}
+        graphType={visualizationType.get()}
+        isVisible={!!allInputsHaveTool}
+      />
     </>
   )
 }
