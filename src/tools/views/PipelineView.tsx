@@ -435,7 +435,7 @@ function PipelineUseView(): JSX.Element {
         )}
       </div>
       <ShareLinkComponent
-        inputs={inputs.get(NO_PROXY)}
+        inputs={inputs.get(NO_PROXY) as InputSource[]}
         graphType={visualizationType.get()}
         isVisible={!!allInputsHaveTool}
         createShareConfig={createShareConfig}
