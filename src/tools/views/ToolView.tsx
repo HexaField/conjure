@@ -54,7 +54,6 @@ function ToolView(): JSX.Element {
     transformFunction: null as string | null,
     transformFunctionHash: null as string | null,
     outputData: null as object | null,
-    llmLoadProgress: 0,
     additionalPrompt: '',
     toolLabel: 'New Tool', // Added for tool label entry
     toolDescription: 'A new tool created from the current state' // Added for tool description entry
@@ -66,9 +65,6 @@ function ToolView(): JSX.Element {
 
   const llm = useLLM({
     modelId: state.selectedModel.get(),
-    onProgress: (progress) => {
-      state.llmLoadProgress.set(progress.progress ?? 0)
-    },
     apiKey: apiKey.get(),
     ollamaUrl: ollamaUrl.get()
   })
@@ -260,13 +256,10 @@ function ToolView(): JSX.Element {
 
       // Update state
       state.selectedModel.set(modelId)
-      state.llmLoadProgress.set(0)
       state.errorMessage.set(null)
 
       // Reload LLM with new model
-      await reloadLLM(modelId, (progress) => {
-        state.llmLoadProgress.set(progress.progress ?? 0)
-      })
+      await reloadLLM(modelId)
     } catch (error) {
       state.errorMessage.set(error instanceof Error ? error.message : 'Failed to load model')
     }
@@ -364,7 +357,7 @@ function ToolView(): JSX.Element {
           onAdditionalPromptChange={(prompt: string) => state.additionalPrompt.set(prompt)}
           onTransformFunctionChange={handleTransformFunctionChange}
           onModelChange={handleModelChange}
-          llmLoadProgress={state.llmLoadProgress.value}
+          llmLoadProgress={llm.progress || 0}
           llmInitializing={llm.initializing}
           // Pass API key and LAN URL setters for remote LLMs
           setApiKey={apiKey.set}

@@ -1,4 +1,4 @@
-import { getMutableState, getState, NO_PROXY, useHookstate } from '@ir-engine/hyperflux'
+import { getMutableState, getState, NO_PROXY, useHookstate, useMutableState } from '@ir-engine/hyperflux'
 import React, { useEffect } from 'react'
 import Tabs from '../components/Tabs'
 import { ToolCard } from '../components/ToolCard'
@@ -30,8 +30,9 @@ export const PipelineView: React.FC = () => {
     { url: '', data: null, loading: false, errorMessage: null, schema: null, hash: null }
   ])
   // Output schema selection
-  const visualizationType = useHookstate('') // todo put in search params once we have multiple
-  const targetGraph = getState(TargetRegistry)[visualizationType.get()]
+  const defaultGraphType = Object.keys(getState(TargetRegistry))[0] || ''
+  const visualizationType = useHookstate(defaultGraphType) // todo put in search params once we have multiple
+  const targetGraph = useMutableState(TargetRegistry)[visualizationType.value].get(NO_PROXY)
   const targetSchema = targetGraph?.value
 
   // On mount, initialize from search params if present

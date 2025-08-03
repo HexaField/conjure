@@ -43,6 +43,8 @@ export interface LLMModule {
   initializing: boolean
   /** Get information about the loaded model */
   getModelInfo: () => { modelId: string }
+  /** Progress of the LLM loading (0 to 1) */
+  progress: number
 }
 
 /**
@@ -65,8 +67,6 @@ export interface CodingModel {
 export interface LLMInitOptions {
   /** Model ID to load (defaults to Llama-3.2-3B-Instruct-q4f32_1-MLC) */
   modelId?: string
-  /** Custom progress callback for model loading */
-  onProgress?: (progress: { text: string; progress?: number }) => void
 }
 
 /**
@@ -158,16 +158,13 @@ export const CODING_MODELS: CodingModel[] = [
 /**
  * Initialize the LLM engine with a specific model
  */
-async function initializeEngine(
-  modelId: string = 'Llama-3.2-3B-Instruct-q4f32_1-MLC',
-  onProgress?: (progress: { text: string; progress?: number }) => void
-): Promise<MLCEngineInterface> {
+async function initializeEngine(modelId: string = 'Llama-3.2-3B-Instruct-q4f32_1-MLC'): Promise<MLCEngineInterface> {
   try {
     console.log(`Initializing LLM engine with model: ${modelId}`)
     return await CreateMLCEngine(modelId, {
       initProgressCallback: (report) => {
         console.log(`Loading progress: ${report.text}`)
-        onProgress?.(report)
+        llm.progress.set(report.progress ?? 0)
       }
     })
   } catch (error) {
@@ -393,16 +390,14 @@ async function callRemoteLLM<T = unknown>(
 const llm = hookstate({
   engine: null as null | MLCEngineInterface,
   initializing: false,
+  progress: 0,
   currentModelId: null as string | null
 })
 
 /**
  * Reload the LLM with a new model
  */
-export async function reloadLLM(
-  modelId: string,
-  onProgress?: (progress: { text: string; progress?: number }) => void
-): Promise<void> {
+export async function reloadLLM(modelId: string): Promise<void> {
   if (llm.initializing.value) {
     throw new Error('LLM is already initializing')
   }
@@ -411,7 +406,7 @@ export async function reloadLLM(
   llm.engine.set(null)
 
   try {
-    const newEngine = await initializeEngine(modelId, onProgress)
+    const newEngine = await initializeEngine(modelId)
     llm.engine.set(newEngine)
     llm.currentModelId.set(modelId)
   } finally {
@@ -423,8 +418,9 @@ export async function reloadLLM(
  * Main initialization function that returns the LLM module interface
  */
 export function useLLM(options: LLMInitOptions & { apiKey?: string; ollamaUrl?: string } = {}): LLMModule {
-  const { modelId, onProgress, apiKey, ollamaUrl } = options
+  const { modelId, apiKey, ollamaUrl } = options
   const ready = !!useHookstate(llm.engine).value
+  const progress = useHookstate(llm.progress).value
   const initializing = useHookstate(llm.initializing).value
   const selectedModel = CODING_MODELS.find((m) => m.id === modelId)
 
@@ -432,7 +428,7 @@ export function useLLM(options: LLMInitOptions & { apiKey?: string; ollamaUrl?: 
     if (!selectedModel || selectedModel.provider !== 'mlc') return
     if (llm.initializing.value || llm.engine.value) return
     llm.initializing.set(true)
-    initializeEngine(modelId, onProgress)
+    initializeEngine(modelId)
       .then((llmInstance) => {
         llm.engine.set(llmInstance)
         llm.currentModelId.set(modelId || 'Llama-3.2-3B-Instruct-q4f32_1-MLC')
@@ -442,7 +438,7 @@ export function useLLM(options: LLMInitOptions & { apiKey?: string; ollamaUrl?: 
         console.error('Failed to initialize LLM:', error)
         llm.initializing.set(false)
       })
-  }, [modelId, onProgress])
+  }, [modelId])
 
   return {
     call: (options: LLMCallOptions) => {
@@ -463,6 +459,7 @@ export function useLLM(options: LLMInitOptions & { apiKey?: string; ollamaUrl?: 
     initializing: selectedModel?.provider === 'mlc' ? initializing : false,
     getModelInfo: () => ({
       modelId: llm.currentModelId.value || modelId || 'Llama-3.2-3B-Instruct-q4f32_1-MLC'
-    })
+    }),
+    progress
   }
 }

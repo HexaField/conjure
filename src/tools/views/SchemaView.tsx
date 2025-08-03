@@ -5,6 +5,11 @@ import { SchemaRegistry, SchemaType } from '../registries/SchemaRegistry'
 
 const SchemaView: React.FC = () => {
   const schemas = Object.values(useMutableState(SchemaRegistry).schemas.value) as SchemaType[]
+
+  const handleForgetSchema = (hash: string) => {
+    SchemaRegistry.forget(hash)
+  }
+
   return (
     <div className="rounded-lg bg-white p-6 shadow-md">
       <h2 className="mb-4 text-xl font-semibold">Schemas</h2>
@@ -15,7 +20,7 @@ const SchemaView: React.FC = () => {
         ) : (
           <ul className="space-y-2">
             {schemas.map((schema) => (
-              <SchemaCard key={schema.hash} schema={schema} />
+              <SchemaCard key={schema.hash} schema={schema} onForget={handleForgetSchema} />
             ))}
           </ul>
         )}
