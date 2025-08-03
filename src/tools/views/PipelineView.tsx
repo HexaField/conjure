@@ -37,27 +37,12 @@ interface ShareLinkProps {
   inputs: readonly InputSource[]
   graphType: string
   isVisible: boolean
+  createShareConfig: () => SharedConfig
 }
 
 // Share Link Component
-function ShareLinkComponent({ inputs, graphType, isVisible }: ShareLinkProps): JSX.Element | null {
+function ShareLinkComponent({ inputs, graphType, isVisible, createShareConfig }: ShareLinkProps): JSX.Element | null {
   const shareMessage = useHookstate<string | null>(null)
-
-  // Encode configuration for sharing
-  const createShareConfig = (): SharedConfig => {
-    // Get current tools and target schemas from registries
-    const currentTools = getState(ToolRegistry).tools
-    const currentTargetSchemas = getState(TargetRegistry)
-
-    const config: SharedConfig = {
-      inputs: inputs.map((input) => ({ url: input.url })),
-      graphType,
-      autoRun: true,
-      tools: currentTools,
-      targetSchemas: currentTargetSchemas
-    }
-    return config
-  }
 
   // Generate share file and download it
   const createShareFile = async () => {
@@ -125,6 +110,22 @@ function PipelineUseView(): JSX.Element {
   // Load shared configuration from file
   const loadShareConfig = (config: SharedConfig) => {
     try {
+      // Restore tools from the shared config
+      if (config.tools) {
+        const currentTools = getMutableState(ToolRegistry).tools
+        Object.entries(config.tools).forEach(([hash, tool]) => {
+          currentTools.merge({ [hash]: tool })
+        })
+      }
+
+      // Restore target schemas from the shared config
+      if (config.targetSchemas) {
+        const currentTargetRegistry = getMutableState(TargetRegistry)
+        Object.entries(config.targetSchemas).forEach(([key, schema]) => {
+          currentTargetRegistry.merge({ [key]: schema })
+        })
+      }
+
       // Set inputs from shared config
       const arr = config.inputs.map((input) => ({
         url: input.url,
@@ -325,6 +326,30 @@ function PipelineUseView(): JSX.Element {
     }
   }
 
+  // Create optimized share configuration with only necessary tools and schemas
+  const createShareConfig = (): SharedConfig => {
+    // Only include tools that are needed for the current inputs and output
+    const necessaryTools: Record<string, Tool> = {}
+    matchingTools.forEach((tool) => {
+      necessaryTools[tool.hash] = tool
+    })
+
+    // Only include the target schema for the selected graph type
+    const necessaryTargetSchemas: Record<string, any> = {}
+    if (targetGraph) {
+      necessaryTargetSchemas[visualizationType.get()] = targetGraph
+    }
+
+    const config: SharedConfig = {
+      inputs: inputs.get(NO_PROXY).map((input) => ({ url: input.url })),
+      graphType: visualizationType.get(),
+      autoRun: true,
+      tools: necessaryTools,
+      targetSchemas: necessaryTargetSchemas
+    }
+    return config
+  }
+
   return (
     <>
       <div className="mb-6">
@@ -413,6 +438,7 @@ function PipelineUseView(): JSX.Element {
         inputs={inputs.get(NO_PROXY)}
         graphType={visualizationType.get()}
         isVisible={!!allInputsHaveTool}
+        createShareConfig={createShareConfig}
       />
     </>
   )
