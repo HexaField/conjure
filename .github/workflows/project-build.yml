@@ -84,7 +84,7 @@ jobs:
         run: npm config set '//npm.pkg.github.com/:_authToken' "${NPM_TOKEN}"
         env:
           NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm install --loglevel notice --legacy-peer-deps
+      - run: npm install --loglevel notice
       - name: cache for next steps
         uses: actions/cache@v3
         with:
@@ -109,7 +109,7 @@ jobs:
         with:
           node-version: 22.x
       - run: mkdir -p ./packages/projects/projects/enchantmentengine && cp -r ./packages/projects/default-project ./packages/projects/projects/enchantmentengine/default-project
-      - run: npm install --loglevel notice --legacy-peer-deps
+      - run: npm install --loglevel notice
       - run: npx lerna run --scope '@${{ needs.secrets-gate.outputs.repo }}' lint
       - run: npx lerna run --scope '@${{ needs.secrets-gate.outputs.repo }}' check-errors
         timeout-minutes: 20
