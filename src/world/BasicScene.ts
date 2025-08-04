@@ -20,7 +20,7 @@ const createSceneGLTF = (): GLTF.IGLTF => ({
     {
       name: 'Settings',
       extensions: {
-        EE_uuid: '0d5a20e1-abe2-455e-9963-d5e1e19fca19',
+        EE_uuid: { entityID: '0d5a20e1-abe2-455e-9963-d5e1e19fca19' },
         EE_fog: {
           type: 'linear',
           color: '#FFFFFF',
@@ -44,7 +44,7 @@ const createSceneGLTF = (): GLTF.IGLTF => ({
       matrix: [100, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 100, 0, 0, 0, 0, 1],
       name: 'Rigidbody',
       extensions: {
-        EE_uuid: '685c48da-e2a0-4a9a-af7c-c5a3c187c99a',
+        EE_uuid: { entityID: '685c48da-e2a0-4a9a-af7c-c5a3c187c99a' },
         EE_rigidbody: {
           type: 'fixed'
         },
@@ -57,8 +57,8 @@ const createSceneGLTF = (): GLTF.IGLTF => ({
       matrix: [100, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 100, 0, 0, 0, 0, 1],
       name: 'Ground',
       extensions: {
-        EE_uuid: '60a01f0b-52ce-4c14-9fcf-7f23aa459c71',
-        EE_visible: true,
+        EE_uuid: { entityID: '60a01f0b-52ce-4c14-9fcf-7f23aa459c71' },
+        EE_visible: {},
         EE_shadow: {
           cast: true,
           receive: true
@@ -76,8 +76,8 @@ const createSceneGLTF = (): GLTF.IGLTF => ({
     {
       name: 'hemisphere light',
       extensions: {
-        EE_uuid: 'f77dc4c6-c9a6-433d-8102-4a9a8e1c0ce9',
-        EE_visible: true,
+        EE_uuid: { entityID: 'f77dc4c6-c9a6-433d-8102-4a9a8e1c0ce9' },
+        EE_visible: {},
         EE_hemisphere_light: {
           skyColor: 16777215,
           groundColor: 16777215,
@@ -92,16 +92,16 @@ const createSceneGLTF = (): GLTF.IGLTF => ({
       ],
       name: 'directional light',
       extensions: {
-        EE_uuid: 'cb045cfd-8daf-4a2b-b764-35625be54a11',
+        EE_uuid: { entityID: 'cb045cfd-8daf-4a2b-b764-35625be54a11' },
         EE_directional_light: {
           color: 16777215,
-          intensity: 1,
-          cameraFar: 50,
+          intensity: 4,
           castShadow: true,
           shadowBias: -0.00001,
-          shadowRadius: 1
+          shadowRadius: 1,
+          cameraFar: 50
         },
-        EE_visible: true
+        EE_visible: {}
       }
     }
   ],
