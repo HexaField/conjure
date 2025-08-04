@@ -22,6 +22,11 @@ import { AudioState } from '@ir-engine/engine/src/audio/AudioState'
 import NeighbourhoodBubbles from './world/NeighbourhoodBubbles'
 import './world/NeighbourhoodWorldSystem'
 
+import { API } from '@ir-engine/common/src/API'
+import { createAd4mAPIAdapter } from './ad4m/createAd4mAPIAdapter'
+
+API.instance = createAd4mAPIAdapter()
+
 //@ts-ignore
 const baseURL = import.meta.env.BASE_URL
 

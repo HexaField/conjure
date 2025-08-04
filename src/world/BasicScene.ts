@@ -117,7 +117,7 @@ export const useBasicScene = (sceneID: string) => {
 
     const gltf = createSceneGLTF()
 
-    const sceneURL = `/${sceneID}.gltf`
+    const sceneURL = `${sceneID}.gltf`
 
     Cache.enabled = true
     Cache.add(sceneURL, gltf)

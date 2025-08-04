@@ -19,11 +19,6 @@ globalThis.process = { env: { ...(import.meta as any).env, APP_ENV: (import.meta
 import '@ir-engine/common/src/config'
 createHyperStore()
 
-// import { API } from '@ir-engine/common/src/API'
-// import { createAd4mAPIAdapter } from './ad4m/createAd4mAPIAdapter'
-
-// API.instance = createAd4mAPIAdapter()
-
 const CustomLocationPage = lazy(() => import('./CustomLocationPage'))
 const LLMGrapher = lazy(() => import('./tools/GraphPage'))
 
