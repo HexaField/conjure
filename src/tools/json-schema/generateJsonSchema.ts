@@ -1,50 +1,14 @@
-export interface JSONSchema {
-  type: string
-  properties?: { [key: string]: JSONSchema }
-  items?: JSONSchema
-  optional?: boolean
-  format?: string
-  default?: any
-}
-
-export type JSONPathPartial = string | number | boolean
-
-export interface JSONMappingSchema {
-  type: string
-  properties?: { [key: string]: JSONMappingSchema }
-  value?: JSONPathPartial
-  items?: JSONMappingSchema
-  optional?: boolean
-  format?: string
-}
-
-export type JSONSchemaToType<T extends JSONSchema> = T extends { type: 'string' }
-  ? string
-  : T extends { type: 'number' }
-  ? number
-  : T extends { type: 'integer' }
-  ? number
-  : T extends { type: 'boolean' }
-  ? boolean
-  : T extends { type: 'array'; items: infer Item }
-  ? Item extends JSONSchema
-    ? JSONSchemaToType<Item>[]
-    : unknown[]
-  : T extends { type: 'object'; properties: infer Props }
-  ? {
-      [K in keyof Props]: Props[K] extends JSONSchema ? JSONSchemaToType<Props[K]> : unknown
-    }
-  : unknown
+import type { JSONSchemaType } from './JSONSchema'
 
 /**
  * Recursively infers a JSON Schema for a given value.
  * @param value - The value to inspect.
  * @returns A JSONSchema object compliant with the JSON Schema specification.
  */
-function inferJsonSchemaForValue(value: any): JSONSchema {
+function inferJsonSchemaForValue(value: any): JSONSchemaType<any> {
   if (value === null || value === undefined) {
     // When the value is null or undefined, we return a schema that accepts null.
-    return { type: 'null' }
+    return { type: 'null', nullable: true }
   }
   if (typeof value === 'number') {
     return { type: 'number' }
@@ -68,15 +32,15 @@ function inferJsonSchemaForValue(value: any): JSONSchema {
       return { type: 'array', items: inferJsonSchemaForValue(sample) }
     } else {
       // If no sample is found, allow any items.
-      return { type: 'array', items: {} as JSONSchema }
+      return { type: 'array', items: {} as JSONSchemaType<any> }
     }
   }
   if (typeof value === 'object') {
-    const properties: { [key: string]: JSONSchema } = {}
+    const properties: { [key: string]: JSONSchemaType<any> } = {}
     Object.keys(value).forEach((key) => {
       properties[key] = inferJsonSchemaForValue(value[key])
     })
-    return { type: 'object', properties }
+    return { type: 'object', properties } as JSONSchemaType<any>
   }
   // Fallback: return string type.
   return { type: 'string' }
@@ -89,7 +53,7 @@ function inferJsonSchemaForValue(value: any): JSONSchema {
  * @param rawData - The raw data fetched from the endpoint.
  * @returns A JSONSchema object representing the data structure.
  */
-export function generateJsonSchema(rawData: any): JSONSchema {
+export function generateJsonSchema(rawData: any): JSONSchemaType<any> {
   if (Array.isArray(rawData)) {
     // Infer the schema from the first item (assuming homogeneity).
     const itemSchema = inferJsonSchemaForValue(rawData[0])

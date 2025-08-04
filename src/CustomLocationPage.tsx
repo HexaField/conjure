@@ -10,8 +10,8 @@ import { MediaIconsBox } from '@ir-engine/client-core/src/components/MediaIconsB
 import { VideoWindows } from '@ir-engine/client-core/src/user/VideoWindows'
 import config from '@ir-engine/common/src/config'
 import { EngineState } from '@ir-engine/ecs'
-import { DomainConfigState } from '@ir-engine/engine/src/assets/state/DomainConfigState'
 import { MediaSettingsState } from '@ir-engine/engine/src/audio/MediaSettingsState'
+import { DomainConfigState } from '@ir-engine/spatial/src/resources/DomainConfigState'
 import React, { useEffect } from 'react'
 import { AgentState } from './ad4m/useADAM'
 import { NeighbourhoodNetworkState } from './ad4m/useNeighbourhoodNetwork'
@@ -21,6 +21,11 @@ import '@ir-engine/client-core/src/systems/AvatarUISystem'
 import { AudioState } from '@ir-engine/engine/src/audio/AudioState'
 import NeighbourhoodBubbles from './world/NeighbourhoodBubbles'
 import './world/NeighbourhoodWorldSystem'
+
+import { API } from '@ir-engine/common/src/API'
+import { createAd4mAPIAdapter } from './ad4m/createAd4mAPIAdapter'
+
+API.instance = createAd4mAPIAdapter()
 
 //@ts-ignore
 const baseURL = import.meta.env.BASE_URL

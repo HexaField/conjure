@@ -31,7 +31,7 @@ jobs:
       - name: Checkout Infinite Reality Engine
         uses: actions/checkout@v3
         with:
-          repository: ir-engine/ir-engine
+          repository: enchantmentengine/enchantmentengine
           ref: dev
       - name: Checkout Project
         uses: actions/checkout@v3
@@ -50,8 +50,8 @@ jobs:
             package-lock.json
           key: ${{ runner.os }}-branch-build-${{ hashFiles('**/package.json') }}
       - run: cp .env.local.default .env.local
-      - run: mkdir -p packages/projects/projects/ir-engine/default-project && cp -r packages/projects/default-project/. packages/projects/projects/ir-engine/default-project
-      - run: npm install --production=false --loglevel notice --legacy-peer-deps
+      - run: mkdir -p packages/projects/projects/enchantmentengine/default-project && cp -r packages/projects/default-project/. packages/projects/projects/enchantmentengine/default-project
+      - run: npm install --production=false --loglevel notice
       - run: cd './packages/projects/projects/${{ env.REPO_NAME }}' && npx cross-env STATIC_BUILD_HOST=${{ secrets.STATIC_BUILD_HOST }} npm run build
 
 
