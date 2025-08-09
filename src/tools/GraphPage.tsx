@@ -23,6 +23,7 @@ import ToolView from './views/ToolView'
 
 import Tabs from './components/Tabs'
 import './graph/forcegraph/ForceGraph'
+import './graph/dag/Dag'
 
 const tabs = [
   { label: 'Pipelines', value: 'pipeline' },
