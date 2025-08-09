@@ -10,6 +10,7 @@
     "cors": "ts-node --swc ./src/cors.ts",
     "build": "cross-env NODE_OPTIONS=--max_old_space_size=10240 vite build",
     "build:worker": "esbuild src/tools/graph/forcegraph/ForceGraphWorker.ts --bundle --format=esm --outfile=src/tools/graph/forcegraph/ForceGraphWorker.bundle.js --loader:.wasm=binary",
+    "build:dag-worker": "esbuild src/tools/graph/dag/DagWorker.ts --bundle --format=esm --outfile=src/tools/graph/dag/DagWorker.bundle.js --loader:.wasm=binary",
     "start": "ts-node server.js",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "format-scss": "stylelint \"**/*.scss\" --fix",
