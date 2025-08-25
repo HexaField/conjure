@@ -1,4 +1,3 @@
-
 import type { ProjectConfigInterface } from '@ir-engine/projects/ProjectConfigInterface'
 
 const config: ProjectConfigInterface = {

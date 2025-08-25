@@ -1,7 +1,8 @@
 import { Literal, NeighbourhoodProxy, PerspectiveExpression } from '@coasys/ad4m'
 import { PUBLIC_STUN_SERVERS } from '@ir-engine/common/src/constants/STUNServers'
-import { Engine } from '@ir-engine/ecs'
+import { EngineState } from '@ir-engine/ecs'
 import {
+  HyperFlux,
   MessageTypes,
   NetworkActions,
   NetworkID,
