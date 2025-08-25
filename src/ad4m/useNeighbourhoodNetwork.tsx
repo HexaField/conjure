@@ -104,7 +104,7 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
             predicate: PEER_SIGNAL,
             target: Literal.from({
               networkID,
-              fromPeerID: Engine.instance.store.peerID,
+              fromPeerID: HyperFlux.store.peerID,
               targetPeerID: toPeerID,
               message
             }).toUrl()
@@ -126,8 +126,8 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
       NetworkActions.peerJoined({
         $network: network.id,
         $topic: network.topic,
-        $to: Engine.instance.store.peerID,
-        peerID: Engine.instance.store.peerID,
+        $to: HyperFlux.store.peerID,
+        peerID: HyperFlux.store.peerID,
         peerIndex: myPeerIndex,
         userID: getState(EngineState).userID
       })
@@ -143,7 +143,7 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
             predicate: IS_ANYONE_HERE,
             target: Literal.from({
               networkID,
-              peerID: Engine.instance.store.peerID,
+              peerID: HyperFlux.store.peerID,
               peerIndex: myPeerIndex
             }).toUrl()
           }
@@ -169,7 +169,7 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
               predicate: I_AM_HERE,
               target: Literal.from({
                 networkID,
-                peerID: Engine.instance.store.peerID,
+                peerID: HyperFlux.store.peerID,
                 peerIndex: myPeerIndex
               }).toUrl()
             }
@@ -194,8 +194,8 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
       /** @todo use links properly to have proper type safety */
       // ignore messages from self peer, still allowing other peers for my agent
       if (
-        ((data as any).peerID && (data as any).peerID === Engine.instance.store.peerID) ||
-        ((data as any).fromPeerID && (data as any).fromPeerID === Engine.instance.store.peerID) ||
+        ((data as any).peerID && (data as any).peerID === HyperFlux.store.peerID) ||
+        ((data as any).fromPeerID && (data as any).fromPeerID === HyperFlux.store.peerID) ||
         (!(data as any).peerID && !(data as any).fromPeerID)
       )
         return
@@ -234,7 +234,7 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
           console.warn('Received message from an agent about a peer who does not control it!')
 
         // need to ignore messages from self
-        if (data.targetPeerID !== Engine.instance.store.peerID) return
+        if (data.targetPeerID !== HyperFlux.store.peerID) return
         if (data.networkID !== network.id) return
 
         WebRTCTransportFunctions.onMessage(sendMessage, data.networkID, data.fromPeerID, data.message)
@@ -257,8 +257,8 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
         NetworkActions.peerLeft({
           $network: network.id,
           $topic: network.topic,
-          $to: Engine.instance.store.peerID,
-          peerID: Engine.instance.store.peerID,
+          $to: HyperFlux.store.peerID,
+          peerID: HyperFlux.store.peerID,
           userID: getState(EngineState).userID
         })
       )
