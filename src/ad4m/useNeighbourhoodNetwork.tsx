@@ -129,7 +129,7 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
         $to: Engine.instance.store.peerID,
         peerID: Engine.instance.store.peerID,
         peerIndex: myPeerIndex,
-        userID: Engine.instance.userID
+        userID: getState(EngineState).userID
       })
     )
 
@@ -259,7 +259,7 @@ const ConnectionReactor = (props: { sharedUrl: string; topic: Topic }) => {
           $topic: network.topic,
           $to: Engine.instance.store.peerID,
           peerID: Engine.instance.store.peerID,
-          userID: Engine.instance.userID
+          userID: getState(EngineState).userID
         })
       )
       leaveNetwork(network)
