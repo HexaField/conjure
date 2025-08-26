@@ -28,7 +28,7 @@ jobs:
       - name: lowercase github.repository
         run: |
           echo "REPO_NAME=`echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]'`" >>${GITHUB_ENV}
-      - name: Checkout Infinite Reality Engine
+      - name: Checkout Enchantment Engine
         uses: actions/checkout@v3
         with:
           repository: enchantmentengine/enchantmentengine

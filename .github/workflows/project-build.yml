@@ -56,7 +56,7 @@ jobs:
             echo "checkout_branch=dev" >> $GITHUB_ENV
           fi
 
-      - name: Checkout Infinite Reality Engine
+      - name: Checkout Enchantment Engine
         uses: actions/checkout@v3
         with:
           repository: enchantmentengine/enchantmentengine
