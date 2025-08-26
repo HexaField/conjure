@@ -7,13 +7,15 @@ import { JsonDisplay } from './JsonDisplay'
 interface TransformFunctionSectionProps {
   selectedTargetSchema: JSONSchemaType<any> | null
   inputSchema: JSONSchemaType<any> | null
-  transformFunction: string | null
-  transformFunctionHash: string | null
+  transformer: string | object | null
+  transformerType: 'json' | 'javascript'
+  transformerHash: string | null
   additionalPrompt: string
   selectedModel: string
   onCreateFunction: () => void
   onAdditionalPromptChange: (prompt: string) => void
-  onTransformFunctionChange: (newFunction: string) => void
+  onSwitchTransformType: (type: 'json' | 'javascript') => void
+  onTransformerChange: (newFunction: string) => void
   onModelChange: (modelId: string) => void
   llmLoadProgress: number
   llmInitializing: boolean
@@ -26,13 +28,15 @@ interface TransformFunctionSectionProps {
 export function TransformFunctionSection({
   selectedTargetSchema,
   inputSchema,
-  transformFunction,
-  transformFunctionHash,
+  transformer,
+  transformerType,
+  transformerHash,
   additionalPrompt,
   selectedModel,
   onCreateFunction,
   onAdditionalPromptChange,
-  onTransformFunctionChange,
+  onSwitchTransformType,
+  onTransformerChange,
   onModelChange,
   llmLoadProgress,
   llmInitializing,
@@ -69,6 +73,21 @@ export function TransformFunctionSection({
             {llmInitializing ? 'Switching model...' : `Loading LLM: ${Math.round(llmLoadProgress * 100)}%`}
           </div>
         )}
+      </div>
+      {/* Transformer Type Selection */}
+      <div className="mb-4">
+        <label htmlFor="transformerType" className="mb-2 block text-sm font-medium text-gray-700">
+          Transformer Type
+        </label>
+        <select
+          id="transformerType"
+          value={transformerType}
+          onChange={(e) => onSwitchTransformType(e.target.value as 'json' | 'javascript')}
+          className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="json">JSON</option>
+          <option value="javascript">JavaScript</option>
+        </select>
       </div>
 
       {/* Model Selection */}
@@ -191,26 +210,26 @@ export function TransformFunctionSection({
       </div>
       <JsonDisplay
         title="Transform Function"
-        data={transformFunction}
-        format="javascript"
+        data={transformer}
+        format={typeof transformer === 'string' ? 'javascript' : 'json'}
         copyButtonText="Copy Function"
         editable={true}
-        onDataChange={onTransformFunctionChange}
+        onDataChange={onTransformerChange}
       />
 
       {/* Function Hash Display */}
-      {transformFunctionHash && (
+      {transformerHash && (
         <div className="mt-4 rounded-lg border bg-gray-50 p-4">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="mb-1 text-sm font-medium text-gray-700">Function Hash (SHA-256)</h4>
               <p className="mb-2 text-xs text-gray-500">Implementation-agnostic hash for semantic comparison</p>
               <code className="break-all rounded border bg-white px-2 py-1 font-mono text-xs text-gray-800">
-                {transformFunctionHash}
+                {transformerHash}
               </code>
             </div>
             <button
-              onClick={() => navigator.clipboard.writeText(transformFunctionHash)}
+              onClick={() => navigator.clipboard.writeText(transformerHash)}
               className="ml-4 rounded bg-gray-200 px-3 py-1 text-xs text-gray-700 transition-colors hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
               title="Copy hash to clipboard"
             >

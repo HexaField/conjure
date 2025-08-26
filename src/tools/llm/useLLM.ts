@@ -144,11 +144,11 @@ export const CODING_MODELS: CodingModel[] = [
     apiKeyEnvVar: 'GOOGLE_API_KEY'
   },
   {
-    id: 'ollama-deepseek-coder',
-    name: 'Ollama Deepseek Coder (LAN)',
-    description: 'Deepseek Coder via Ollama running on your LAN',
+    id: 'gpt-oss:20b',
+    name: 'Ollama gpt-oss:20b (LAN)',
+    description: 'gpt-oss:20b via Ollama running on your LAN',
     size: 'LAN',
-    parameters: 'Deepseek Coder',
+    parameters: 'gpt-oss:20b',
     provider: 'ollama',
     apiUrl: 'http://localhost:11434/api/chat', // Default, user can override
     apiKeyEnvVar: ''
@@ -336,7 +336,7 @@ async function callRemoteLLM<T = unknown>(
     }
   } else if (model.provider === 'ollama') {
     body = {
-      model: 'deepseek-coder',
+      model: model.id,
       messages: [{ role: 'user', content: prompt }],
       stream: false
     }

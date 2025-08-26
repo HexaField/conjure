@@ -20,7 +20,7 @@ import '@ir-engine/common/src/config'
 createHyperStore()
 
 const CustomLocationPage = lazy(() => import('./CustomLocationPage'))
-const LLMGrapher = lazy(() => import('./tools/GraphPage'))
+const GraphPage = lazy(() => import('./tools/GraphPage'))
 
 const App = () => {
   return (
@@ -29,10 +29,10 @@ const App = () => {
         <Routes>
           <Route
             key="default"
-            path="/llm"
+            path="/tools"
             element={
               <Suspense>
-                <LLMGrapher />
+                <GraphPage />
               </Suspense>
             }
           />
