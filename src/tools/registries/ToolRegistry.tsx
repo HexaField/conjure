@@ -1,3 +1,4 @@
+import transform from '@hexafield/jsonpath-object-transform'
 import {
   defineState,
   getMutableState,
@@ -19,16 +20,16 @@ export type Stringify<Signature = unknown> = string & {
 
 export type FunctionHash = string
 
-export type Tool<Input = unknown, Output = unknown> = {
+export type Tool<Input = unknown, Output = unknown, TransformSchema = object | undefined> = {
   hash: SHA256Hash
   label: string
   description: string
   input: JSONSchemaType<Input>
   output: JSONSchemaType<Output>
-  transformation: Stringify<(input: Input) => Promise<Output>>
+  transformation: Stringify<(input: Input) => Promise<Output>> | TransformSchema
   inputHash: SHA256Hash
   outputHash: SHA256Hash
-  transformationHash: FunctionHash
+  transformationHash: SHA256Hash | FunctionHash
 }
 
 export const ToolRegistry = defineState({
@@ -40,7 +41,10 @@ export const ToolRegistry = defineState({
 
     const inputHash = contentHash(input) as SHA256Hash
     const outputHash = contentHash(output) as SHA256Hash
-    const transformationHash = (await hashFunctionSource(transformation)) as FunctionHash
+    const transformationHash =
+      typeof transformation === 'string'
+        ? ((await hashFunctionSource(transformation)) as FunctionHash)
+        : (contentHash(transformation) as SHA256Hash)
     const hash = contentHash({
       input: inputHash,
       output: outputHash,
@@ -53,7 +57,7 @@ export const ToolRegistry = defineState({
       description,
       input,
       output,
-      transformation: transformation as Stringify<(input: unknown) => Promise<unknown>>,
+      transformation,
       inputHash,
       outputHash,
       transformationHash
@@ -74,6 +78,11 @@ export const ToolRegistry = defineState({
       throw new Error(`Tool with hash ${hash} not found`)
     }
     const { transformation } = tool
+
+    if (typeof transformation === 'object') {
+      return transform(input, transformation) as Output
+    }
+
     if (typeof transformation !== 'string') {
       throw new Error(`Tool with hash ${hash} has invalid transformation function`)
     }
