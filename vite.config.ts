@@ -5,7 +5,6 @@ import dotenv from 'dotenv'
 import fs from 'fs'
 import path from 'path'
 import { UserConfig, defineConfig } from 'vite'
-import viteCompression from 'vite-plugin-compression2'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import packageJson from './package.json'
 
@@ -91,17 +90,17 @@ export default defineConfig(async ({ command, mode }) => {
           NodeGlobalsPolyfillPlugin({
             buffer: true,
             process: true
-          })
+          }) as any
         ]
       }
     },
     plugins: [
       nodePolyfills(),
-      viteCompression({
-        include: /\.(js|mjs|json|css)$/i,
-        algorithm: 'brotliCompress',
-        deleteOriginalAssets: true
-      }),
+      // viteCompression({
+      //   include: /\.(js|mjs|json|css)$/i,
+      //   algorithm: 'brotliCompress',
+      //   deleteOriginalAssets: true
+      // }),
       viteCommonjs({
         include: ['use-sync-external-store']
       })
