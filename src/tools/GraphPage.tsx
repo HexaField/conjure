@@ -74,7 +74,7 @@ function ToolUI() {
   )
 }
 
-export default function Template() {
+export default function GraphPage() {
   const [ref, setRef] = useReactiveRef()
 
   useSpatialEngine()

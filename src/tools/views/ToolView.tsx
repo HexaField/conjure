@@ -1,6 +1,7 @@
 import { hookstate, useHookstate } from '@hookstate/core'
 import { useEffect } from 'react'
 
+import transform from '@hexafield/jsonpath-object-transform'
 import { getState, NO_PROXY } from '@ir-engine/hyperflux'
 import { Button } from '@ir-engine/ui'
 import React from 'react'
@@ -10,7 +11,9 @@ import Tabs from '../components/Tabs'
 import { ToolCard } from '../components/ToolCard'
 import { TransformFunctionSection } from '../components/TransformFunctionSection'
 import type { JSONSchemaType } from '../json-schema/JSONSchema'
+import { contentHash } from '../json-schema/contentHash'
 import { createJSONTransformFunctionPrompt } from '../json-schema/createJSONTransformFunctionPrompt'
+import { createJSONTransformSchemaPrompt } from '../json-schema/createJSONTransformSchemaPrompt'
 import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { CODING_MODELS, reloadLLM, useLLM } from '../llm/useLLM'
 import { SchemaRegistry, SHA256Hash } from '../registries/SchemaRegistry'
@@ -51,8 +54,9 @@ function ToolCreateView(): JSX.Element {
     loading: false,
     errorMessage: null as string | null,
     selectedModel: getStoredModel(),
-    transformFunction: null as string | null,
-    transformFunctionHash: null as string | null,
+    transformer: '' as string | object,
+    transformerType: 'json' as 'json' | 'javascript',
+    transformerHash: null as string | null,
     outputData: null as object | null,
     additionalPrompt: '',
     toolLabel: 'New Tool', // Added for tool label entry
@@ -181,67 +185,96 @@ function ToolCreateView(): JSX.Element {
     const inputSchema = state.get(NO_PROXY).inputSchemaSelector.schema as JSONSchemaType<any>
 
     llm
-      .call({
-        prompt: createJSONTransformFunctionPrompt({
-          inputSchema,
-          outputSchema: selectedTargetSchema,
-          additionalInstructions: state.additionalPrompt.get()
-        }),
-        output: 'javascript'
-      })
+      .call(
+        state.transformerType.value === 'javascript'
+          ? {
+              prompt: createJSONTransformFunctionPrompt({
+                inputSchema,
+                outputSchema: selectedTargetSchema,
+                additionalInstructions: state.additionalPrompt.get()
+              }),
+              output: 'javascript'
+            }
+          : {
+              prompt: createJSONTransformSchemaPrompt({
+                inputSchema,
+                outputSchema: selectedTargetSchema,
+                additionalInstructions: state.additionalPrompt.get()
+              }),
+              output: 'json'
+            }
+      )
       .then(async (result) => {
         console.log(result)
 
-        //result tends to be in markdown script tags...
-        const cleanFunctionScript = result.rawResponse
-          .replace('```javascript', '')
-          .replace('```', '')
-          .replace('\\n', '\n')
-
-        state.transformFunction.set(cleanFunctionScript)
-
-        // Calculate and store the function hash
         try {
-          const hash = await hashFunctionSource(cleanFunctionScript)
-          state.transformFunctionHash.set(hash)
+          //result tends to be in markdown script tags...
+          const cleanResponse =
+            state.transformerType.value === 'javascript'
+              ? result.rawResponse.replace('```javascript', '').replace('```', '').replace('\\n', '\n')
+              : JSON.parse(result.rawResponse)
+
+          state.transformer.set(cleanResponse)
+
+          // Calculate and store the function hash
+          try {
+            const hash =
+              state.transformerType.value === 'javascript'
+                ? await hashFunctionSource(cleanResponse)
+                : contentHash(cleanResponse)
+            state.transformerHash.set(hash)
+          } catch (error) {
+            console.warn('Failed to hash function:', error)
+            state.transformerHash.set(null)
+          }
         } catch (error) {
-          console.warn('Failed to hash function:', error)
-          state.transformFunctionHash.set(null)
+          console.error('Error during transformation:', error)
+          state.errorMessage.set(error instanceof Error ? error.message : 'Transformation failed')
+          return
         }
       })
   }
 
   const onTransformClick = () => {
-    const cleanFunctionScript = state.transformFunction.get() as string
-    createDynamicWebworker(cleanFunctionScript).then((worker) => {
-      worker
-        .call(state.inputData.get(NO_PROXY)!)
-        .then((response) => {
-          state.outputData.set(response)
-          worker.terminate()
-        })
-        .catch((error) => {
-          console.error('Error during transformation:', error)
-          state.errorMessage.set(error instanceof Error ? error.message : 'Transformation failed')
-          worker.terminate()
-        })
-    })
+    const cleanFunctionScript = state.transformer.get() as string
+    if (state.transformerType.value === 'javascript') {
+      createDynamicWebworker(cleanFunctionScript).then((worker) => {
+        worker
+          .call(state.inputData.get(NO_PROXY)!)
+          .then((response) => {
+            state.outputData.set(response)
+            worker.terminate()
+          })
+          .catch((error) => {
+            console.error('Error during transformation:', error)
+            state.errorMessage.set(error instanceof Error ? error.message : 'Transformation failed')
+            worker.terminate()
+          })
+      })
+    } else {
+      try {
+        state.outputData.set(transform(state.inputData.get(NO_PROXY)!, state.transformer.get(NO_PROXY)))
+      } catch (error) {
+        console.error('Error during transformation:', error)
+        state.errorMessage.set(error instanceof Error ? error.message : 'Transformation failed')
+      }
+    }
   }
 
   const handleTransformFunctionChange = async (newFunction: string) => {
-    state.transformFunction.set(newFunction)
+    state.transformer.set(newFunction)
 
     // Recalculate hash when function is manually edited
     if (newFunction.trim()) {
       try {
         const hash = await hashFunctionSource(newFunction)
-        state.transformFunctionHash.set(hash)
+        state.transformerHash.set(hash)
       } catch (error) {
         console.warn('Failed to hash function:', error)
-        state.transformFunctionHash.set(null)
+        state.transformerHash.set(null)
       }
     } else {
-      state.transformFunctionHash.set(null)
+      state.transformerHash.set(null)
     }
   }
 
@@ -314,7 +347,7 @@ function ToolCreateView(): JSX.Element {
       description: state.toolDescription.get(),
       input: inputSchema as JSONSchemaType<unknown>,
       output: outputSchema as JSONSchemaType<unknown>,
-      transformation: state.transformFunction.get() as Stringify<(input: unknown) => Promise<unknown>>
+      transformation: state.transformer.get() as Stringify<(input: unknown) => Promise<unknown>>
     }).then((hash) => {
       // done - @todo add UI feedback
       console.log('Tool created successfully:', hash)
@@ -343,13 +376,15 @@ function ToolCreateView(): JSX.Element {
       <TransformFunctionSection
         selectedTargetSchema={state.outputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
         inputSchema={state.inputSchemaSelector.schema.get(NO_PROXY) as JSONSchemaType<any> | null}
-        transformFunction={state.transformFunction.get()}
-        transformFunctionHash={state.transformFunctionHash.get()}
+        transformer={state.transformer.get()}
+        transformerType={state.transformerType.get()}
+        transformerHash={state.transformerHash.get()}
         additionalPrompt={state.additionalPrompt.get()}
         selectedModel={state.selectedModel.get()}
         onCreateFunction={onCreateFunctionClick}
         onAdditionalPromptChange={(prompt: string) => state.additionalPrompt.set(prompt)}
-        onTransformFunctionChange={handleTransformFunctionChange}
+        onSwitchTransformType={(type: 'json' | 'javascript') => state.transformerType.set(type)}
+        onTransformerChange={handleTransformFunctionChange}
         onModelChange={handleModelChange}
         llmLoadProgress={llm.progress || 0}
         llmInitializing={llm.initializing}
@@ -361,7 +396,7 @@ function ToolCreateView(): JSX.Element {
       />
 
       <DataTransformSection
-        transformFunction={state.transformFunction.get()}
+        transformer={state.transformer.get()}
         outputData={state.outputData.get(NO_PROXY) as object | null}
         onTransform={onTransformClick}
         onOutputDataChange={handleOutputDataChange}
@@ -393,7 +428,7 @@ function ToolCreateView(): JSX.Element {
         disabled={
           !state.inputSchemaSelector.get().schema ||
           !state.outputSchemaSelector.get().schema ||
-          !state.transformFunction.value
+          !state.transformer.value
         }
         onClick={onCreateTool}
       >
