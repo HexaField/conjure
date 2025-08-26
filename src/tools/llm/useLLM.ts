@@ -74,22 +74,6 @@ export interface LLMInitOptions {
  */
 export const CODING_MODELS: CodingModel[] = [
   {
-    id: 'Qwen2.5-Coder-1.5B-Instruct-q4f32_1-MLC',
-    name: 'Qwen2.5 Coder 1.5B',
-    description: 'Fast and efficient coding model for quick tasks',
-    size: 'Small',
-    provider: 'mlc',
-    parameters: '1.5B'
-  },
-  {
-    id: 'Qwen2.5-Coder-7B-Instruct-q4f32_1-MLC',
-    name: 'Qwen2.5 Coder 7B',
-    description: 'Balanced performance and speed for most coding tasks',
-    size: 'Medium',
-    provider: 'mlc',
-    parameters: '7B'
-  },
-  {
     id: 'Hermes-3-Llama-3.1-8B-q4f32_1-MLC',
     name: 'Hermes 3 Llama 8B',
     description: 'Excellent instruction following and code reasoning',

@@ -54,7 +54,7 @@ function ToolCreateView(): JSX.Element {
     loading: false,
     errorMessage: null as string | null,
     selectedModel: getStoredModel(),
-    transformer: null as string | object | null,
+    transformer: '' as string | object,
     transformerType: 'json' as 'json' | 'javascript',
     transformerHash: null as string | null,
     outputData: null as object | null,
