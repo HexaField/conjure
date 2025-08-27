@@ -1,10 +1,12 @@
 import '@ir-engine/client/src/engine'
 
+import { Resizable } from 're-resizable'
 import React, { useEffect } from 'react'
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
 import { Vector3 } from 'three'
 
 import Debug from '@ir-engine/client-core/src/components/Debug'
+import { useDraggable } from '@ir-engine/client-core/src/hooks/useDraggable'
 import { createEntity, EntityTreeComponent, removeEntity, setComponent } from '@ir-engine/ecs'
 import { getMutableState, useHookstate, useMutableState, useReactiveRef } from '@ir-engine/hyperflux'
 import { AmbientLightComponent, ReferenceSpaceState, TransformComponent } from '@ir-engine/spatial'
@@ -22,8 +24,8 @@ import SchemaView from './views/SchemaView'
 import ToolView from './views/ToolView'
 
 import Tabs from './components/Tabs'
+
 import './graph/forcegraph/ForceGraph'
-import { Resizable } from 're-resizable'
 
 const tabs = [
   { label: 'Pipelines', value: 'pipeline' },
@@ -35,7 +37,7 @@ function ToolMenus(): JSX.Element {
   const tab = useHookstate('pipeline')
 
   return (
-    <div className="pointer-events-auto min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="pointer-events-auto bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Tabs tabs={tabs} onChange={tab.set} value={tab.value} />
       <div className="mx-auto max-w-4xl space-y-6">
         {tab.value === 'pipeline' && <PipelineView />}
@@ -52,46 +54,83 @@ function ToolUI() {
     const w = Number.parseInt(localStorage.getItem('toolUIWidth') || '')
     const h = Number.parseInt(localStorage.getItem('toolUIHeight') || '')
     return {
-      width: Number.isFinite(w) ? w : Math.min(window.innerWidth / 1.5, 1000),
-      height: Number.isFinite(h) ? h : window.innerHeight
+      width: Number.isFinite(w) ? w : Math.min(window.innerWidth * 0.6, 1000),
+      height: Number.isFinite(h) ? h : window.innerHeight * 0.8
     }
   })
-  return (
-    <div className="pointer-events-auto fixed left-2 top-2 z-[10]">
-      <div className="relative">
-        <Resizable
-          className="rounded-lg bg-white shadow-lg"
-          size={{ width: size.value.width, height: size.value.height }}
-          enable={{ right: true, bottom: true, bottomRight: true }}
-          minWidth={600}
-          minHeight={200}
-          onResizeStop={(_e, _dir, _ref, d) => {
-            const newWidth = size.value.width + d.width
-            const newHeight = size.value.height + d.height
-            size.set({ width: newWidth, height: newHeight })
-            localStorage.setItem('toolUIWidth', String(newWidth))
-            localStorage.setItem('toolUIHeight', String(newHeight))
-          }}
-          style={{ display: showMappingUI.value ? 'block' : 'none' }}
-       >
-          <div className="h-full w-full overflow-auto p-4">
-            <h2 className="mb-4 text-2xl font-semibold">Tool Menu</h2>
-            <ToolMenus />
-          </div>
-        </Resizable>
 
-        <Button
-          className="absolute p-4"
-          variant="tertiary"
-          style={{ top: '10px', left: showMappingUI.value ? `${size.value.width + 10}px` : '10px' }}
-          onClick={() => showMappingUI.set(!showMappingUI.value)}
-        >
-          {showMappingUI.value ? (
-            <HiChevronLeft className="text-theme-primary pointer-events-none place-self-center" />
-          ) : (
-            <HiChevronRight className="text-theme-primary pointer-events-none place-self-center" />
-          )}
-        </Button>
+  const startX = Number.parseInt(localStorage.getItem('toolUIPosX') || '')
+  const startY = Number.parseInt(localStorage.getItem('toolUIPosY') || '')
+
+  useDraggable({
+    targetId: 'toolui-container',
+    placerId: 'toolui-draggable-placer',
+    targetStartX: Number.isFinite(startX) ? startX : 8,
+    targetStartY: Number.isFinite(startY) ? startY : 8
+  })
+
+  // Persist position on mouseup
+  useEffect(() => {
+    const save = () => {
+      const target = document.getElementById('toolui-container') as HTMLElement | null
+      if (!target) return
+      localStorage.setItem('toolUIPosX', String(target.offsetLeft))
+      localStorage.setItem('toolUIPosY', String(target.offsetTop))
+    }
+    window.addEventListener('mouseup', save)
+    return () => window.removeEventListener('mouseup', save)
+  }, [])
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[50]">
+      <div id="toolui-container" className="pointer-events-auto absolute">
+        {!showMappingUI.value && (
+          <div className="h-full w-full overflow-auto rounded-lg bg-white p-4 shadow-lg">
+            <Button className="rounded-lg bg-white p-4" variant="tertiary" onClick={() => showMappingUI.set(true)}>
+              <HiChevronRight className="text-theme-primary pointer-events-none place-self-center" />
+            </Button>
+          </div>
+        )}
+        <div className="relative">
+          <Resizable
+            className="rounded-lg bg-white shadow-lg"
+            size={{ width: size.value.width, height: size.value.height }}
+            enable={{ right: true, bottom: true, bottomRight: true }}
+            minWidth={600}
+            minHeight={200}
+            onResizeStop={(_e, _dir, _ref, d) => {
+              const newWidth = size.value.width + d.width
+              const newHeight = size.value.height + d.height
+              size.set({ width: newWidth, height: newHeight })
+              localStorage.setItem('toolUIWidth', String(newWidth))
+              localStorage.setItem('toolUIHeight', String(newHeight))
+            }}
+            style={{ display: showMappingUI.value ? 'block' : 'none', position: 'relative' }}
+          >
+            <div className="h-full w-full overflow-auto p-4">
+              <div id="toolui-draggable-placer" className="mb-3 grid grid-cols-[auto,1fr,auto] items-center gap-0.5">
+                {showMappingUI.value && (
+                  <Button
+                    className="rounded-lg bg-white p-4"
+                    variant="tertiary"
+                    onClick={() => showMappingUI.set(false)}
+                  >
+                    <HiChevronLeft className="text-theme-primary pointer-events-none place-self-center" />
+                  </Button>
+                )}
+                <h2 className="text-center text-2xl font-semibold">Tool Menu</h2>
+                {showMappingUI.value && (
+                  <div className="pointer-events-none opacity-0">
+                    <Button className="rounded-lg bg-white p-4" variant="tertiary">
+                      <HiChevronLeft className="pointer-events-none place-self-center" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <ToolMenus />
+            </div>
+          </Resizable>
+        </div>
       </div>
     </div>
   )
