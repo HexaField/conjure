@@ -1,5 +1,6 @@
 import React from 'react'
 import { Tool } from '../registries/ToolRegistry'
+import { JsonDisplay } from './JsonDisplay'
 
 interface ToolCardProps {
   tool: Tool
@@ -14,8 +15,15 @@ export const ToolCard = ({ tool, onUse }: ToolCardProps) => {
         <span className="text-xs text-gray-500">{tool.hash.slice(0, 8)}...</span>
       </div>
       <div className="text-xs text-gray-600">{tool.description}</div>
+      <JsonDisplay
+        title="Transform Function"
+        data={tool.transformation}
+        format={typeof tool.transformation === 'string' ? 'javascript' : 'json'}
+        copyButtonText="Copy Function"
+      />
       <div className="mt-1 text-xs text-gray-400">
-        Input hash: {tool.inputHash.slice(0, 8)}... | Output hash: {tool.outputHash.slice(0, 8)}...
+        Input hash: {tool.inputHash.slice(0, 8)}... | Output hash: {tool.outputHash.slice(0, 8)}... | Transformer hash:{' '}
+        {tool.transformationHash.slice(0, 8)}...
       </div>
       {onUse && (
         <button

@@ -20,8 +20,8 @@
     "localstart": "cross-env APP_ENV=production VITE_LOCAL_BUILD=true npm run start"
   },
   "dependencies": {
-    "@coasys/ad4m": "0.10.1-release-candidate-1",
-    "@coasys/ad4m-connect": "0.10.1-release-candidate-1",
+    "@coasys/ad4m": "^0.10.1-release-candidate-4",
+    "@coasys/ad4m-connect": "^0.10.1-release-candidate-4",
     "@hexafield/jsonpath-object-transform": "^2.0.0",
     "@mlc-ai/web-llm": "^0.2.79",
     "d3": "7.9.0",
@@ -30,6 +30,7 @@
     "json-schema-to-ts": "^3.1.1",
     "jsonpath-plus": "10.3.0",
     "maxrects-packer": "2.7.3",
+    "monaco-editor": "^0.52.2",
     "ts-morph": "^26.0.0"
   },
   "license": "ISC",
