@@ -23,6 +23,7 @@ import ToolView from './views/ToolView'
 
 import Tabs from './components/Tabs'
 import './graph/forcegraph/ForceGraph'
+import { Resizable } from 're-resizable'
 
 const tabs = [
   { label: 'Pipelines', value: 'pipeline' },
@@ -47,13 +48,42 @@ function ToolMenus(): JSX.Element {
 
 function ToolUI() {
   const showMappingUI = useHookstate(true)
+  const size = useHookstate<{ width: number; height: number }>(() => {
+    const w = Number.parseInt(localStorage.getItem('toolUIWidth') || '')
+    const h = Number.parseInt(localStorage.getItem('toolUIHeight') || '')
+    return {
+      width: Number.isFinite(w) ? w : Math.min(window.innerWidth / 1.5, 1000),
+      height: Number.isFinite(h) ? h : window.innerHeight
+    }
+  })
   return (
-    <div className="pointer-events-auto z-[10] h-fit w-fit overflow-auto overflow-x-auto overflow-y-auto rounded-lg bg-white p-4">
-      <div className="flex flex-row p-4">
+    <div className="pointer-events-auto fixed left-2 top-2 z-[10]">
+      <div className="relative">
+        <Resizable
+          className="rounded-lg bg-white shadow-lg"
+          size={{ width: size.value.width, height: size.value.height }}
+          enable={{ right: true, bottom: true, bottomRight: true }}
+          minWidth={600}
+          minHeight={200}
+          onResizeStop={(_e, _dir, _ref, d) => {
+            const newWidth = size.value.width + d.width
+            const newHeight = size.value.height + d.height
+            size.set({ width: newWidth, height: newHeight })
+            localStorage.setItem('toolUIWidth', String(newWidth))
+            localStorage.setItem('toolUIHeight', String(newHeight))
+          }}
+          style={{ display: showMappingUI.value ? 'block' : 'none' }}
+       >
+          <div className="h-full w-full overflow-auto p-4">
+            <h2 className="mb-4 text-2xl font-semibold">Tool Menu</h2>
+            <ToolMenus />
+          </div>
+        </Resizable>
+
         <Button
-          className="p-4"
+          className="absolute p-4"
           variant="tertiary"
-          style={{ top: '10px', left: showMappingUI.value ? '310px' : '10px' }}
+          style={{ top: '10px', left: showMappingUI.value ? `${size.value.width + 10}px` : '10px' }}
           onClick={() => showMappingUI.set(!showMappingUI.value)}
         >
           {showMappingUI.value ? (
@@ -62,13 +92,6 @@ function ToolUI() {
             <HiChevronRight className="text-theme-primary pointer-events-none place-self-center" />
           )}
         </Button>
-        <div
-          className="h-full min-w-[600px] overflow-auto overflow-y-auto p-4"
-          style={{ display: showMappingUI.value ? 'block' : 'none' }}
-        >
-          <h2 className="mb-4 text-2xl font-semibold">Tool Menu</h2>
-          <ToolMenus />
-        </div>
       </div>
     </div>
   )
