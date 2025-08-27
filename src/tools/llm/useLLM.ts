@@ -426,6 +426,7 @@ export function useLLM(options: LLMInitOptions & { apiKey?: string; ollamaUrl?: 
 
   return {
     call: (options: LLMCallOptions) => {
+      console.log('LLM call with options:', options)
       if (!selectedModel) throw new Error('No model selected')
       if (selectedModel.provider === 'mlc') {
         if (!llm.engine.value) throw new Error('LLM not initialized')

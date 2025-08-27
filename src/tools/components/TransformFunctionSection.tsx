@@ -12,6 +12,7 @@ interface TransformFunctionSectionProps {
   transformerHash: string | null
   additionalPrompt: string
   selectedModel: string
+  llmResponsePending: boolean
   onCreateFunction: () => void
   onAdditionalPromptChange: (prompt: string) => void
   onSwitchTransformType: (type: 'json' | 'javascript') => void
@@ -33,6 +34,7 @@ export function TransformFunctionSection({
   transformerHash,
   additionalPrompt,
   selectedModel,
+  llmResponsePending,
   onCreateFunction,
   onAdditionalPromptChange,
   onSwitchTransformType,
@@ -68,10 +70,8 @@ export function TransformFunctionSection({
         <label htmlFor="targetSchema" className="mb-2 block text-sm font-medium text-gray-700">
           Create Transform Function
         </label>
-        {(llmLoadProgress < 1 || llmInitializing) && (
-          <div className="text-sm text-gray-500">
-            {llmInitializing ? 'Switching model...' : `Loading LLM: ${Math.round(llmLoadProgress * 100)}%`}
-          </div>
+        {(llmLoadProgress < 1 || llmInitializing) && !llmReady && (
+          <div className="text-sm text-gray-500">{`Loading LLM: ${Math.round(llmLoadProgress * 100)}%`}</div>
         )}
       </div>
       {/* Transformer Type Selection */}
@@ -202,10 +202,14 @@ export function TransformFunctionSection({
       <div className="mt-4">
         <button
           className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400"
-          disabled={!selectedTargetSchema || !inputSchema || !llmReady}
+          disabled={!selectedTargetSchema || !inputSchema || !llmReady || llmResponsePending}
           onClick={onCreateFunction}
         >
-          {llmInitializing ? 'Loading Model...' : 'Create Function'}
+          {llmInitializing
+            ? 'Loading Model...'
+            : llmResponsePending
+            ? 'Generating...'
+            : 'Create ' + (transformerType === 'json' ? 'Schema' : 'Function')}
         </button>
       </div>
       <JsonDisplay

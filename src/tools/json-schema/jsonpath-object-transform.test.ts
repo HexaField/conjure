@@ -146,4 +146,72 @@ describe('jsonpath-object-transform', () => {
 
     expect(output).toEqual(expectedOutput)
   })
+
+  it('should convert object from one schema to another', () => {
+    const input = {
+      elements: [
+        {
+          Id: 1,
+          Label: 'Object 1',
+          Type: 'Type A',
+          Image: 'http://example.com/image1.png'
+        },
+        {
+          Id: 2,
+          Label: 'Object 2',
+          Type: 'Type B',
+          Image: 'http://example.com/image2.png'
+        }
+      ],
+      connections: [
+        {
+          From: 1,
+          To: 2,
+          Weight: 5
+        }
+      ]
+    }
+
+    const transformSchema = {
+      nodes: [
+        '$.elements',
+        {
+          id: '@.Id',
+          label: '@.Label'
+        }
+      ],
+      edges: [
+        '$.connections',
+        {
+          source: '@.From',
+          target: '@.To'
+        }
+      ]
+    }
+
+    const expectedOutput = {
+      nodes: [
+        {
+          id: 1,
+          label: 'Object 1'
+        },
+        {
+          id: 2,
+          label: 'Object 2'
+        }
+      ],
+      edges: [
+        {
+          source: 1,
+          target: 2
+        }
+      ]
+    }
+
+    const output = transform(input, transformSchema)
+
+    console.log('output:', output)
+
+    expect(output).toEqual(expectedOutput)
+  })
 })

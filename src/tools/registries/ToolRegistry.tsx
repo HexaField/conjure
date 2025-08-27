@@ -110,8 +110,10 @@ export const ToolRegistry = defineState({
     useEffect(() => {
       const tools = getState(ToolRegistry).tools
       for (const [hash, tool] of Object.entries(tools)) {
-        SchemaRegistry.register(tool.input, tool.label, tool.description)
-        SchemaRegistry.register(tool.output, tool.label, tool.description)
+        if (!getState(SchemaRegistry).schemas[tool.inputHash])
+          SchemaRegistry.register(tool.input, tool.label, tool.description)
+        if (!getState(SchemaRegistry).schemas[tool.outputHash])
+          SchemaRegistry.register(tool.output, tool.label, tool.description)
       }
     }, [state])
   }

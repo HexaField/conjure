@@ -51,7 +51,7 @@ function ToolCreateView(): JSX.Element {
     inputSchemaSelector: { kind: 'url', url: '', schema: null, loading: false, errorMessage: null } as SchemaSelector,
     outputSchemaSelector: { kind: 'url', url: '', schema: null, loading: false, errorMessage: null } as SchemaSelector,
     inputData: null as object | null,
-    loading: false,
+    llmResponsePending: false,
     errorMessage: null as string | null,
     selectedModel: getStoredModel(),
     transformer: '' as string | object,
@@ -178,7 +178,7 @@ function ToolCreateView(): JSX.Element {
       return
     }
 
-    state.loading.set(true)
+    state.llmResponsePending.set(true)
     state.errorMessage.set(null)
 
     const selectedTargetSchema = state.get(NO_PROXY).outputSchemaSelector.schema as JSONSchemaType<any>
@@ -206,6 +206,7 @@ function ToolCreateView(): JSX.Element {
       )
       .then(async (result) => {
         console.log(result)
+        state.llmResponsePending.set(false)
 
         try {
           //result tends to be in markdown script tags...
@@ -232,6 +233,11 @@ function ToolCreateView(): JSX.Element {
           state.errorMessage.set(error instanceof Error ? error.message : 'Transformation failed')
           return
         }
+      })
+      .catch((error) => {
+        state.llmResponsePending.set(false)
+        console.error('Error during transformation:', error)
+        state.errorMessage.set(error instanceof Error ? error.message : 'Transformation failed')
       })
   }
 
@@ -381,6 +387,7 @@ function ToolCreateView(): JSX.Element {
         transformerHash={state.transformerHash.get()}
         additionalPrompt={state.additionalPrompt.get()}
         selectedModel={state.selectedModel.get()}
+        llmResponsePending={state.llmResponsePending.get()}
         onCreateFunction={onCreateFunctionClick}
         onAdditionalPromptChange={(prompt: string) => state.additionalPrompt.set(prompt)}
         onSwitchTransformType={(type: 'json' | 'javascript') => state.transformerType.set(type)}

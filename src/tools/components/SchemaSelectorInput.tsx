@@ -82,12 +82,11 @@ const SchemaSelectorInput: React.FC<SchemaSelectorInputProps> = ({
             ))}
           </select>
         )}
-        {/* Custom schema editor could be added here */}
+        {mode === 'url' && selectorState.kind === 'url' && selectorState.loading && <span>Loading...</span>}
+        {mode === 'url' && selectorState.kind === 'url' && selectorState.errorMessage && (
+          <span className="text-red-500">{selectorState.errorMessage}</span>
+        )}
       </div>
-      {mode === 'url' && selectorState.kind === 'url' && selectorState.loading && <span>Loading...</span>}
-      {mode === 'url' && selectorState.kind === 'url' && selectorState.errorMessage && (
-        <span className="text-red-500">{selectorState.errorMessage}</span>
-      )}
 
       {/* JSON Schema Display */}
       {inputSchema && <JsonDisplay title="JSON Schema" data={inputSchema} copyButtonText="Copy Schema" />}
