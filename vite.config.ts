@@ -1,7 +1,7 @@
-import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill'
 import { viteCommonjs } from '@originjs/vite-plugin-commonjs'
 import packageRoot from 'app-root-path'
 import dotenv from 'dotenv'
+import { nodeModulesPolyfillPlugin } from 'esbuild-plugins-node-modules-polyfill'
 import fs from 'fs'
 import path from 'path'
 import { UserConfig, defineConfig } from 'vite'
@@ -87,9 +87,11 @@ export default defineConfig(async ({ command, mode }) => {
       esbuildOptions: {
         target: 'es2020',
         plugins: [
-          NodeGlobalsPolyfillPlugin({
-            buffer: true,
-            process: true
+          nodeModulesPolyfillPlugin({
+            globals: {
+              Buffer: true,
+              process: true
+            }
           }) as any
         ]
       }
