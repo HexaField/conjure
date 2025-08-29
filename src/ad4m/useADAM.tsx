@@ -9,7 +9,7 @@ export const AdamClientState = defineState({
   reactor: () => {
     const ad4mConnect = useHookstate(() => {
       return Ad4mConnectUI({
-        appName: 'iR Engine',
+        appName: 'Conjure',
         appDesc: 'Immersive Collaboration',
         appUrl: window.location.origin,
         appDomain: window.location.origin,
