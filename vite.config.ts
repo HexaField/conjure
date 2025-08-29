@@ -37,7 +37,7 @@ export default defineConfig(async ({ command, mode }) => {
 
   const isDev = process.env.APP_ENV === 'development'
 
-  const base = `https://${process.env['STATIC_BUILD_HOST'] ?? 'localhost:3000'}/`
+  const base = `https://${process.env['STATIC_BUILD_HOST'] ?? process.env.APP_HOST}/`
 
   const define = {
     __IR_ENGINE_VERSION__: JSON.stringify(packageJson.version),
@@ -48,10 +48,12 @@ export default defineConfig(async ({ command, mode }) => {
     const val = JSON.stringify(value)
     if (!isValidIdentifier.test(key)) continue
     define[`globalThis.process.env.${key}`] = val
-    define[`globalThis.process.env.VITE_FILE_SERVER`] = isDev
+  }
+  define[`globalThis.process.env.VITE_FILE_SERVER`] = JSON.stringify(
+    isDev
       ? 'https://' + process.env.VITE_APP_HOST + ':' + process.env.VITE_APP_PORT
       : 'https://' + process.env.VITE_APP_HOST
-  }
+  )
 
   const returned = {
     define: define,
