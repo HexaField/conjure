@@ -60,3 +60,9 @@ https://conjure.world/graph
 - [ ] 3D surface
 - [ ] 3D DAG network https://medium.com/inthepipeline/visualize-thousands-of-dbt-models-in-this-3d-dag-viewer-e101871c1577
 - [ ] Globe https://globe.gl/
+
+
+### Help
+
+To run Ollama with CORS allowed:
+`OLLAMA_ORIGINS='*' ollama serve` or `OLLAMA_ORIGINS='https://conjure.world' ollama serve`

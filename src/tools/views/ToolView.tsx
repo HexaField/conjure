@@ -77,17 +77,6 @@ function ToolCreateView(): JSX.Element {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
 
-    if (urlParams.has(`source_url`)) {
-      const url = urlParams.get(`source_url`) || ''
-
-      state.inputData.set({
-        url,
-        data: null,
-        loading: false,
-        errorMessage: null
-      })
-    }
-
     // Load additional prompt from URL
     const additionalPrompt = urlParams.get('additional_prompt') || ''
     state.additionalPrompt.set(additionalPrompt)
@@ -112,25 +101,15 @@ function ToolCreateView(): JSX.Element {
       localStorage.setItem('selectedModel', modelFromUrl)
     }
 
-    state.inputData.set({
-      url: '',
-      data: null,
-      loading: false,
-      errorMessage: null
-    })
+    state.inputData.set(null)
   }, [])
 
   // Update URL parameters whenever data sources, additional prompt, target schema, model, or ollamaUrl change
   useEffect(() => {
-    const source = state.inputData.get(NO_PROXY)
     const additionalPrompt = state.additionalPrompt.get()
     const selectedTargetSchema = state.outputSchemaSelector.get(NO_PROXY)
     const selectedModel = state.selectedModel.get()
     const urlParams = new URLSearchParams()
-
-    // if (source.url.trim()) {
-    //   urlParams.set(`source_url`, source.url)
-    // }
 
     // Add additional prompt if it exists
     if (additionalPrompt.trim()) {
