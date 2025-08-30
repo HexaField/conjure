@@ -54,14 +54,12 @@ export const SchemaRegistry = defineState({
     useEffect(() => {
       if (!apiReady) return
       P2P_API.client.find({ predicate: SCHEMA_PREDICATE }).then((sources) => {
-        console.log(sources)
         sources.forEach(async (source) => {
           P2P_API.client
             .get({ source, predicate: SCHEMA_PREDICATE })
-            .then(async (blob) => {
-              if (!blob) return
-              console.log({ blob }, await blob.text())
-              const { schema, label, description } = JSON.parse(await blob.text())
+            .then(async (response: object) => {
+              if (!response) return
+              const { schema, label, description } = response as any
               SchemaRegistry.register(schema, label, description)
             })
             .catch((e) => {
@@ -88,18 +86,12 @@ const SyncSchema = ({ hash }: { hash: string }) => {
 
   useEffect(() => {
     P2P_API.client.has({ source: hash, predicate: SCHEMA_PREDICATE }).then(async (exists) => {
-      console.log('exists:', exists)
       if (exists) return
       P2P_API.client
         .create({
           predicate: SCHEMA_PREDICATE,
           source: hash,
-          file: new Blob(
-            [JSON.stringify({ schema: schema.schema, label: schema.label, description: schema.description })],
-            { type: 'application/json' }
-          ),
-          fileName: `${hash}.json`,
-          fileType: 'application/json'
+          target: { schema: schema.schema, label: schema.label, description: schema.description }
         })
         .catch((e) => {
           console.error('Failed to create schema:', e)

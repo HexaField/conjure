@@ -12,6 +12,7 @@
     "build:worker": "esbuild src/tools/graph/forcegraph/ForceGraphWorker.ts --bundle --format=esm --outfile=src/tools/graph/forcegraph/ForceGraphWorker.bundle.js --loader:.wasm=binary",
     "build:dag-worker": "esbuild src/tools/graph/dag/DagWorker.ts --bundle --format=esm --outfile=src/tools/graph/dag/DagWorker.bundle.js --loader:.wasm=binary",
     "start": "tsx server.js",
+    "fileserver": "tsx fileserver.ts",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "format-scss": "stylelint \"**/*.scss\" --fix",
     "format-staged": "lint-staged",
@@ -31,7 +32,8 @@
     "jsonpath-plus": "10.3.0",
     "maxrects-packer": "2.7.3",
     "monaco-editor": "^0.52.2",
-    "ts-morph": "^26.0.0"
+    "ts-morph": "^26.0.0",
+    "express": "^4.19.2"
   },
   "license": "ISC",
   "pre-commit": [

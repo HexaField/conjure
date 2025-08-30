@@ -5,18 +5,18 @@ export type QueryParams = {
   predicate: string
 }
 
-export type FileParams = QueryParams & {
-  file: Blob
-  fileName: string
-  fileType: string
+export type RDFParams = QueryParams & {
+  target: TargetType
 }
 
+export type TargetType = string | object | boolean | number
+
 export type CRUD_API = {
-  create: (args: FileParams) => Promise<void>
-  get: (args: QueryParams) => Promise<Blob | undefined>
+  create: (args: RDFParams) => Promise<void>
+  get: (args: QueryParams) => Promise<TargetType | undefined>
   has: (args: QueryParams) => Promise<boolean>
   find: (args: { predicate: string }) => Promise<string[]> // Find files by predicate, returns list of sources
-  replace: (args: FileParams) => Promise<void>
+  replace: (args: RDFParams) => Promise<void>
   delete: (args: QueryParams) => Promise<void>
 }
 

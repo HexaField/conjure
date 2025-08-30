@@ -4,14 +4,15 @@ const url = 'https://localhost:8000'
 
 export const LocalBlobAPI: CRUD_API = {
   create: async (args) => {
-    const form = new FormData()
-    form.append('source', args.source)
-    form.append('predicate', args.predicate)
-    form.append('fileName', args.fileName)
-    form.append('fileType', args.fileType)
-    form.append('file', args.file, args.fileName)
-
-    const response = await fetch(`${url}/create`, { method: 'POST', body: form })
+    const response = await fetch(`${url}/create`, {
+      method: 'POST',
+      body: JSON.stringify({
+        source: args.source,
+        predicate: args.predicate,
+        target: JSON.stringify(args.target)
+      }),
+      headers: { 'Content-Type': 'application/json' }
+    })
     if (!response.ok) throw new Error('Failed to create blob')
   },
 
@@ -23,7 +24,8 @@ export const LocalBlobAPI: CRUD_API = {
     })
     if (response.status === 404) return undefined
     if (!response.ok) throw new Error('Failed to get blob')
-    return response.blob()
+    const json = await response.json()
+    return json.target
   },
 
   has: async (args) => {
@@ -32,8 +34,7 @@ export const LocalBlobAPI: CRUD_API = {
       body: JSON.stringify(args),
       headers: { 'Content-Type': 'application/json' }
     })
-    if (!response.ok) throw new Error('Failed to check blob existence')
-    return response.json()
+    return (await response.json()).ok
   },
 
   find: async (args) => {
@@ -43,18 +44,19 @@ export const LocalBlobAPI: CRUD_API = {
       headers: { 'Content-Type': 'application/json' }
     })
     if (!response.ok) throw new Error('Failed to find blobs')
-    return response.json()
+    return (await response.json()).results
   },
 
   replace: async (args) => {
-    const form = new FormData()
-    form.append('source', args.source)
-    form.append('predicate', args.predicate)
-    form.append('fileName', args.fileName)
-    form.append('fileType', args.fileType)
-    form.append('file', args.file, args.fileName)
-
-    const response = await fetch(`${url}/replace`, { method: 'POST', body: form })
+    const response = await fetch(`${url}/replace`, {
+      method: 'POST',
+      body: JSON.stringify({
+        source: args.source,
+        predicate: args.predicate,
+        target: JSON.stringify(args.target)
+      }),
+      headers: { 'Content-Type': 'application/json' }
+    })
     if (!response.ok) throw new Error('Failed to replace blob')
   },
 

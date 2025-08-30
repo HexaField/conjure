@@ -1,12 +1,8 @@
-import { Ad4mClient, Agent, Link, LinkMutations } from '@coasys/ad4m'
+import { Ad4mClient, Agent, Link, LinkMutations, Literal } from '@coasys/ad4m'
 import Ad4mConnectUI, { Ad4mConnectElement, getAd4mClient } from '@coasys/ad4m-connect'
 import { defineState, getMutableState, getState, useHookstate, useMutableState } from '@ir-engine/hyperflux'
 import { useEffect } from 'react'
 import { CRUD_API, P2P_API } from '../api/CRUD'
-
-// import { languages } from '@coasys/flux-constants'
-const languages = { FILE_STORAGE_LANGUAGE: 'QmzSYwdjqeP9D13Sfmyc5HcabM9jL3DtPyhadnF6dQXu4FjVSbQ' }
-const { FILE_STORAGE_LANGUAGE } = languages
 
 export const blobToDataURL = (blob: Blob): Promise<string> => {
   return new Promise<string>((resolve, reject) => {
@@ -113,22 +109,11 @@ export const AgentBlobAPI: CRUD_API = {
   create: async (args) => {
     const client = getState(AdamClientState)
     if (!client) throw new Error('AD4M client not initialized')
-    await client.languages.byAddress(FILE_STORAGE_LANGUAGE)
-
-    const data_base64 = await blobToDataURL(args.file)
-    const target = await client.expression.create(
-      {
-        data_base64,
-        name: args.fileName,
-        file_type: args.fileType
-      },
-      FILE_STORAGE_LANGUAGE
-    )
 
     const newLink = new Link({
       source: args.source,
       predicate: args.predicate,
-      target
+      target: Literal.from(args.target).toUrl()
     })
 
     await client.agent.mutatePublicPerspective({
@@ -162,17 +147,7 @@ export const AgentBlobAPI: CRUD_API = {
     const link = myLinks.find((link) => link.data.source === args.source && link.data.predicate === args.predicate)
     if (!link) return undefined // not found
 
-    const res = await client.expression.get(link.data.target)
-    if (!res) return undefined // not found
-
-    const { data } = res
-    const { data_base64, file_type } = JSON.parse(data)
-    if (!data_base64) return undefined
-    const b64 = `data:${file_type};base64, ${data_base64}`
-
-    const blob = await dataURLToBlob(b64)
-
-    return blob
+    return Literal.fromUrl(link.data.target).get()
   },
 
   find: async (args) => {
@@ -204,22 +179,10 @@ export const AgentBlobAPI: CRUD_API = {
 
     const removals = [currentLink]
 
-    await client.languages.byAddress(FILE_STORAGE_LANGUAGE)
-
-    const data_base64 = await blobToDataURL(args.file)
-    const target = await client.expression.create(
-      {
-        data_base64,
-        name: args.fileName,
-        file_type: args.fileType
-      },
-      FILE_STORAGE_LANGUAGE
-    )
-
     const newLink = new Link({
       source: args.source,
       predicate: args.predicate,
-      target
+      target: Literal.from(args.target).toUrl()
     })
 
     await client.agent.mutatePublicPerspective({
