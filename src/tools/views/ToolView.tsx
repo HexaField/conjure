@@ -44,7 +44,7 @@ function ToolCreateView(): JSX.Element {
     } catch (error) {
       console.warn('Failed to load model from localStorage:', error)
     }
-    return CODING_MODELS[1].id // Default to Qwen2.5-Coder-7B
+    return CODING_MODELS[0].id // Default to Ollama
   }
 
   const state = useHookstate({

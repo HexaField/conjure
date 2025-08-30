@@ -73,6 +73,15 @@ export interface LLMInitOptions {
  */
 export const CODING_MODELS: CodingModel[] = [
   {
+    id: 'gpt-oss:20b',
+    name: 'Ollama gpt-oss:20b (LAN)',
+    description: `gpt-oss:20b via Ollama)`,
+    info: `Must run Ollama with \`OLLAMA_ORIGINS='https://conjure.world' ollama serve\``,
+    provider: 'ollama',
+    apiUrl: 'http://localhost:11434/api/chat', // Default, user can override
+    apiKeyEnvVar: ''
+  },
+  {
     id: 'Hermes-3-Llama-3.1-8B-q4f32_1-MLC',
     name: 'Hermes 3 Llama 8B',
     description: 'Excellent instruction following and code reasoning',
@@ -119,15 +128,6 @@ export const CODING_MODELS: CodingModel[] = [
     provider: 'google',
     apiUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent',
     apiKeyEnvVar: 'GOOGLE_API_KEY'
-  },
-  {
-    id: 'gpt-oss:20b',
-    name: 'Ollama gpt-oss:20b (LAN)',
-    description: `gpt-oss:20b via Ollama)`,
-    info: `Must run Ollama with \`OLLAMA_ORIGINS='https://conjure.world' ollama serve\``,
-    provider: 'ollama',
-    apiUrl: 'http://localhost:11434/api/chat', // Default, user can override
-    apiKeyEnvVar: ''
   }
 ]
 
