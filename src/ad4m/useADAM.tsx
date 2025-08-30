@@ -103,6 +103,7 @@ export const AgentState = defineState({
       adam.agent.me().then((response) => {
         getMutableState(AgentState).set(response)
         P2P_API.client = AgentBlobAPI
+        getMutableState(P2P_API).ready.set(true)
       })
     }, [adam])
   }
@@ -136,12 +137,25 @@ export const AgentBlobAPI: CRUD_API = {
     } as LinkMutations)
   },
 
+  has: async (args) => {
+    const client = getState(AdamClientState)
+    if (!client) throw new Error('AD4M client not initialized')
+
+    const myPerspectives = await client.agent.me()
+    if (!myPerspectives) throw new Error('Agent not initialized')
+
+    const myLinks = myPerspectives.perspective!.links
+
+    const link = myLinks.find((link) => link.data.source === args.source && link.data.predicate === args.predicate)
+    return !!link
+  },
+
   get: async (args) => {
     const client = getState(AdamClientState)
     if (!client) throw new Error('AD4M client not initialized')
 
-    const myPerspectives = getState(AgentState)
-    if (!myPerspectives) throw new Error('Agent state not initialized')
+    const myPerspectives = await client.agent.me()
+    if (!myPerspectives) throw new Error('Agent not initialized')
 
     const myLinks = myPerspectives.perspective!.links
 
@@ -161,12 +175,25 @@ export const AgentBlobAPI: CRUD_API = {
     return blob
   },
 
+  find: async (args) => {
+    const client = getState(AdamClientState)
+    if (!client) throw new Error('AD4M client not initialized')
+
+    const myPerspectives = await client.agent.me()
+    if (!myPerspectives) throw new Error('Agent not initialized')
+
+    const myLinks = myPerspectives.perspective!.links
+
+    const foundLinks = myLinks.filter((link) => link.data.predicate === args.predicate)
+    return foundLinks.map((link) => link.data.source)
+  },
+
   replace: async (args) => {
     const client = getState(AdamClientState)
     if (!client) throw new Error('AD4M client not initialized')
 
-    const myPerspectives = getState(AgentState)
-    if (!myPerspectives) throw new Error('Agent state not initialized')
+    const myPerspectives = await client.agent.me()
+    if (!myPerspectives) throw new Error('Agent not initialized')
 
     const myLinks = myPerspectives.perspective!.links
 
@@ -205,8 +232,8 @@ export const AgentBlobAPI: CRUD_API = {
     const client = getState(AdamClientState)
     if (!client) throw new Error('AD4M client not initialized')
 
-    const myPerspectives = getState(AgentState)
-    if (!myPerspectives) throw new Error('Agent state not initialized')
+    const myPerspectives = await client.agent.me()
+    if (!myPerspectives) throw new Error('Agent not initialized')
 
     const myLinks = myPerspectives.perspective!.links
 
@@ -225,3 +252,5 @@ export const AgentBlobAPI: CRUD_API = {
 globalThis.AdamClientState = AdamClientState
 globalThis.AgentState = AgentState
 globalThis.AgentBlobAPI = AgentBlobAPI
+
+// wipe data: `AgentBlobAPI.find({ predicate: 'conjure://schema' }).then(sources => sources.forEach(source => AgentBlobAPI.delete({ source, predicate: 'conjure://schema' })))`

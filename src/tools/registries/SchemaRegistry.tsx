@@ -1,6 +1,16 @@
-import { defineState, getMutableState, none, syncStateWithLocalStorage } from '@ir-engine/hyperflux'
+import {
+  defineState,
+  getMutableState,
+  NO_PROXY,
+  none,
+  syncStateWithLocalStorage,
+  useMutableState
+} from '@ir-engine/hyperflux'
+import React, { useEffect } from 'react'
+import { P2P_API } from '../../api/CRUD'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
 import { contentHash } from '../json-schema/contentHash'
+import { SCHEMA_PREDICATE } from './constants'
 
 export type SHA256Hash = string
 
@@ -16,6 +26,7 @@ export const SchemaRegistry = defineState({
   initial: { schemas: {} as Record<SHA256Hash, SchemaType> },
 
   register: (schema: JSONSchemaType<any>, label?: string, description?: string) => {
+    console.log(schema, label, description)
     const hash = contentHash(schema)
     getMutableState(SchemaRegistry).schemas[hash].set({
       hash,
@@ -28,7 +39,73 @@ export const SchemaRegistry = defineState({
 
   forget: (hash: SHA256Hash) => {
     getMutableState(SchemaRegistry).schemas[hash].set(none)
+    if (!P2P_API.client) return
+    P2P_API.client.delete({ source: hash, predicate: SCHEMA_PREDICATE }).then(async () => {
+      console.log('deleted:', hash)
+    })
   },
 
-  extension: syncStateWithLocalStorage(['schemas'])
+  extension: syncStateWithLocalStorage(['schemas']),
+
+  reactor: () => {
+    const schemaState = useMutableState(SchemaRegistry).schemas
+    const apiReady = useMutableState(P2P_API).ready.value
+
+    useEffect(() => {
+      if (!apiReady) return
+      P2P_API.client.find({ predicate: SCHEMA_PREDICATE }).then((sources) => {
+        console.log(sources)
+        sources.forEach(async (source) => {
+          P2P_API.client
+            .get({ source, predicate: SCHEMA_PREDICATE })
+            .then(async (blob) => {
+              if (!blob) return
+              console.log({ blob }, await blob.text())
+              const { schema, label, description } = JSON.parse(await blob.text())
+              SchemaRegistry.register(schema, label, description)
+            })
+            .catch((e) => {
+              console.error('Failed to retrieve schema:', e)
+            })
+        })
+      })
+    }, [apiReady])
+
+    if (!apiReady) return null
+
+    return (
+      <>
+        {schemaState.keys.map((key) => (
+          <SyncSchema key={key} hash={key} />
+        ))}
+      </>
+    )
+  }
 })
+
+const SyncSchema = ({ hash }: { hash: string }) => {
+  const schema = useMutableState(SchemaRegistry).schemas[hash].get(NO_PROXY)
+
+  useEffect(() => {
+    P2P_API.client.has({ source: hash, predicate: SCHEMA_PREDICATE }).then(async (exists) => {
+      console.log('exists:', exists)
+      if (exists) return
+      P2P_API.client
+        .create({
+          predicate: SCHEMA_PREDICATE,
+          source: hash,
+          file: new Blob(
+            [JSON.stringify({ schema: schema.schema, label: schema.label, description: schema.description })],
+            { type: 'application/json' }
+          ),
+          fileName: `${hash}.json`,
+          fileType: 'application/json'
+        })
+        .catch((e) => {
+          console.error('Failed to create schema:', e)
+        })
+    })
+  }, [JSON.stringify(schema)])
+
+  return null
+}

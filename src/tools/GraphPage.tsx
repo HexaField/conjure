@@ -8,7 +8,7 @@ import { Vector3 } from 'three'
 import Debug from '@ir-engine/client-core/src/components/Debug'
 import { useDraggable } from '@ir-engine/client-core/src/hooks/useDraggable'
 import { createEntity, EntityTreeComponent, removeEntity, setComponent } from '@ir-engine/ecs'
-import { getMutableState, useHookstate, useMutableState, useReactiveRef } from '@ir-engine/hyperflux'
+import { getMutableState, getState, useHookstate, useMutableState, useReactiveRef } from '@ir-engine/hyperflux'
 import { AmbientLightComponent, ReferenceSpaceState, TransformComponent } from '@ir-engine/spatial'
 import { CameraOrbitComponent } from '@ir-engine/spatial/src/camera/components/CameraOrbitComponent'
 import { NameComponent } from '@ir-engine/spatial/src/common/NameComponent'
@@ -25,6 +25,7 @@ import ToolView from './views/ToolView'
 
 import Tabs from './components/Tabs'
 
+import { P2P_API } from '../api/CRUD'
 import './graph/forcegraph/ForceGraph'
 
 const tabs = [
@@ -139,10 +140,26 @@ function ToolUI() {
 export default function GraphPage() {
   const [ref, setRef] = useReactiveRef()
 
+  const storageMethod = useHookstate<'local' | 'ADAM'>('ADAM')
+
   useSpatialEngine()
   useEngineCanvas(ref)
 
   const { originEntity, viewerEntity } = useMutableState(ReferenceSpaceState).value
+
+  useEffect(() => {
+    if (storageMethod.value === 'ADAM') {
+      import('../ad4m/useADAM').then((module) => {
+        // get agent state to initialize agent
+        getState(module.AgentState)
+      })
+    } else {
+      import('../api/local').then((module) => {
+        P2P_API.client = module.LocalBlobAPI
+        getMutableState(P2P_API).ready.set(true)
+      })
+    }
+  }, [])
 
   useEffect(() => {
     if (!originEntity || !viewerEntity) return
