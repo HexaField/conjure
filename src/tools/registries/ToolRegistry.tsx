@@ -147,9 +147,9 @@ const SyncTool = ({ hash }: { hash: string }) => {
 
   useEffect(() => {
     if (!getState(SchemaRegistry).schemas[tool.inputHash])
-      SchemaRegistry.register(tool.input, tool.label, tool.description)
+      SchemaRegistry.register(tool.input as JSONSchemaType<unknown>, tool.label, tool.description)
     if (!getState(SchemaRegistry).schemas[tool.outputHash])
-      SchemaRegistry.register(tool.output, tool.label, tool.description)
+      SchemaRegistry.register(tool.output as JSONSchemaType<unknown>, tool.label, tool.description)
 
     P2P_API.client.has({ source: hash, predicate: TOOL_PREDICATE }).then(async (exists) => {
       if (exists) return
