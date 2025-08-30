@@ -50,7 +50,36 @@ function ToolMenus(): JSX.Element {
 }
 
 function ToolUI() {
+  const storageMethod = useHookstate<'local' | 'server' | 'adam'>('local')
+
   const showMappingUI = useHookstate(true)
+
+  useEffect(() => {
+    if (storageMethod.value === 'adam') {
+      import('../ad4m/useADAM').then((module) => {
+        getMutableState(P2P_API).ready.set(false)
+        P2P_API.client = module.AgentBlobAPI
+        // get agent state to initialize agent
+        if (getState(module.AgentState)) {
+          getMutableState(P2P_API).ready.set(true)
+          console.log('ADAM storage method ready')
+        }
+      })
+    } else if (storageMethod.value === 'server') {
+      import('../api/server').then((module) => {
+        P2P_API.client = module.ServerBlobAPI
+        getMutableState(P2P_API).ready.set(true)
+        console.log('Server storage method ready')
+      })
+    } else if (storageMethod.value === 'local') {
+      import('../api/local').then((module) => {
+        P2P_API.client = module.LocalBlobAPI
+        getMutableState(P2P_API).ready.set(true)
+        console.log('Local storage method ready')
+      })
+    }
+  }, [storageMethod.value])
+
   const size = useHookstate<{ width: number; height: number }>(() => {
     const w = Number.parseInt(localStorage.getItem('toolUIWidth') || '')
     const h = Number.parseInt(localStorage.getItem('toolUIHeight') || '')
@@ -120,13 +149,7 @@ function ToolUI() {
                   </Button>
                 )}
                 <h2 className="text-center text-2xl font-semibold">Tool Menu</h2>
-                {showMappingUI.value && (
-                  <div className="pointer-events-none opacity-0">
-                    <Button className="rounded-lg bg-white p-4" variant="tertiary">
-                      <HiChevronLeft className="pointer-events-none place-self-center" />
-                    </Button>
-                  </div>
-                )}
+                <StorageDropdown storageMethod={storageMethod} onChange={storageMethod.set} />
               </div>
               <ToolMenus />
             </div>
@@ -140,31 +163,10 @@ function ToolUI() {
 export default function GraphPage() {
   const [ref, setRef] = useReactiveRef()
 
-  const storageMethod = useHookstate<'local' | 'server' | 'adam'>('local')
-
   useSpatialEngine()
   useEngineCanvas(ref)
 
   const { originEntity, viewerEntity } = useMutableState(ReferenceSpaceState).value
-
-  useEffect(() => {
-    if (storageMethod.value === 'adam') {
-      import('../ad4m/useADAM').then((module) => {
-        // get agent state to initialize agent
-        getState(module.AgentState)
-      })
-    } else if (storageMethod.value === 'server') {
-      import('../api/server').then((module) => {
-        P2P_API.client = module.ServerBlobAPI
-        getMutableState(P2P_API).ready.set(true)
-      })
-    } else if (storageMethod.value === 'local') {
-      import('../api/local').then((module) => {
-        P2P_API.client = module.LocalBlobAPI
-        getMutableState(P2P_API).ready.set(true)
-      })
-    }
-  }, [])
 
   useEffect(() => {
     if (!originEntity || !viewerEntity) return
@@ -196,5 +198,15 @@ export default function GraphPage() {
       <GithubLink />
       <Debug />
     </>
+  )
+}
+
+const StorageDropdown = ({ storageMethod, onChange }) => {
+  return (
+    <select value={storageMethod.value} onChange={(e) => onChange(e.target.value)}>
+      <option value="local">Local</option>
+      <option value="server">Server</option>
+      <option value="adam">ADAM</option>
+    </select>
   )
 }

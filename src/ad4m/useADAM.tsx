@@ -100,6 +100,7 @@ export const AgentState = defineState({
         getMutableState(AgentState).set(response)
         P2P_API.client = AgentBlobAPI
         getMutableState(P2P_API).ready.set(true)
+        console.log('ADAM storage method ready')
       })
     }, [adam])
   }
