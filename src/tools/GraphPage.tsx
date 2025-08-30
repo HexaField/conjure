@@ -140,7 +140,7 @@ function ToolUI() {
 export default function GraphPage() {
   const [ref, setRef] = useReactiveRef()
 
-  const storageMethod = useHookstate<'local' | 'ADAM'>('ADAM')
+  const storageMethod = useHookstate<'local' | 'server' | 'adam'>('local')
 
   useSpatialEngine()
   useEngineCanvas(ref)
@@ -148,12 +148,17 @@ export default function GraphPage() {
   const { originEntity, viewerEntity } = useMutableState(ReferenceSpaceState).value
 
   useEffect(() => {
-    if (storageMethod.value === 'ADAM') {
+    if (storageMethod.value === 'adam') {
       import('../ad4m/useADAM').then((module) => {
         // get agent state to initialize agent
         getState(module.AgentState)
       })
-    } else {
+    } else if (storageMethod.value === 'server') {
+      import('../api/server').then((module) => {
+        P2P_API.client = module.ServerBlobAPI
+        getMutableState(P2P_API).ready.set(true)
+      })
+    } else if (storageMethod.value === 'local') {
       import('../api/local').then((module) => {
         P2P_API.client = module.LocalBlobAPI
         getMutableState(P2P_API).ready.set(true)
