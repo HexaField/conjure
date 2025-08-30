@@ -1,11 +1,4 @@
-import {
-  defineState,
-  getMutableState,
-  NO_PROXY,
-  none,
-  syncStateWithLocalStorage,
-  useMutableState
-} from '@ir-engine/hyperflux'
+import { defineState, getMutableState, NO_PROXY, none, useMutableState } from '@ir-engine/hyperflux'
 import React, { useEffect } from 'react'
 import { P2P_API } from '../../api/CRUD'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
@@ -26,7 +19,6 @@ export const SchemaRegistry = defineState({
   initial: { schemas: {} as Record<SHA256Hash, SchemaType> },
 
   register: (schema: JSONSchemaType<any>, label?: string, description?: string) => {
-    console.log(schema, label, description)
     const hash = contentHash(schema)
     getMutableState(SchemaRegistry).schemas[hash].set({
       hash,
@@ -44,8 +36,6 @@ export const SchemaRegistry = defineState({
       console.log('deleted:', hash)
     })
   },
-
-  extension: syncStateWithLocalStorage(['schemas']),
 
   reactor: () => {
     const schemaState = useMutableState(SchemaRegistry).schemas

@@ -1,13 +1,5 @@
 import transform from '@hexafield/jsonpath-object-transform'
-import {
-  defineState,
-  getMutableState,
-  getState,
-  NO_PROXY,
-  none,
-  syncStateWithLocalStorage,
-  useMutableState
-} from '@ir-engine/hyperflux'
+import { defineState, getMutableState, getState, NO_PROXY, none, useMutableState } from '@ir-engine/hyperflux'
 import React, { useEffect } from 'react'
 import { P2P_API } from '../../api/CRUD'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
@@ -109,8 +101,6 @@ export const ToolRegistry = defineState({
       throw error
     }
   },
-
-  extension: syncStateWithLocalStorage(['tools']),
 
   reactor: () => {
     const toolState = useMutableState(ToolRegistry).tools

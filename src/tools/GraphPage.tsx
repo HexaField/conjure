@@ -50,8 +50,7 @@ function ToolMenus(): JSX.Element {
 }
 
 function ToolUI() {
-  const storageMethod = useHookstate<'local' | 'server' | 'adam'>('local')
-
+  const storageMethod = useHookstate(getMutableState(P2P_API).selected)
   const showMappingUI = useHookstate(true)
 
   useEffect(() => {

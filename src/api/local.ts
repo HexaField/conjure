@@ -3,6 +3,7 @@ import type { CRUD_API, QueryParams } from './CRUD'
 const conjureCacheKey = 'CONJURE_STORAGE_CACHE'
 
 const localCache = { entries: {} as Record<string, string>, predicateIndex: {} as Record<string, string[]> }
+globalThis.localCache = localCache
 
 const saveCache = () => {
   localStorage.setItem(conjureCacheKey, JSON.stringify(localCache.entries))
@@ -11,7 +12,10 @@ const saveCache = () => {
 const loadCache = () => {
   const cached = localStorage.getItem(conjureCacheKey)
   if (cached) {
-    Object.assign(localCache.entries, JSON.parse(cached))
+    const parsed = JSON.parse(cached)
+    for (const key in parsed) {
+      localCache.entries[key] = parsed[key]
+    }
   }
   localCache.predicateIndex = Object.keys(localCache.entries).reduce(
     (acc, key) => {
@@ -49,11 +53,12 @@ export const LocalBlobAPI: CRUD_API = {
   },
 
   find: async (args) => {
+    const encodedPredicate = encodeURIComponent(args.predicate)
     const results = [] as string[]
-    for (const key of localCache.predicateIndex[args.predicate] || []) {
+    for (const key of localCache.predicateIndex[encodedPredicate] || []) {
       const value = localCache.entries[key]
       if (typeof value === 'string') {
-        results.push(JSON.parse(value))
+        results.push(decodeURIComponent(key.slice(encodedPredicate.length + 2)))
       }
     }
     return results
