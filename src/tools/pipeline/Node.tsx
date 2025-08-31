@@ -1,8 +1,8 @@
 import React, { useContext, useMemo } from 'react'
 import { Handle, NodeProps, Position } from 'reactflow'
-import type { JSONSchemaType } from '../../../json-schema/JSONSchema'
-import { SchemaForm } from '../forms/SchemaForm'
+import type { JSONSchemaType } from '../json-schema/JSONSchema'
 import { EditorContext } from './EditorContext'
+import { SchemaForm } from './SchemaForm'
 
 const inputPasteSchema: JSONSchemaType<{ text: string; format: 'json' | 'csv' }> = {
   type: 'object',

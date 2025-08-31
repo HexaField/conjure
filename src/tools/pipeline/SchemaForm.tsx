@@ -1,5 +1,5 @@
 import React from 'react'
-import type { JSONSchemaType } from '../../../json-schema/JSONSchema'
+import type { JSONSchemaType } from '../json-schema/JSONSchema'
 
 type Props<T = any> = {
   schema: JSONSchemaType<T>

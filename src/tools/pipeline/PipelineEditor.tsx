@@ -13,9 +13,9 @@ import ReactFlow, {
   NodeChange
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { runPipeline } from '../logic/runPipeline'
-import { EditorContext, ToolLite } from './graph/EditorContext'
-import { DbNode } from './graph/Node'
+import { runPipeline } from './runPipeline'
+import { EditorContext, ToolLite } from './EditorContext'
+import { DbNode } from './Node'
 
 export type PipelineGraph = { nodes: Node[]; edges: Edge[] }
 

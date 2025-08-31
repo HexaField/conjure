@@ -1,5 +1,5 @@
 import { Edge, Node } from 'reactflow'
-import { ToolRegistry } from '../../registries/ToolRegistry'
+import { ToolRegistry } from '../registries/ToolRegistry'
 
 const isTransform = (type?: string) => type?.startsWith('xform.')
 const isInput = (type?: string) => type?.startsWith('input.')
