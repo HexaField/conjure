@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react'
+import { graphToPipeline, pipelineToGraph } from '../pipeline/graphConvert'
+import { PipelineSpec } from '../pipeline/model'
 import { PipelineEditor, PipelineGraph } from '../pipeline/PipelineEditor'
 import type { Pipeline } from '../registries/PipelineRegistry'
 
@@ -8,21 +10,19 @@ type Props = {
   pipeline: Pipeline
   tools: ToolLite[]
   onRun: () => void
-  onSaveGraph: (graph: PipelineGraph, pipeline: Pipeline) => void
+  onSaveGraph: (spec: PipelineSpec, pipeline: Pipeline) => void
 }
 
 export const PipelineCard: React.FC<Props> = ({ pipeline, tools, onRun, onSaveGraph }) => {
   const [open, setOpen] = useState(false)
   const initialGraph = useMemo<PipelineGraph>(() => {
-    return {
-      nodes: [...(pipeline.graph?.nodes || [])],
-      edges: [...(pipeline.graph?.edges || [])]
-    }
+    return pipelineToGraph(pipeline.graph)
   }, [pipeline.hash])
   const [working, setWorking] = useState<PipelineGraph>(initialGraph)
 
   const save = (g: PipelineGraph) => {
-    onSaveGraph(g, pipeline)
+    const spec = graphToPipeline(g.nodes, g.edges)
+    onSaveGraph(spec, pipeline)
   }
 
   return (

@@ -6,8 +6,8 @@ import { ToolCard } from '../components/ToolCard'
 import { contentHash } from '../json-schema/contentHash'
 import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
-import { PipelineGraph } from '../pipeline/PipelineEditor'
-import { runPipeline } from '../pipeline/runPipeline'
+import type { PipelineSpec, PipelineStage } from '../pipeline/model'
+import { runPipelineSpec } from '../pipeline/runPipelineSpec'
 import { PipelineRegistry } from '../registries/PipelineRegistry'
 import { TargetRegistry } from '../registries/TargetRegistry'
 import { Tool, ToolRegistry } from '../registries/ToolRegistry'
@@ -99,28 +99,27 @@ function ShareLinkComponent({
         disabled={!selectedTool}
         onClick={() => {
           if (!selectedTool) return
-          // Build a minimal pipeline graph: input -> transform -> viz
+          // Build a minimal pipeline spec: input -> tool -> output
           const inputUrl = inputs[0]?.url || ''
-          const n1 = {
-            id: `n_${crypto.randomUUID()}`,
-            type: 'db',
-            data: { type: 'input.url', config: { url: inputUrl, schemaHash: inputs[0]?.hash || null } },
-            position: { x: 100, y: 120 }
+          const stages: PipelineStage[] = []
+          const sInput: PipelineStage = {
+            type: 'input',
+            params: { url: inputUrl, schemaHash: (inputs[0]?.hash as any) ?? undefined },
+            next: []
           }
-          const n2 = {
-            id: `n_${crypto.randomUUID()}`,
-            type: 'db',
-            data: { type: 'xform.js', config: { toolHash: selectedTool.hash } },
-            position: { x: 360, y: 120 }
+          stages.push(sInput)
+          const sTool: PipelineStage = { type: 'tool', toolHash: selectedTool.hash, params: {}, next: [] }
+          stages.push(sTool)
+          const sOut: PipelineStage = {
+            type: 'output',
+            params: { outputHash: (outputHash as any) ?? undefined, outputType: 'table' },
+            next: []
           }
-          const n3 = {
-            id: `n_${crypto.randomUUID()}`,
-            type: 'db',
-            data: { type: 'viz.table', config: { outputHash: outputHash || null } },
-            position: { x: 620, y: 120 }
-          }
-          const e1 = { id: `e_${crypto.randomUUID()}`, source: n1.id, target: n2.id }
-          const e2 = { id: `e_${crypto.randomUUID()}`, source: n2.id, target: n3.id }
+          stages.push(sOut)
+          // links
+          sInput.next.push(1)
+          sTool.next.push(2)
+          const spec: PipelineSpec = { stages }
           const label = `${selectedTool.label || 'Pipeline'} (${new URL(inputUrl || 'http://example.com').hostname})`
           const description = `Auto-saved pipeline from Share panel. Tool: ${
             selectedTool.label
@@ -128,11 +127,7 @@ function ShareLinkComponent({
           const hash = PipelineRegistry.register({
             label,
             description,
-            graph: {
-              nodes: [n1, n2, n3],
-              edges: [e1 as any, e2 as any],
-              meta: { graphType, outputHash: outputHash || null }
-            }
+            graph: spec
           })
           shareMessage.set(`Pipeline saved (${hash.slice(0, 8)}…)`)
           setTimeout(() => shareMessage.set(null), 3000)
@@ -354,29 +349,33 @@ function PipelineUseView(): JSX.Element {
 
   // New: Run transformation tool and create graph
   const runToolAndCreateGraph = async () => {
-    // For each input, find the matching tool and run it
-    const results = await Promise.all(
-      inputs.get(NO_PROXY).map((input) => {
-        if (!input.hash || !input.data) return null // Skip if no hash or data
-        const tool = matchingTools.find((t) => t.inputHash === input.hash && t.outputHash === outputHash)
-        if (!tool) {
-          console.error(`No matching tool found for input hash ${input.hash}`)
-          return null
-        }
-        try {
-          return ToolRegistry.run(tool.hash, input.data)
-        } catch (e) {
-          // Optionally handle error
-          console.error('Tool run failed', e)
-        }
+    const selTool = selectedTool.get(NO_PROXY)
+    if (!selTool) return
+    // Build a pipeline spec dynamically from current inputs -> selected tool -> output per input
+    const stages: PipelineStage[] = []
+    const outputMap: Array<{ outIndex: number; url: string }> = []
+    inputs.get(NO_PROXY).forEach((input, idx) => {
+      if (!input.hash || !input.data) return
+      const iIdx = stages.length
+      stages.push({
+        type: 'input',
+        params: { url: input.url, schemaHash: input.hash ?? undefined, data: input.data },
+        next: []
       })
-    )
-    // Now, create the graph using the output schema's deserialize logic
+      const tIdx = stages.length
+      stages.push({ type: 'tool', toolHash: selTool.hash, params: {}, next: [] })
+      const oIdx = stages.length
+      stages.push({ type: 'output', params: { outputHash: outputHash || undefined, outputType: 'table' }, next: [] })
+      ;(stages[iIdx] as any).next.push(tIdx)
+      ;(stages[tIdx] as any).next.push(oIdx)
+      outputMap.push({ outIndex: oIdx, url: input.url })
+    })
+    const spec: PipelineSpec = { stages }
+    const result = await runPipelineSpec(spec)
     if (targetGraph) {
       const dataObj: Record<string, any> = {}
-      inputs.forEach((input, i) => {
-        const url = input.url.get()
-        dataObj[url] = results[i]
+      outputMap.forEach(({ outIndex, url }) => {
+        dataObj[url] = result.stageData[outIndex]
       })
       try {
         targetGraph.deserialize(dataObj)
@@ -506,7 +505,7 @@ function PipelineUseView(): JSX.Element {
         graphType={visualizationType.get()}
         isVisible={!!allInputsHaveTool}
         createShareConfig={createShareConfig}
-        selectedTool={selectedTool.get(NO_PROXY)!}
+        selectedTool={(selectedTool.get(NO_PROXY) || null) as any}
         outputHash={outputHash}
       />
     </>
@@ -520,12 +519,12 @@ function PipelineLibraryView(): JSX.Element {
   const pipelines = useMutableState(PipelineRegistry).pipelines.value
   const pipelineList = Object.values(pipelines)
 
-  const saveGraphForPipeline = (graph: PipelineGraph, pipeline: any) => {
+  const saveGraphForPipeline = (spec: PipelineSpec, pipeline: any) => {
     // Register a new version for now; could update in place if desired
     const newHash = PipelineRegistry.register({
       label: pipeline.label,
       description: pipeline.description,
-      graph: { nodes: graph.nodes, edges: graph.edges }
+      graph: spec
     })
     console.log('pipeline saved:', newHash)
   }
@@ -537,29 +536,16 @@ function PipelineLibraryView(): JSX.Element {
         <div className="text-sm text-gray-500">No pipelines saved.</div>
       ) : (
         <ul className="space-y-3">
-          {pipelineList.map((p) => {
-            const mutable = {
-              ...p,
-              graph: {
-                nodes: [...(p.graph?.nodes || [])],
-                edges: [...(p.graph?.edges || [])],
-                meta: p.graph?.meta ? { ...p.graph.meta } : undefined
-              }
-            }
-            return (
-              <li key={p.hash}>
-                <PipelineCard
-                  pipeline={mutable as any}
-                  tools={editorTools}
-                  onRun={async () => {
-                    // Optionally run the graph here if needed per card
-                    await runPipeline(mutable.graph)
-                  }}
-                  onSaveGraph={saveGraphForPipeline}
-                />
-              </li>
-            )
-          })}
+          {pipelineList.map((p) => (
+            <li key={p.hash}>
+              <PipelineCard
+                pipeline={p as any}
+                tools={editorTools}
+                onRun={() => {}}
+                onSaveGraph={saveGraphForPipeline}
+              />
+            </li>
+          ))}
         </ul>
       )}
     </div>

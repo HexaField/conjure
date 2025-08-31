@@ -2,18 +2,14 @@ import { defineState, getMutableState, NO_PROXY, none, useMutableState } from '@
 import React, { useEffect } from 'react'
 import { P2P_API } from '../../api/CRUD'
 import { contentHash } from '../json-schema/contentHash'
-
-export type PipelineGraph = {
-  nodes: any[]
-  edges: any[]
-  meta?: Record<string, any>
-}
+import { graphToPipeline } from '../pipeline/graphConvert'
+import type { PipelineSpec } from '../pipeline/model'
 
 export type Pipeline = {
   hash: string
   label: string
   description: string
-  graph: PipelineGraph
+  graph: PipelineSpec
 }
 
 export const PIPELINE_PREDICATE = 'conjure://pipeline'
@@ -53,8 +49,17 @@ export const PipelineRegistry = defineState({
             .get({ source, predicate: PIPELINE_PREDICATE })
             .then(async (response: object) => {
               if (!response) return
-              const { label, description, graph } = response as Pipeline
-              PipelineRegistry.register({ label, description, graph })
+              const { label, description, graph } = response as any
+              let spec: PipelineSpec
+              if (graph && Array.isArray(graph.stages)) {
+                spec = graph as PipelineSpec
+              } else if (graph && Array.isArray(graph.nodes) && Array.isArray(graph.edges)) {
+                // migrate legacy graph to spec
+                spec = graphToPipeline(graph.nodes, graph.edges)
+              } else {
+                spec = { stages: [] }
+              }
+              PipelineRegistry.register({ label, description, graph: spec })
             })
             .catch((e) => {
               console.error('Failed to retrieve pipeline:', e)
