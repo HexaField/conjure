@@ -7,7 +7,7 @@ import { contentHash } from '../json-schema/contentHash'
 import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
 import { PipelineGraph } from '../new/components/PipelineEditor'
-import { runGraph } from '../new/logic/runGraph'
+import { runPipeline } from '../new/logic/runPipeline'
 import { PipelineRegistry } from '../registries/PipelineRegistry'
 import { TargetRegistry } from '../registries/TargetRegistry'
 import { Tool, ToolRegistry } from '../registries/ToolRegistry'
@@ -551,7 +551,10 @@ function PipelineLibraryView(): JSX.Element {
                 <PipelineCard
                   pipeline={mutable as any}
                   tools={editorTools}
-                  onRun={runGraph}
+                  onRun={async () => {
+                    // Optionally run the graph here if needed per card
+                    await runPipeline(mutable.graph)
+                  }}
                   onSaveGraph={saveGraphForPipeline}
                 />
               </li>

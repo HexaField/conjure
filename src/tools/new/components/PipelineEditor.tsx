@@ -1,20 +1,21 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { Rnd } from 'react-rnd'
 import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  Connection,
-  Edge,
-  Node,
-  applyNodeChanges,
   applyEdgeChanges,
-  NodeChange,
-  EdgeChange
+  applyNodeChanges,
+  Background,
+  Connection,
+  Controls,
+  Edge,
+  EdgeChange,
+  MiniMap,
+  Node,
+  NodeChange
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { DbNode } from './graph/Node'
+import { runPipeline } from '../logic/runPipeline'
 import { EditorContext, ToolLite } from './graph/EditorContext'
+import { DbNode } from './graph/Node'
 
 export type PipelineGraph = { nodes: Node[]; edges: Edge[] }
 
@@ -30,6 +31,8 @@ export const PipelineEditor: React.FC<Props> = ({ graph, onChange, onRun, onSave
   const [showLeft, setShowLeft] = useState(true)
   const [showRight, setShowRight] = useState(true)
   const [showBottom, setShowBottom] = useState(true)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [output, setOutput] = useState<{ datatype: string; data: any }>({ datatype: 'json', data: null })
 
   const nodeTypes = useMemo(() => ({ db: DbNode }), [])
 
@@ -71,6 +74,7 @@ export const PipelineEditor: React.FC<Props> = ({ graph, onChange, onRun, onSave
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onSelectionChange={(sel) => setSelectedNodeId(sel.nodes[0]?.id ?? null)}
             nodeTypes={nodeTypes}
             fitView
           >
@@ -103,7 +107,9 @@ export const PipelineEditor: React.FC<Props> = ({ graph, onChange, onRun, onSave
                 Hide
               </button>
             </div>
-            <div className="text-sm text-gray-500">Select a node to edit…</div>
+            <div className="text-sm text-gray-500">
+              {selectedNodeId ? `Selected: ${selectedNodeId}` : 'Select a node to edit…'}
+            </div>
           </div>
         </Rnd>
       )}
@@ -116,12 +122,24 @@ export const PipelineEditor: React.FC<Props> = ({ graph, onChange, onRun, onSave
                 Hide
               </button>
             </div>
-            <div className="text-sm text-gray-500">Outputs appear here…</div>
+            <div className="text-sm text-gray-500">
+              {output.datatype}
+              <pre className="mt-2 max-h-24 overflow-auto whitespace-pre-wrap text-xs">
+                {output.data ? JSON.stringify(output.data, null, 2) : 'No output'}
+              </pre>
+            </div>
           </div>
         </Rnd>
       )}
       <div className="pointer-events-auto absolute right-3 top-3 flex gap-2">
-        <button className="rounded bg-emerald-600 px-3 py-1 text-white" onClick={onRun}>
+        <button
+          className="rounded bg-emerald-600 px-3 py-1 text-white"
+          onClick={async () => {
+            const res = await runPipeline(graph)
+            setOutput({ datatype: res.datatype, data: res.data })
+            onRun()
+          }}
+        >
           Run
         </button>
         <button className="rounded bg-gray-800 px-3 py-1 text-white" onClick={() => onSave(graph)}>
