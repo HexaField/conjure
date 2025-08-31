@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { PipelineEditor, PipelineGraph } from '../new/components/PipelineEditor'
+import { PipelineEditor, PipelineGraph } from '../pipeline/PipelineEditor'
 import type { Pipeline } from '../registries/PipelineRegistry'
 
 type ToolLite = { hash: string; label: string }
