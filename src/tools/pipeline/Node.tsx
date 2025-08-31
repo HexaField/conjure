@@ -19,6 +19,15 @@ const transformSchema: JSONSchemaType<{ toolHash: string | null }> = {
   required: []
 }
 
+const inputUrlSchema: JSONSchemaType<{ url: string; schemaHash?: string }> = {
+  type: 'object',
+  properties: {
+    url: { type: 'string', title: 'URL' },
+    schemaHash: { type: 'string', title: 'Schema Hash', nullable: true }
+  },
+  required: ['url']
+}
+
 export function DbNode({ id, data, selected }: NodeProps<any>) {
   const { tools: toolList, updateNodeConfig } = useContext(EditorContext)
 
@@ -36,6 +45,14 @@ export function DbNode({ id, data, selected }: NodeProps<any>) {
           <SchemaForm
             schema={inputPasteSchema}
             value={data?.config ?? { text: '', format: 'json' }}
+            onChange={(v) => updateNodeConfig(id, v)}
+          />
+        )
+      case 'input.url':
+        return (
+          <SchemaForm
+            schema={inputUrlSchema}
+            value={data?.config ?? { url: '', schemaHash: '' }}
             onChange={(v) => updateNodeConfig(id, v)}
           />
         )
