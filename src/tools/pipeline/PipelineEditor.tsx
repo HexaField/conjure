@@ -13,7 +13,6 @@ import ReactFlow, {
   NodeChange
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { runPipeline } from './runPipeline'
 import { EditorContext, ToolLite } from './EditorContext'
 import { DbNode } from './Node'
 
@@ -30,9 +29,7 @@ type Props = {
 export const PipelineEditor: React.FC<Props> = ({ graph, onChange, onRun, onSave, tools = [] }) => {
   const [showLeft, setShowLeft] = useState(true)
   const [showRight, setShowRight] = useState(true)
-  const [showBottom, setShowBottom] = useState(true)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [output, setOutput] = useState<{ datatype: string; data: any }>({ datatype: 'json', data: null })
 
   const nodeTypes = useMemo(() => ({ db: DbNode }), [])
 
@@ -113,33 +110,8 @@ export const PipelineEditor: React.FC<Props> = ({ graph, onChange, onRun, onSave
           </div>
         </Rnd>
       )}
-      {showBottom && (
-        <Rnd default={{ x: 8, y: 280, width: 640, height: 120 }} bounds="parent" className="pointer-events-auto">
-          <div className="h-full w-full overflow-auto rounded-lg bg-white p-2 shadow">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="font-semibold">Output</div>
-              <button className="rounded px-2 py-1 text-sm hover:bg-gray-100" onClick={() => setShowBottom(false)}>
-                Hide
-              </button>
-            </div>
-            <div className="text-sm text-gray-500">
-              {output.datatype}
-              <pre className="mt-2 max-h-24 overflow-auto whitespace-pre-wrap text-xs">
-                {output.data ? JSON.stringify(output.data, null, 2) : 'No output'}
-              </pre>
-            </div>
-          </div>
-        </Rnd>
-      )}
       <div className="pointer-events-auto absolute right-3 top-3 flex gap-2">
-        <button
-          className="rounded bg-emerald-600 px-3 py-1 text-white"
-          onClick={async () => {
-            const res = await runPipeline(graph)
-            setOutput({ datatype: res.datatype, data: res.data })
-            onRun()
-          }}
-        >
+        <button className="rounded bg-emerald-600 px-3 py-1 text-white" onClick={onRun}>
           Run
         </button>
         <button className="rounded bg-gray-800 px-3 py-1 text-white" onClick={() => onSave(graph)}>
