@@ -2,7 +2,7 @@ import React from 'react'
 import type { JSONSchemaType } from '../../../json-schema/JSONSchema'
 
 type Props<T = any> = {
-  schema: any // accept any JSON schema shape for flexibility
+  schema: JSONSchemaType<T>
   value: any
   onChange: (val: any) => void
 }

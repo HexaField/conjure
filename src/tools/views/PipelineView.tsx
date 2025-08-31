@@ -506,7 +506,7 @@ function PipelineUseView(): JSX.Element {
         graphType={visualizationType.get()}
         isVisible={!!allInputsHaveTool}
         createShareConfig={createShareConfig}
-        selectedTool={selectedTool.get(NO_PROXY)}
+        selectedTool={selectedTool.get(NO_PROXY)!}
         outputHash={outputHash}
       />
     </>
