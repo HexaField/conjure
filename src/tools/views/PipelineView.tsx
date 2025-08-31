@@ -1,10 +1,14 @@
 import { getMutableState, getState, hookstate, NO_PROXY, useHookstate, useMutableState } from '@ir-engine/hyperflux'
 import React, { useEffect } from 'react'
+import PipelineCard from '../components/PipelineCard'
 import Tabs from '../components/Tabs'
 import { ToolCard } from '../components/ToolCard'
 import { contentHash } from '../json-schema/contentHash'
 import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
+import { PipelineGraph } from '../new/components/PipelineEditor'
+import { runGraph } from '../new/logic/runGraph'
+import { PipelineRegistry } from '../registries/PipelineRegistry'
 import { TargetRegistry } from '../registries/TargetRegistry'
 import { Tool, ToolRegistry } from '../registries/ToolRegistry'
 
@@ -38,10 +42,19 @@ interface ShareLinkProps {
   graphType: string
   isVisible: boolean
   createShareConfig: () => SharedConfig
+  selectedTool?: Tool | null
+  outputHash?: string | null
 }
 
 // Share Link Component
-function ShareLinkComponent({ inputs, graphType, isVisible, createShareConfig }: ShareLinkProps): JSX.Element | null {
+function ShareLinkComponent({
+  inputs,
+  graphType,
+  isVisible,
+  createShareConfig,
+  selectedTool,
+  outputHash
+}: ShareLinkProps): JSX.Element | null {
   const shareMessage = useHookstate<string | null>(null)
 
   // Generate share file and download it
@@ -81,6 +94,52 @@ function ShareLinkComponent({ inputs, graphType, isVisible, createShareConfig }:
       >
         � Download Config File
       </button>
+      <button
+        className="ml-2 rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-gray-300"
+        disabled={!selectedTool}
+        onClick={() => {
+          if (!selectedTool) return
+          // Build a minimal pipeline graph: input -> transform -> viz
+          const inputUrl = inputs[0]?.url || ''
+          const n1 = {
+            id: `n_${crypto.randomUUID()}`,
+            type: 'db',
+            data: { type: 'input.url', config: { url: inputUrl, schemaHash: inputs[0]?.hash || null } },
+            position: { x: 100, y: 120 }
+          }
+          const n2 = {
+            id: `n_${crypto.randomUUID()}`,
+            type: 'db',
+            data: { type: 'xform.js', config: { toolHash: selectedTool.hash } },
+            position: { x: 360, y: 120 }
+          }
+          const n3 = {
+            id: `n_${crypto.randomUUID()}`,
+            type: 'db',
+            data: { type: 'viz.table', config: { outputHash: outputHash || null } },
+            position: { x: 620, y: 120 }
+          }
+          const e1 = { id: `e_${crypto.randomUUID()}`, source: n1.id, target: n2.id }
+          const e2 = { id: `e_${crypto.randomUUID()}`, source: n2.id, target: n3.id }
+          const label = `${selectedTool.label || 'Pipeline'} (${new URL(inputUrl || 'http://example.com').hostname})`
+          const description = `Auto-saved pipeline from Share panel. Tool: ${
+            selectedTool.label
+          } (${selectedTool.hash.slice(0, 8)}), Output: ${graphType}`
+          const hash = PipelineRegistry.register({
+            label,
+            description,
+            graph: {
+              nodes: [n1, n2, n3],
+              edges: [e1 as any, e2 as any],
+              meta: { graphType, outputHash: outputHash || null }
+            }
+          })
+          shareMessage.set(`Pipeline saved (${hash.slice(0, 8)}…)`)
+          setTimeout(() => shareMessage.set(null), 3000)
+        }}
+      >
+        Save Pipeline
+      </button>
       {shareMessage.get() && (
         <div className="mt-2 rounded border border-green-400 bg-green-100 px-4 py-2 text-sm text-green-700">
           {shareMessage.get()}
@@ -96,6 +155,7 @@ function ShareLinkComponent({ inputs, graphType, isVisible, createShareConfig }:
 
 function PipelineUseView(): JSX.Element {
   const tools = useHookstate(getMutableState(ToolRegistry).tools)
+  const selectedTool = useHookstate<Tool | null>(null)
   // State for multiple input sources
   const inputs = useHookstate<InputSource[]>([
     { url: '', data: null, loading: false, errorMessage: null, schema: null, hash: null }
@@ -282,7 +342,7 @@ function PipelineUseView(): JSX.Element {
     .get({ noproxy: true })
     .map((input) => input.hash)
     .filter((h): h is string => !!h)
-  const matchingTools = Object.values(tools.value as Record<string, any>).filter(
+  const matchingTools = Object.values(tools.get(NO_PROXY) as Record<string, any>).filter(
     (tool) => inputHashes.includes(tool.inputHash) && outputHash && tool.outputHash === outputHash
   ) as Tool[]
 
@@ -429,7 +489,14 @@ function PipelineUseView(): JSX.Element {
         ) : (
           <ul className="space-y-2">
             {matchingTools.map((tool) => (
-              <ToolCard key={tool.hash} tool={tool} onUse={() => runToolAndCreateGraph()} />
+              <ToolCard
+                key={tool.hash}
+                tool={tool}
+                onUse={() => {
+                  selectedTool.set(tool)
+                  runToolAndCreateGraph()
+                }}
+              />
             ))}
           </ul>
         )}
@@ -439,6 +506,8 @@ function PipelineUseView(): JSX.Element {
         graphType={visualizationType.get()}
         isVisible={!!allInputsHaveTool}
         createShareConfig={createShareConfig}
+        selectedTool={selectedTool.get(NO_PROXY)}
+        outputHash={outputHash}
       />
     </>
   )
@@ -447,17 +516,47 @@ function PipelineUseView(): JSX.Element {
 function PipelineLibraryView(): JSX.Element {
   const tools = useHookstate(getMutableState(ToolRegistry).tools)
   const toolList = Object.values(tools.value) as Tool[]
+  const editorTools = toolList.map((t) => ({ hash: t.hash, label: t.label }))
+  const pipelines = useMutableState(PipelineRegistry).pipelines.value
+  const pipelineList = Object.values(pipelines)
+
+  const saveGraphForPipeline = (graph: PipelineGraph, pipeline: any) => {
+    // Register a new version for now; could update in place if desired
+    const newHash = PipelineRegistry.register({
+      label: pipeline.label,
+      description: pipeline.description,
+      graph: { nodes: graph.nodes, edges: graph.edges }
+    })
+    console.log('pipeline saved:', newHash)
+  }
 
   return (
     <div className="mb-6">
-      <h3 className="mb-2 font-medium">Available Tools</h3>
-      {toolList.length === 0 ? (
-        <div className="text-sm text-gray-500">No tools found.</div>
+      <h3 className="mb-2 font-medium">Pipelines</h3>
+      {pipelineList.length === 0 ? (
+        <div className="text-sm text-gray-500">No pipelines saved.</div>
       ) : (
-        <ul className="space-y-2">
-          {toolList.map((tool) => (
-            <ToolCard key={tool.hash} tool={tool} />
-          ))}
+        <ul className="space-y-3">
+          {pipelineList.map((p) => {
+            const mutable = {
+              ...p,
+              graph: {
+                nodes: [...(p.graph?.nodes || [])],
+                edges: [...(p.graph?.edges || [])],
+                meta: p.graph?.meta ? { ...p.graph.meta } : undefined
+              }
+            }
+            return (
+              <li key={p.hash}>
+                <PipelineCard
+                  pipeline={mutable as any}
+                  tools={editorTools}
+                  onRun={runGraph}
+                  onSaveGraph={saveGraphForPipeline}
+                />
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

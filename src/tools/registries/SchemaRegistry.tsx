@@ -3,7 +3,8 @@ import React, { useEffect } from 'react'
 import { P2P_API } from '../../api/CRUD'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
 import { contentHash } from '../json-schema/contentHash'
-import { SCHEMA_PREDICATE } from './constants'
+
+export const SCHEMA_PREDICATE = 'conjure://schema'
 
 export type SHA256Hash = string
 

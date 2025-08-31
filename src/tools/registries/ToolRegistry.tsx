@@ -7,7 +7,8 @@ import { contentHash } from '../json-schema/contentHash'
 import { createDynamicWebworker } from '../utils/createDynamicWebworker'
 import { hashFunctionSource } from '../utils/hashFunction'
 import { SchemaRegistry, SHA256Hash } from './SchemaRegistry'
-import { TOOL_PREDICATE } from './constants'
+
+export const TOOL_PREDICATE = 'conjure://tool'
 
 export type Stringify<Signature = unknown> = string & {
   __fnSignature: Signature
