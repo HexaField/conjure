@@ -1,4 +1,5 @@
 import { createHash } from 'crypto'
+import { SHA256Hash } from '../registries/SchemaRegistry'
 
 /**
  * Recursively canonicalizes a value:
@@ -33,7 +34,7 @@ function canonicalize(value: any): any {
  * @param obj - The JSON-serializable input.
  * @returns A hex string of the SHA-256 hash.
  */
-export function contentHash(obj: any): string {
+export function contentHash(obj: any): SHA256Hash {
   // 1. Canonicalize
   const canon = canonicalize(obj)
 

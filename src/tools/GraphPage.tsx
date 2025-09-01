@@ -2,12 +2,16 @@ import '@ir-engine/client/src/engine'
 
 import { Resizable } from 're-resizable'
 import React, { useEffect } from 'react'
+import { useDrop } from 'react-dnd'
+import { NativeTypes } from 'react-dnd-html5-backend'
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
 import { Vector3 } from 'three'
 
 import Debug from '@ir-engine/client-core/src/components/Debug'
 import { useDraggable } from '@ir-engine/client-core/src/hooks/useDraggable'
 import { createEntity, EntityTreeComponent, removeEntity, setComponent } from '@ir-engine/ecs'
+import { DndWrapper } from '@ir-engine/editor/src/components/dnd/DndWrapper'
+import { DnDFileType } from '@ir-engine/editor/src/constants/AssetTypes'
 import { getMutableState, getState, useHookstate, useMutableState, useReactiveRef } from '@ir-engine/hyperflux'
 import { AmbientLightComponent, ReferenceSpaceState, TransformComponent } from '@ir-engine/spatial'
 import { CameraOrbitComponent } from '@ir-engine/spatial/src/camera/components/CameraOrbitComponent'
@@ -18,14 +22,21 @@ import { useEngineCanvas } from '@ir-engine/spatial/src/renderer/functions/useEn
 import { RendererState } from '@ir-engine/spatial/src/renderer/RendererState'
 import { Button } from '@ir-engine/ui'
 
+import { P2P_API } from '../api/CRUD'
 import GithubLink from './components/GithubLink'
+import Tabs from './components/Tabs'
+import { contentHash } from './json-schema/contentHash'
+import { createJSONTransformSchemaPrompt } from './json-schema/createJSONTransformSchemaPrompt'
+import { generateJsonSchema } from './json-schema/generateJsonSchema'
+import { JSONSchemaType } from './json-schema/JSONSchema'
+import { callLLM, CODING_MODELS } from './llm/useLLM'
+import { SchemaRegistry } from './registries/SchemaRegistry'
+import { TargetRegistry } from './registries/TargetRegistry'
+import { ToolRegistry } from './registries/ToolRegistry'
 import { PipelineView } from './views/PipelineView'
 import SchemaView from './views/SchemaView'
 import ToolView from './views/ToolView'
 
-import Tabs from './components/Tabs'
-
-import { P2P_API } from '../api/CRUD'
 import './graph/forcegraph/ForceGraph'
 
 const tabs = [
@@ -191,12 +202,73 @@ export default function GraphPage() {
   }, [originEntity, viewerEntity])
 
   return (
-    <>
-      <div ref={setRef} style={{ width: '100%', height: '100%', position: 'absolute' }} />
+    <div id="graph-container" className="pointer-events-auto">
+      <DndWrapper id="graph-container">
+        <GraphDND>
+          <div ref={setRef} className="absolute h-full w-full" />
+        </GraphDND>
+      </DndWrapper>
       <ToolUI />
       <GithubLink />
       <Debug />
-    </>
+    </div>
+  )
+}
+
+const GraphDND = ({ children }: { children: React.ReactNode }) => {
+  const [{ isDragging }, dropRef] = useDrop({
+    accept: ['json', NativeTypes.FILE],
+    collect: (monitor) => ({
+      isDragging: monitor.getItem() !== null && monitor.canDrop() && monitor.isOver()
+    }),
+    drop: async (item: DnDFileType, monitor) => {
+      if (!('files' in item)) return
+      const [file] = (monitor.getItem() as DataTransfer).files
+      if (!file) return
+      const json = JSON.parse(await file.text())
+      const generatedInputSchema = generateJsonSchema(json)
+      const generatedInputSchemaHash = contentHash(generatedInputSchema)
+      if (!getState(SchemaRegistry).schemas[generatedInputSchemaHash]) {
+        SchemaRegistry.register(generatedInputSchema, file.name, `Generated schema from ${file.name}`)
+      }
+      const inputSchema = getState(SchemaRegistry).schemas[generatedInputSchemaHash]
+      const [outputHash, outputSchema] = Object.entries(getState(TargetRegistry))[0] // for now, just hardcode the only output target we have
+
+      const toolExists = Object.entries(getState(ToolRegistry).tools).find(([key, value]) => {
+        return value.inputHash === generatedInputSchemaHash && value.outputHash === outputSchema.hash
+      })
+      let toolHash = toolExists?.[0]
+      if (!toolExists) {
+        const result = await callLLM(
+          {
+            prompt: createJSONTransformSchemaPrompt({
+              inputSchema: generatedInputSchema,
+              outputSchema: outputSchema.value,
+              additionalInstructions: ''
+            }),
+            output: 'json'
+          },
+          { modelId: CODING_MODELS[0].id }
+        )
+        const cleanResponse = JSON.parse(result!.rawResponse)
+        toolHash = await ToolRegistry.create({
+          label: `${inputSchema.label} to ${outputSchema.label}`,
+          description: `Converts data from ${inputSchema.label} to ${outputSchema.label}`,
+          input: generatedInputSchema as JSONSchemaType<unknown>,
+          output: outputSchema.value as JSONSchemaType<unknown>,
+          transformation: cleanResponse
+        })
+      }
+      const transformedData = await ToolRegistry.run(toolHash!, json)
+      /** @todo merge with existing target data */
+      outputSchema.deserialize({ [file.name]: transformedData } as any)
+    }
+  })
+
+  return (
+    <div ref={dropRef} className="pointer-events-none absolute z-30 h-full w-full">
+      {children}
+    </div>
   )
 }
 
