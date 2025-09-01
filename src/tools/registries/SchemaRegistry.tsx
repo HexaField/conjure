@@ -3,6 +3,7 @@ import React, { useEffect } from 'react'
 import { P2P_API } from '../../api/CRUD'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
 import { contentHash } from '../json-schema/contentHash'
+import { registerKnownSchemas } from '../schemas/KnownSchemas'
 
 export const SCHEMA_PREDICATE = 'conjure://schema'
 
@@ -41,6 +42,10 @@ export const SchemaRegistry = defineState({
   reactor: () => {
     const schemaState = useMutableState(SchemaRegistry).schemas
     const apiReady = useMutableState(P2P_API).ready.value
+
+    useEffect(() => {
+      registerKnownSchemas()
+    }, [])
 
     useEffect(() => {
       if (!apiReady) return
