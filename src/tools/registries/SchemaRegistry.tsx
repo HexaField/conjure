@@ -5,7 +5,7 @@ import { defineState, getMutableState, getState, NO_PROXY, none, useMutableState
 
 import { P2P_API } from '../../api/CRUD'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
-import { contentHash } from '../json-schema/contentHash'
+import { contentHashJSONSchema } from '../json-schema/contentHash'
 import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { registerKnownSchemas } from '../schemas/KnownSchemas'
 
@@ -27,8 +27,9 @@ export const SchemaRegistry = defineState({
   initial: { schemas: {} as Record<SHA256Hash, SchemaType> },
 
   register: (schema: JSONSchemaType<any>, label?: string, description?: string) => {
-    const hash = contentHash(schema)
+    const hash = contentHashJSONSchema(schema as any /**@todo unify json schema types */)
     console.log('Registered schema:', label)
+    if (getState(SchemaRegistry).schemas[hash]) return hash // don't overwrite existing schemas
     getMutableState(SchemaRegistry).schemas[hash].set({
       hash,
       label: label || 'Untitled',

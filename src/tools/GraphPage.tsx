@@ -25,7 +25,7 @@ import { Button } from '@ir-engine/ui'
 import { P2P_API } from '../api/CRUD'
 import GithubLink from './components/GithubLink'
 import Tabs from './components/Tabs'
-import { contentHash } from './json-schema/contentHash'
+import { contentHashJSONSchema } from './json-schema/contentHash'
 import { JSONSchemaType } from './json-schema/JSONSchema'
 import { callLLM, CODING_MODELS } from './llm/useLLM'
 import { SchemaRegistry } from './registries/SchemaRegistry'
@@ -283,7 +283,9 @@ const GraphDND = ({ children }: { children: React.ReactNode }) => {
           additionalProperties: outputSchema.value as JSONSchemaType<unknown>
         }
 
-        const outputRecordSchemaHash = contentHash(outputRecordSchema)
+        const outputRecordSchemaHash = contentHashJSONSchema(
+          outputRecordSchema as any /**@todo unify json schema types */
+        )
         if (!getState(SchemaRegistry).schemas[outputRecordSchemaHash]) {
           SchemaRegistry.register(
             outputRecordSchema,

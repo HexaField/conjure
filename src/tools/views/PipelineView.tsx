@@ -3,7 +3,7 @@ import React, { useEffect } from 'react'
 import PipelineCard from '../components/PipelineCard'
 import Tabs from '../components/Tabs'
 import { ToolCard } from '../components/ToolCard'
-import { contentHash } from '../json-schema/contentHash'
+import { contentHash, contentHashJSONSchema } from '../json-schema/contentHash'
 import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
 import type { PipelineSpec, PipelineStage } from '../pipeline/model'
@@ -256,7 +256,7 @@ function PipelineUseView(): JSX.Element {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
       const data = await resp.json()
       const schema = generateJsonSchema(data)
-      const hash = contentHash(schema)
+      const hash = contentHashJSONSchema(schema as any /**@todo unify json schema types */)
       inputs[idx].merge({ data, schema, hash, loading: false, errorMessage: null })
     } catch (e: any) {
       inputs[idx].merge({ loading: false, errorMessage: e.message || 'Fetch failed' })

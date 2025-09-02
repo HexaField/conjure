@@ -3,7 +3,7 @@ import { defineState, getMutableState, getState, NO_PROXY, none, useMutableState
 import React, { useEffect } from 'react'
 import { P2P_API } from '../../api/CRUD'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
-import { contentHash } from '../json-schema/contentHash'
+import { contentHash, contentHashJSONSchema } from '../json-schema/contentHash'
 import { createDynamicWebworker } from '../utils/createDynamicWebworker'
 import { hashFunctionSource } from '../utils/hashFunction'
 import { SchemaRegistry, SHA256Hash } from './SchemaRegistry'
@@ -35,8 +35,8 @@ export const ToolRegistry = defineState({
   create: async (tool: Omit<Tool, 'hash' | 'inputHash' | 'outputHash' | 'transformationHash'>): Promise<SHA256Hash> => {
     const { label, description, input, output, transformation } = tool
 
-    const inputHash = contentHash(input) as SHA256Hash
-    const outputHash = contentHash(output) as SHA256Hash
+    const inputHash = contentHashJSONSchema(input as any /**@todo unify json schema types */) as SHA256Hash
+    const outputHash = contentHashJSONSchema(output as any /**@todo unify json schema types */) as SHA256Hash
     const transformationHash =
       typeof transformation === 'string'
         ? ((await hashFunctionSource(transformation)) as FunctionHash)
