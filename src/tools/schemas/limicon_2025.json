@@ -3,59 +3,74 @@
   "properties": {
     "connections": {
       "type": "array",
-      "description": "Connections between elements in the graph",
       "items": {
         "type": "object",
         "properties": {
           "Id": {
-            "type": "number",
-            "description": "Unique identifier for the connection"
+            "type": "integer"
           },
           "From": {
-            "type": "number",
-            "description": "ID of the source element"
+            "type": "integer"
           },
           "To": {
-            "type": "number",
-            "description": "ID of the target element"
+            "type": "integer"
           },
           "Name From": {
-            "type": "string",
-            "description": "Name of the source element"
+            "type": "string"
           },
           "Name To": {
-            "type": "string",
-            "description": "Name of the target element"
+            "type": "string"
           },
           "Initial Date": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Date when the connection was established"
+            "type": "string"
           },
           "Last Date": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Date when the connection was last updated"
+            "type": "string"
           },
           "Type": {
-            "type": "string",
-            "description": "Type of the connection"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null",
+                "nullable": true
+              }
+            ]
           },
           "Weight": {
-            "type": "number",
-            "description": "Weight of the connection"
+            "type": "integer"
           },
           "Connection strength": {
-            "type": "string",
-            "description": "Strength of the connection"
+            "type": "string"
           },
           "Met through Limicon": {
-            "type": "string",
-            "format": "date-time",
-            "allowedValues": ["", "2024", "2025"],
-            "description": "Date when the connection was made through Limicon"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
           }
-        }
+        },
+        "required": [
+          "Id",
+          "From",
+          "To",
+          "Name From",
+          "Name To",
+          "Initial Date",
+          "Last Date",
+          "Type",
+          "Weight",
+          "Connection strength",
+          "Met through Limicon"
+        ]
       }
     },
     "elements": {
@@ -64,120 +79,179 @@
         "type": "object",
         "properties": {
           "Id": {
-            "type": "number",
-            "description": "Unique identifier for the element"
+            "type": "integer"
           },
           "Type": {
-            "type": "string",
-            "description": "Unused"
+            "type": "string"
           },
           "Label": {
-            "type": "string",
-            "description": "Label for the element"
+            "type": "string"
           },
           "First Name": {
-            "type": "string",
-            "description": "First name of the person"
+            "type": "string"
           },
           "Last Name": {
-            "type": "string",
-            "description": "Last name of the person"
+            "type": "string"
           },
           "Description": {
-            "type": "string",
-            "description": "Description of the element"
+            "type": "string"
           },
           "Segment": {
-            "type": "string",
-            "description": "Unused"
+            "type": "string"
           },
           "Image": {
-            "type": "string",
-            "nullable": true
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null",
+                "nullable": true
+              }
+            ]
           },
           "Project Name": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Unused"
+            "type": "string"
           },
           "Mailchimp Opt-In": {
-            "type": "boolean",
-            "description": "Unused"
+            "type": "boolean"
           },
           "Terms and Conditions": {
-            "type": "boolean",
-            "description": "Unused"
+            "type": "boolean"
           },
           "Initial Date": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Date when the person was added to the system"
+            "type": "string"
           },
           "Last Date": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Date when the person's information was last updated"
+            "type": "string"
           },
           "Creation date": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Date when the person's record was created"
+            "type": "string"
           },
           "1. What I'd like to share about myself": {
-            "type": "string",
-            "description": "Personal information the person wants to share"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
           },
           "2. How to connect with me": {
-            "type": "string",
-            "description": "Instructions on how to connect with the person"
+            "type": "string"
           },
           "3. Where to check out my work": {
-            "type": "string",
-            "description": "Links or information about the person's work"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
           },
           "4. The city, country I am currently living in": {
-            "type": "string",
-            "description": "Location information"
+            "type": "string"
           },
           "5. I feel most connected with these topics (choose up to 3)": {
-            "type": "string",
-            "description": "Topics the person feels most connected with"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
           },
           "5. Other": {
-            "type": "string",
-            "description": "Other topics the person feels connected with"
+            "type": "string"
           },
           "6a. Needs that this network could help me with": {
-            "type": "string",
-            "description": "Needs that the person has that the network could assist with"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
           },
           "6b. Elaborate on any needs you'd like": {
-            "type": "string",
-            "description": "Further details on the needs the person has"
+            "type": "string"
           },
           "7a. Things I can offer to this network": {
-            "type": "string",
-            "description": "Things the person can offer to the network"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
           },
           "7b. Elaborate on any offers you'd like": {
-            "type": "string",
-            "description": "Further details on the offers the person can make"
+            "type": "string"
           },
           "8. A question I would like to explore at Limicon": {
-            "type": "string",
-            "description": "A question the person wants to explore at Limicon"
+            "type": "string"
           },
           "9. Something I want to add to this space": {
-            "type": "string",
-            "description": "Additional information the person wants to share"
+            "type": "string"
           }
-        }
+        },
+        "required": [
+          "Id",
+          "Type",
+          "Label",
+          "First Name",
+          "Last Name",
+          "Description",
+          "Segment",
+          "Image",
+          "Project Name",
+          "Mailchimp Opt-In",
+          "Terms and Conditions",
+          "Initial Date",
+          "Last Date",
+          "Creation date",
+          "1. What I'd like to share about myself",
+          "2. How to connect with me",
+          "3. Where to check out my work",
+          "4. The city, country I am currently living in",
+          "5. I feel most connected with these topics (choose up to 3)",
+          "5. Other",
+          "6a. Needs that this network could help me with",
+          "6b. Elaborate on any needs you'd like",
+          "7a. Things I can offer to this network",
+          "7b. Elaborate on any offers you'd like",
+          "8. A question I would like to explore at Limicon",
+          "9. Something I want to add to this space"
+        ]
       }
     },
     "name": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Unused"
+      "type": "string"
     }
-  }
+  },
+  "required": [
+    "connections",
+    "elements",
+    "name"
+  ]
 }

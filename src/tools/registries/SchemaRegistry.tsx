@@ -1,8 +1,12 @@
-import { defineState, getMutableState, NO_PROXY, none, useMutableState } from '@ir-engine/hyperflux'
+import { compileSchema, SchemaNode } from 'json-schema-library'
 import React, { useEffect } from 'react'
+
+import { defineState, getMutableState, getState, NO_PROXY, none, useMutableState } from '@ir-engine/hyperflux'
+
 import { P2P_API } from '../../api/CRUD'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
 import { contentHash } from '../json-schema/contentHash'
+import { generateJsonSchema } from '../json-schema/generateJsonSchema'
 import { registerKnownSchemas } from '../schemas/KnownSchemas'
 
 export const SCHEMA_PREDICATE = 'conjure://schema'
@@ -16,12 +20,15 @@ export type SchemaType<Data = any> = {
   schema: JSONSchemaType<Data>
 }
 
+const validators = {} as Record<SHA256Hash, SchemaNode>
+
 export const SchemaRegistry = defineState({
   name: 'hexafield.conjure.SchemaRegistry',
   initial: { schemas: {} as Record<SHA256Hash, SchemaType> },
 
   register: (schema: JSONSchemaType<any>, label?: string, description?: string) => {
     const hash = contentHash(schema)
+    console.log('Registered schema:', label)
     getMutableState(SchemaRegistry).schemas[hash].set({
       hash,
       label: label || 'Untitled',
@@ -37,6 +44,35 @@ export const SchemaRegistry = defineState({
     P2P_API.client.delete({ source: hash, predicate: SCHEMA_PREDICATE }).then(async () => {
       console.log('deleted:', hash)
     })
+  },
+
+  /**
+   * Find a schema that does not fail validation for an incoming data object.
+   */
+  findMatchingSchema: (data: any) => {
+    const schemaState = getState(SchemaRegistry).schemas
+    const matchingHash = Object.keys(schemaState).find((hash: SHA256Hash) => {
+      const schema = schemaState[hash]
+      if (!validators[hash]) {
+        validators[hash] = compileSchema(schema.schema)
+      }
+      try {
+        const { valid } = validators[hash].validate(data)
+        return valid
+      } catch (e) {
+        // validation failed
+        return null
+      }
+    })
+    return matchingHash
+  },
+
+  findOrGenerateMatchingSchema: (data: any, label?: string, description?: string) => {
+    const existingSchema = SchemaRegistry.findMatchingSchema(data)
+    if (existingSchema) return getState(SchemaRegistry).schemas[existingSchema]
+    const newSchema = generateJsonSchema(data)
+    SchemaRegistry.register(newSchema, label, description)
+    return newSchema
   },
 
   reactor: () => {

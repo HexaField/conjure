@@ -203,8 +203,6 @@ function extractJavascript(text: string): unknown {
 async function callMLC<T = unknown>(engine: MLCEngineInterface, options: LLMCallOptions): Promise<LLMResponse<T>> {
   const { prompt, temperature = 0.7, maxTokens = 1000 } = options
 
-  console.log('calling prompt:', prompt)
-
   try {
     const response = await engine.chat.completions.create({
       messages: [
@@ -219,7 +217,6 @@ async function callMLC<T = unknown>(engine: MLCEngineInterface, options: LLMCall
 
     const rawResponse = response.choices[0]?.message?.content || ''
 
-    console.log('rawResponse:', rawResponse)
     if (!rawResponse) {
       throw new Error('Empty response from LLM')
     }
@@ -285,8 +282,6 @@ async function callRemoteLLM<T = unknown>(
   let url = model.apiUrl
   if (model.provider === 'ollama' && customUrl) url = customUrl
 
-  console.log(prompt)
-
   let headers: Record<string, string> = { 'Content-Type': 'application/json' }
   let body: any = {}
 
@@ -346,7 +341,6 @@ async function callRemoteLLM<T = unknown>(
         validationErrors: [`JSON parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`]
       }
     }
-    console.log(parsedData)
     return { data: parsedData as T, rawResponse, isValid: true }
   }
   if (options.output === 'javascript') {
@@ -361,11 +355,9 @@ async function callRemoteLLM<T = unknown>(
         validationErrors: [`Javascript parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`]
       }
     }
-    console.log(parsedData)
     return { data: parsedData as T, rawResponse, isValid: true }
   }
 
-  console.log(rawResponse)
   return { data: rawResponse as T, rawResponse, isValid: true }
 }
 

@@ -59,6 +59,8 @@ export const ToolRegistry = defineState({
       transformationHash
     }
 
+    console.log('Registered tool:', label)
+
     getMutableState(ToolRegistry).tools[serializedTool.hash].set(serializedTool)
 
     return serializedTool.hash

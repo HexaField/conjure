@@ -26,8 +26,6 @@ import { P2P_API } from '../api/CRUD'
 import GithubLink from './components/GithubLink'
 import Tabs from './components/Tabs'
 import { contentHash } from './json-schema/contentHash'
-import { createJSONTransformSchemaPrompt } from './json-schema/createJSONTransformSchemaPrompt'
-import { generateJsonSchema } from './json-schema/generateJsonSchema'
 import { JSONSchemaType } from './json-schema/JSONSchema'
 import { callLLM, CODING_MODELS } from './llm/useLLM'
 import { SchemaRegistry } from './registries/SchemaRegistry'
@@ -232,35 +230,38 @@ const GraphDND = ({ children }: { children: React.ReactNode }) => {
         await Promise.all(
           [...files].map(async (file) => {
             const json = JSON.parse(await file.text())
-            const generatedInputSchema = generateJsonSchema(json)
-            const generatedInputSchemaHash = contentHash(generatedInputSchema)
-            if (!getState(SchemaRegistry).schemas[generatedInputSchemaHash]) {
-              SchemaRegistry.register(generatedInputSchema, file.name, `Generated schema from ${file.name}`)
-            }
-            const inputSchema = getState(SchemaRegistry).schemas[generatedInputSchemaHash]
+            const inputSchema = SchemaRegistry.findOrGenerateMatchingSchema(
+              json,
+              file.name,
+              `Generated schema from ${file.name}`
+            )
 
             const toolExists = Object.entries(getState(ToolRegistry).tools).find(([key, value]) => {
-              return value.inputHash === generatedInputSchemaHash && value.outputHash === outputSchema.hash
+              return value.inputHash === inputSchema.hash && value.outputHash === outputSchema.hash
             })
             let toolHash = toolExists?.[0]
             if (!toolExists) {
+              console.log('Generating JSON transformer for', file.name)
               const result = await callLLM(
                 {
-                  prompt: createJSONTransformSchemaPrompt({
-                    inputSchema: generatedInputSchema,
+                  prompt: createJSONTransformFunctionPrompt({
+                    inputSchema: inputSchema.schema as JSONSchemaType<unknown>,
                     outputSchema: outputSchema.value,
                     additionalInstructions:
                       'If a schema specifies that it allows additional properties, include them in the output, attempting to map them to known properties when specified.'
                   }),
-                  output: 'json'
+                  output: 'javascript'
                 },
                 { modelId: CODING_MODELS[0].id }
               )
-              const cleanResponse = JSON.parse(result!.rawResponse)
+              const cleanResponse = result!.rawResponse
+                .replace('```javascript', '')
+                .replace('```', '')
+                .replace('\\n', '\n') as Stringify<(input: unknown) => Promise<unknown>>
               toolHash = await ToolRegistry.create({
                 label: `${inputSchema.label} to ${outputSchema.label}`,
                 description: `Converts data from ${inputSchema.label} to ${outputSchema.label}`,
-                input: generatedInputSchema as JSONSchemaType<unknown>,
+                input: inputSchema.schema as JSONSchemaType<unknown>,
                 output: outputSchema.value as JSONSchemaType<unknown>,
                 transformation: cleanResponse
               })
@@ -271,6 +272,7 @@ const GraphDND = ({ children }: { children: React.ReactNode }) => {
               JSONSchemaType<unknown>,
               JSONSchemaType<typeof outputSchema.value>
             >(toolHash!, json)
+            console.log(transformedData)
             return [file.name, transformedData] as const
           })
         )
