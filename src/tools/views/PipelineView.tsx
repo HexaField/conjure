@@ -112,7 +112,7 @@ function ShareLinkComponent({
           stages.push(sTool)
           const sOut: PipelineStage = {
             type: 'output',
-            params: { outputHash: (outputHash as any) ?? undefined, outputType: 'table' },
+            params: { outputHash: outputHash ?? undefined },
             next: []
           }
           stages.push(sOut)
@@ -353,8 +353,7 @@ function PipelineUseView(): JSX.Element {
     if (!selTool) return
     // Build a pipeline spec dynamically from current inputs -> selected tool -> output per input
     const stages: PipelineStage[] = []
-    const outputMap: Array<{ outIndex: number; url: string }> = []
-    inputs.get(NO_PROXY).forEach((input, idx) => {
+    inputs.get(NO_PROXY).forEach((input) => {
       if (!input.hash || !input.data) return
       const iIdx = stages.length
       stages.push({
@@ -365,23 +364,15 @@ function PipelineUseView(): JSX.Element {
       const tIdx = stages.length
       stages.push({ type: 'tool', toolHash: selTool.hash, params: {}, next: [] })
       const oIdx = stages.length
-      stages.push({ type: 'output', params: { outputHash: outputHash || undefined, outputType: 'table' }, next: [] })
-      ;(stages[iIdx] as any).next.push(tIdx)
-      ;(stages[tIdx] as any).next.push(oIdx)
-      outputMap.push({ outIndex: oIdx, url: input.url })
+      stages.push({ type: 'output', params: { outputHash: outputHash || undefined }, next: [] })
+      stages[iIdx].next.push(tIdx)
+      stages[tIdx].next.push(oIdx)
     })
     const spec: PipelineSpec = { stages }
-    const result = await runPipelineSpec(spec)
-    if (targetGraph) {
-      const dataObj: Record<string, any> = {}
-      outputMap.forEach(({ outIndex, url }) => {
-        dataObj[url] = result.stageData[outIndex]
-      })
-      try {
-        targetGraph.deserialize(dataObj)
-      } catch (e) {
-        console.error('Graph creation failed', e)
-      }
+    try {
+      await runPipelineSpec(spec)
+    } catch (e) {
+      console.error('Pipeline run failed', e)
     }
   }
 

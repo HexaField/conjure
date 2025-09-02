@@ -131,8 +131,6 @@ export const ToolRegistry = defineState({
       })
     }, [apiReady])
 
-    if (!apiReady) return null
-
     return (
       <>
         {toolState.keys.map((key) => (
@@ -145,12 +143,15 @@ export const ToolRegistry = defineState({
 
 const SyncTool = ({ hash }: { hash: string }) => {
   const tool = useMutableState(ToolRegistry).tools[hash].get(NO_PROXY)
+  const apiReady = useMutableState(P2P_API).ready.value
 
   useEffect(() => {
     if (!getState(SchemaRegistry).schemas[tool.inputHash])
       SchemaRegistry.register(tool.input as JSONSchemaType<unknown>, tool.label, tool.description)
     if (!getState(SchemaRegistry).schemas[tool.outputHash])
       SchemaRegistry.register(tool.output as JSONSchemaType<unknown>, tool.label, tool.description)
+
+    if (!apiReady) return
 
     P2P_API.client.has({ source: hash, predicate: TOOL_PREDICATE }).then(async (exists) => {
       if (exists) return
@@ -174,7 +175,18 @@ const SyncTool = ({ hash }: { hash: string }) => {
           console.error('Failed to create tool:', e)
         })
     })
-  }, [JSON.stringify(tool)])
+  }, [
+    apiReady,
+    tool.inputHash,
+    tool.outputHash,
+    tool.input,
+    tool.output,
+    tool.label,
+    tool.description,
+    tool.hash,
+    tool.transformation,
+    tool.transformationHash
+  ])
 
   return null
 }

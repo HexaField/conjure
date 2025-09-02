@@ -93,7 +93,7 @@ const SyncSchema = ({ hash }: { hash: string }) => {
           console.error('Failed to create schema:', e)
         })
     })
-  }, [JSON.stringify(schema)])
+  }, [schema.description, schema.label, schema.schema])
 
   return null
 }

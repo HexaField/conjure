@@ -1,0 +1,167 @@
+{
+  "type": "object",
+  "properties": {
+    "connections": {
+      "type": "array",
+      "description": "Connections between elements in the graph",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "number",
+            "description": "Unique identifier for the connection"
+          },
+          "From": {
+            "type": "number",
+            "description": "ID of the source element"
+          },
+          "To": {
+            "type": "number",
+            "description": "ID of the target element"
+          },
+          "Name From": {
+            "type": "string",
+            "description": "Name of the source element"
+          },
+          "Name To": {
+            "type": "string",
+            "description": "Name of the target element"
+          },
+          "Initial Date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date when the connection was established"
+          },
+          "Last Date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date when the connection was last updated"
+          },
+          "Type": {
+            "type": "string",
+            "description": "Type of the connection"
+          },
+          "Weight": {
+            "type": "number",
+            "description": "Weight of the connection"
+          },
+          "Connection Strength": {
+            "type": "string",
+            "description": "Strength of the connection"
+          },
+          "Anything to add about this relationship?": {
+            "type": "string",
+            "description": "Additional information about the relationship"
+          },
+          "Did you meet at Limicon?": {
+            "type": "string",
+            "description": "Indicates if the connection was made at Limicon"
+          }
+        }
+      }
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "number",
+            "description": "Unique identifier for the element"
+          },
+          "Type": {
+            "type": "string",
+            "description": "Unused"
+          },
+          "Label": {
+            "type": "string",
+            "description": "The full name of the person"
+          },
+          "First Name": {
+            "type": "string",
+            "description": "The first name of the person"
+          },
+          "Last Name": {
+            "type": "string",
+            "description": "The last name of the person"
+          },
+          "Description": {
+            "type": "string",
+            "description": "A brief description of the person"
+          },
+          "Segment": {
+            "type": "string",
+            "description": "Unused"
+          },
+          "Image": {
+            "type": "string",
+            "nullable": true,
+            "description": "URL of the person's image"
+          },
+          "Project Name": {
+            "type": "string",
+            "description": "Unused"
+          },
+          "Mailchimp Opt-In": {
+            "type": "boolean",
+            "description": "Unused"
+          },
+          "Terms and Conditions": {
+            "type": "boolean",
+            "description": "Unused"
+          },
+          "Initial Date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date when the person was added to the system"
+          },
+          "Last Date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date when the person's information was last updated"
+          },
+          "Creation date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date when the person's record was created"
+          },
+          "What I'd like to share about myself:": {
+            "type": "string",
+            "description": "Personal information the person wants to share"
+          },
+          "What city, region, country are you currently living?": {
+            "type": "string",
+            "description": "Location information"
+          },
+          "How to connect:": {
+            "type": "string",
+            "description": "Instructions on how to connect with the person"
+          },
+          "A question I would like to explore at Limicon:": {
+            "type": "string",
+            "description": "A question the person wants to explore at Limicon"
+          },
+          "Share up to 3 parts of the field that you feel yourself to be most connected with:": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Parts of the field the person feels most connected with"
+            }
+          },
+          "What I may offer into Limicon:": {
+            "type": "string",
+            "description": "What the person can contribute to Limicon"
+          },
+          "A few wishes I may have for Limicon:": {
+            "type": "string",
+            "description": "Wishes the person has for Limicon"
+          }
+        }
+      }
+    },
+    "name": {
+      "type": "string",
+      "description": "Unused"
+    }
+  }
+}

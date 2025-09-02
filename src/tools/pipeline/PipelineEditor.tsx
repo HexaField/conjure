@@ -204,7 +204,7 @@ export const PipelineEditor: React.FC<Props> = ({ graph, onChange, onRun, onSave
       let data: any
       if (kind === 'tool') data = { type: 'tool', config: { toolHash: toolHash || '' } }
       else if (kind === 'input') data = { type: 'input.url', config: { url: '', schemaHash: '' } }
-      else data = { type: 'viz.table', config: { outputType: 'table' } }
+      else data = { type: 'viz.table', config: {} }
 
       const newNode: Node = { id, type: 'db', position: menu.flowPos, data } as any
 

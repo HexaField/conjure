@@ -1,12 +1,9 @@
-import { PipelineSpec } from './model'
+import { getState } from '@ir-engine/hyperflux'
+import { TargetRegistry } from '../registries/TargetRegistry'
 import { ToolRegistry } from '../registries/ToolRegistry'
+import { PipelineSpec } from './model'
 
-export type PipelineSpecRunResult = {
-  stageData: Record<number, any>
-  outputs: Array<{ index: number; data: any }>
-}
-
-export async function runPipelineSpec(spec: PipelineSpec): Promise<PipelineSpecRunResult> {
+export async function runPipelineSpec(spec: PipelineSpec): Promise<void> {
   const { stages } = spec
   const incoming: Record<number, number[]> = {}
   const outgoing: Record<number, number[]> = {}
@@ -45,7 +42,10 @@ export async function runPipelineSpec(spec: PipelineSpec): Promise<PipelineSpecR
         const input = ins[0]
         stageData[i] = toolHash ? await ToolRegistry.run(toolHash as any, input) : input
       } else if (s.type === 'output') {
-        stageData[i] = ins[0]
+        const outputHash = s.params?.outputHash
+        if (!outputHash) return
+        const targetGraph = getState(TargetRegistry)[outputHash]
+        targetGraph.deserialize(stageData)
       }
     } catch (e) {
       console.error('Pipeline stage failed', i, e)
@@ -64,9 +64,4 @@ export async function runPipelineSpec(spec: PipelineSpec): Promise<PipelineSpecR
       }
     }
   }
-
-  const outputs = stages
-    .map((s, i) => (s.type === 'output' ? { index: i, data: stageData[i] } : null))
-    .filter(Boolean) as Array<{ index: number; data: any }>
-  return { stageData, outputs }
 }

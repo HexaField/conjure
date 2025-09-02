@@ -15,7 +15,7 @@ export type PipelineStage =
   | {
       type: 'output'
       label?: string
-      params?: { outputType?: 'table' | 'json' | 'geojson' | 'chart'; outputHash?: string | null }
+      params?: { outputHash?: string | null }
       next: number[]
     }
 

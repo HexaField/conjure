@@ -285,6 +285,8 @@ async function callRemoteLLM<T = unknown>(
   let url = model.apiUrl
   if (model.provider === 'ollama' && customUrl) url = customUrl
 
+  console.log(prompt)
+
   let headers: Record<string, string> = { 'Content-Type': 'application/json' }
   let body: any = {}
 
@@ -344,6 +346,7 @@ async function callRemoteLLM<T = unknown>(
         validationErrors: [`JSON parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`]
       }
     }
+    console.log(parsedData)
     return { data: parsedData as T, rawResponse, isValid: true }
   }
   if (options.output === 'javascript') {
@@ -358,8 +361,11 @@ async function callRemoteLLM<T = unknown>(
         validationErrors: [`Javascript parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`]
       }
     }
+    console.log(parsedData)
     return { data: parsedData as T, rawResponse, isValid: true }
   }
+
+  console.log(rawResponse)
   return { data: rawResponse as T, rawResponse, isValid: true }
 }
 

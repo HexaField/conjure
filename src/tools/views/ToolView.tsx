@@ -2,7 +2,7 @@ import { hookstate, useHookstate } from '@hookstate/core'
 import { useEffect } from 'react'
 
 import transform from '@hexafield/jsonpath-object-transform'
-import { getState, NO_PROXY } from '@ir-engine/hyperflux'
+import { getMutableState, getState, NO_PROXY } from '@ir-engine/hyperflux'
 import { Button } from '@ir-engine/ui'
 import React from 'react'
 import { DataTransformSection } from '../components/DataTransformSection'
@@ -425,13 +425,18 @@ function ToolCreateView(): JSX.Element {
 }
 
 function ToolRegistryView(): JSX.Element {
-  const tools = useHookstate(getState(ToolRegistry).tools)
+  const tools = useHookstate(getMutableState(ToolRegistry).tools)
+
+  const handleForgetSchema = (hash: string) => {
+    ToolRegistry.forget(hash)
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <h2 className="mb-4 text-xl font-semibold">Tool Library</h2>
       <ul className="space-y-4">
         {Object.values(tools.get(NO_PROXY)).map((tool: Tool) => (
-          <ToolCard key={tool.hash} tool={tool} />
+          <ToolCard key={tool.hash} tool={tool} onForget={handleForgetSchema} />
         ))}
       </ul>
     </div>
