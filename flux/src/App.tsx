@@ -1,12 +1,13 @@
+import React from 'react'
 import { PerspectiveProxy } from '@coasys/ad4m'
 import { AgentClient } from '@coasys/ad4m/lib/src/agent/AgentClient'
 import { Profile } from '@coasys/flux-types'
 import { EngineState } from '@ir-engine/ecs'
-import { createHyperStore, getMutableState, useMutableState, UserID } from '@ir-engine/hyperflux'
+import { createHyperStore, getMutableState, useMutableState, useReactiveRef, UserID } from '@ir-engine/hyperflux'
 import { ReferenceSpaceState } from '@ir-engine/spatial'
 import { useSpatialEngine } from '@ir-engine/spatial/src/initializeEngine'
 import { useEngineCanvas } from '@ir-engine/spatial/src/renderer/functions/useEngineCanvas'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useBasicScene } from '../../src/world/BasicScene'
 import { useSpawnAvatar } from '../../src/world/useSpawnAvatar'
 
@@ -28,7 +29,7 @@ const Scene = (props: { url: string }) => {
 }
 
 const Engine = (props: Props) => {
-  const ref = useRef()
+  const [ref, setRef] = useReactiveRef()
 
   useSpatialEngine()
   useEngineCanvas(ref)
@@ -37,8 +38,8 @@ const Engine = (props: Props) => {
 
   return (
     <>
-      <div style={{ width: '100%', height: '100%', position: 'absolute' }} />
-      <div>{viewerEntity && <Scene url={props.perspective.sharedUrl} />}</div>
+      <div ref={setRef} style={{ width: '100%', height: '100%', position: 'absolute' }} />
+      <div>{viewerEntity && <Scene url={props.perspective.sharedUrl!} />}</div>
     </>
   )
 }

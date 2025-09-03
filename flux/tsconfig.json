@@ -1,16 +1,11 @@
 {
   "compilerOptions": {
-    "jsx": "preserve",
     "downlevelIteration": true,
     "experimentalDecorators": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "baseUrl": "/",
-    "paths": {
-      "react": ["node_modules/preact/compat"],
-      "react-dom": ["node_modules/preact/compat"]
-    }
+    "esModuleInterop": true,
+    "strict": true,
+    "jsx": "react"
   },
-  "include": ["./globals.d.ts", "src/**/*.tsx", "src/**/*.ts", "../src/**/*"]
+  "include": ["./globals.d.ts", "src"]
 }
-

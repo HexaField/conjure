@@ -1,5 +1,5 @@
 {
-  "name": "@hexafield/conjure-flux",
+  "name": "@conjureworld/flux-plugin",
   "version": "0.0.1",
   "fluxapp": {
     "name": "Conjure",
@@ -9,8 +9,7 @@
   "workspaces": [],
   "keywords": [
     "flux-plugin",
-    "ad4m-view",
-    "conjure"
+    "ad4m-view"
   ],
   "type": "module",
   "files": [
@@ -28,39 +27,31 @@
     "start": "vite",
     "dev": "vite",
     "build": "vite build",
-    "link-flux": "yarn link @coasys/flux-api @coasys/flux-constants @coasys/flux-container @coasys/flux-editor @coasys/flux-react-web @coasys/flux-types @coasys/flux-ui @coasys/flux-utils",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "publish-package": "npm publish"
+    "postinstall": "patch-package",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "description": "",
-  "peerDependencies": {
-    "@ir-engine/spatial": "workspace:*",
-    "@ir-engine/engine": "workspace:*",
-    "@ir-engine/ecs": "workspace:*",
-    "@ir-engine/hyperflux": "workspace:*"
+  "overrides": {
+    "@coasys/ad4m": "0.10.1-release-candidate-4",
+    "@coasys/ad4m-react-hooks": "0.10.1-release-candidate-4",
+    "@coasys/flux-api": "0.10.1-rc4"
   },
   "dependencies": {
     "@coasys/ad4m": "0.10.1-release-candidate-4",
     "@coasys/ad4m-react-hooks": "0.10.1-release-candidate-4",
-    "@coasys/flux-api": "0.10.1-rc3",
-    "@coasys/flux-constants": "0.10.1-rc3",
-    "@coasys/flux-container": "0.10.1-rc3",
-    "@coasys/flux-editor": "0.10.1-rc3",
-    "@coasys/flux-react-web": "0.10.1-rc3",
-    "@coasys/flux-types": "0.10.1-rc3",
-    "@coasys/flux-ui": "0.10.1-rc3",
-    "@coasys/flux-utils": "0.10.1-rc3",
-    "preact": "^10.13.1",
-    "react": "^18.0.2",
-    "react-virtuoso": "^4.3.6"
+    "@coasys/flux-api": "0.10.1-rc4",
+    "@r2wc/react-to-web-component": "^2.0.4",
+    "patch-package": "^8.0.0",
+    "postinstall-postinstall": "^2.1.0"
   },
   "devDependencies": {
     "@babel/plugin-proposal-class-properties": "^7.18.6",
     "@babel/plugin-proposal-decorators": "^7.21.0",
-    "@preact/preset-vite": "^2.5.0",
-    "vite": "^4.3.5",
-    "vite-plugin-css-injected-by-js": "^3.1.0"
+    "@coasys/flux-container": "0.10.1-rc4",
+    "@vitejs/plugin-react-swc": "^4.0.1",
+    "vite": "5.4.8",
+    "vite-plugin-css-injected-by-js": "^3.5.2"
   }
 }

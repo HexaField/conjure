@@ -1,15 +1,7 @@
-import Editor from "@coasys/flux-editor";
-import { toCustomElement } from '@coasys/flux-react-web'
 import '@coasys/flux-ui/dist/main.d.ts'
-import "preact/debug";
+import r2wc from '@r2wc/react-to-web-component'
 import App from './App'
 
-if (!customElements.get("flux-editor")) {
-  customElements.define("flux-editor", Editor);
-}
-
-const CustomElement: HTMLElement = toCustomElement(App, ['perspective', 'agent', 'source', 'threaded', 'getProfile'], {
-  shadow: false
-})
+const CustomElement = r2wc(App)
 
 export default CustomElement

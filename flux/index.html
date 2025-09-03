@@ -22,27 +22,20 @@
       }
       flux-app {
         height: 100%;
-        max-height: 100vh;
-        overflow-y: auto;
         display: block;
-        box-sizing: border-box;
       }
     </style>
   </head>
   <body>
     <flux-container>
-      <flux-app></flux-app>
+      <flux-plugin></flux-plugin>
     </flux-container>
-    <script>
-      if (global === undefined) {
-        var global = window;
-      }
-    </script>
+
     <script type="module">
-      import App from "./src/main.ts";
+      import Plugin from "./src/main.ts";
       import "@coasys/flux-container";
 
-      customElements.define("flux-app", App);
+      customElements.define("flux-plugin", Plugin);
     </script>
   </body>
 </html>
