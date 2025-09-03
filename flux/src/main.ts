@@ -1,7 +1,12 @@
-import '@coasys/flux-ui/dist/main.d.ts'
-import r2wc from '@r2wc/react-to-web-component'
+import '@hookstate/core'
+import * as React from 'react'
+import * as ReactDOM from 'react-dom/client'
 import App from './App'
+import { reactToWebComponent } from './reactToWebComponent'
 
-const CustomElement = r2wc(App)
+const CustomElement = reactToWebComponent(App, React, ReactDOM, {
+  shadow: false,
+  observedProps: ['perspective', 'agent', 'source']
+})
 
 export default CustomElement

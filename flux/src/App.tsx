@@ -1,25 +1,28 @@
-import React from 'react'
+// tslint:disable:ordered-imports
+
+import '@ir-engine/engine'
+
+import { startTimer } from '@ir-engine/spatial/src/startTimer'
+
 import { PerspectiveProxy } from '@coasys/ad4m'
 import { AgentClient } from '@coasys/ad4m/lib/src/agent/AgentClient'
-import { Profile } from '@coasys/flux-types'
-import { EngineState } from '@ir-engine/ecs'
-import { createHyperStore, getMutableState, useMutableState, useReactiveRef, UserID } from '@ir-engine/hyperflux'
+import { createEngine, EngineState } from '@ir-engine/ecs'
+import { getMutableState, useMutableState, type UserID } from '@ir-engine/hyperflux'
 import { ReferenceSpaceState } from '@ir-engine/spatial'
 import { useSpatialEngine } from '@ir-engine/spatial/src/initializeEngine'
 import { useEngineCanvas } from '@ir-engine/spatial/src/renderer/functions/useEngineCanvas'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+
 import { useBasicScene } from '../../src/world/BasicScene'
 import { useSpawnAvatar } from '../../src/world/useSpawnAvatar'
 
-createHyperStore()
+createEngine()
+startTimer()
 
 type Props = {
   agent: AgentClient
   perspective: PerspectiveProxy
   source: string
-  threaded: string
-  element: HTMLElement
-  getProfile: (did: string) => Promise<Profile>
 }
 
 const Scene = (props: { url: string }) => {
@@ -29,22 +32,23 @@ const Scene = (props: { url: string }) => {
 }
 
 const Engine = (props: Props) => {
-  const [ref, setRef] = useReactiveRef()
+  const ref = useRef(null)
 
   useSpatialEngine()
-  useEngineCanvas(ref)
+  useEngineCanvas(ref.current)
 
   const viewerEntity = useMutableState(ReferenceSpaceState).viewerEntity.value
 
   return (
     <>
-      <div ref={setRef} style={{ width: '100%', height: '100%', position: 'absolute' }} />
+      <div ref={ref} style={{ width: '100%', height: '100%', position: 'absolute' }} />
       <div>{viewerEntity && <Scene url={props.perspective.sharedUrl!} />}</div>
     </>
   )
 }
 
-export default function App({ agent, perspective, source, threaded, element, getProfile }: Props) {
+export default function App({ agent, perspective, source }: Props) {
+  console.log({ agent, perspective, source })
   if (!perspective?.uuid || !agent) return <div>"No perspective or agent client"</div>
 
   const [ready, setReady] = useState(false)
@@ -67,16 +71,20 @@ export default function App({ agent, perspective, source, threaded, element, get
         overflow: 'hidden'
       }}
     >
-      {ready && (
-        <Engine
-          element={element}
-          agent={agent}
-          perspective={perspective}
-          source={source}
-          threaded={threaded}
-          getProfile={getProfile}
-        />
-      )}
+      <canvas
+        id="engine-renderer-canvas"
+        style={{
+          outline: 'none',
+          zIndex: 0,
+          width: '100%',
+          height: '100%',
+          position: 'fixed',
+          WebkitUserSelect: 'none',
+          pointerEvents: 'auto',
+          userSelect: 'none'
+        }}
+      />
+      {ready && <Engine agent={agent} perspective={perspective} source={source} />}
     </div>
   )
 }
