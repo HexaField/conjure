@@ -2,7 +2,7 @@ import { hookstate, useHookstate } from '@hookstate/core'
 import { useEffect } from 'react'
 
 import transform from '@hexafield/jsonpath-object-transform'
-import { getState, NO_PROXY } from '@ir-engine/hyperflux'
+import { getMutableState, getState, NO_PROXY } from '@ir-engine/hyperflux'
 import { Button } from '@ir-engine/ui'
 import React from 'react'
 import { DataTransformSection } from '../components/DataTransformSection'
@@ -44,7 +44,7 @@ function ToolCreateView(): JSX.Element {
     } catch (error) {
       console.warn('Failed to load model from localStorage:', error)
     }
-    return CODING_MODELS[1].id // Default to Qwen2.5-Coder-7B
+    return CODING_MODELS[0].id // Default to Ollama
   }
 
   const state = useHookstate({
@@ -77,17 +77,6 @@ function ToolCreateView(): JSX.Element {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
 
-    if (urlParams.has(`source_url`)) {
-      const url = urlParams.get(`source_url`) || ''
-
-      state.inputData.set({
-        url,
-        data: null,
-        loading: false,
-        errorMessage: null
-      })
-    }
-
     // Load additional prompt from URL
     const additionalPrompt = urlParams.get('additional_prompt') || ''
     state.additionalPrompt.set(additionalPrompt)
@@ -112,25 +101,15 @@ function ToolCreateView(): JSX.Element {
       localStorage.setItem('selectedModel', modelFromUrl)
     }
 
-    state.inputData.set({
-      url: '',
-      data: null,
-      loading: false,
-      errorMessage: null
-    })
+    state.inputData.set(null)
   }, [])
 
   // Update URL parameters whenever data sources, additional prompt, target schema, model, or ollamaUrl change
   useEffect(() => {
-    const source = state.inputData.get(NO_PROXY)
     const additionalPrompt = state.additionalPrompt.get()
     const selectedTargetSchema = state.outputSchemaSelector.get(NO_PROXY)
     const selectedModel = state.selectedModel.get()
     const urlParams = new URLSearchParams()
-
-    // if (source.url.trim()) {
-    //   urlParams.set(`source_url`, source.url)
-    // }
 
     // Add additional prompt if it exists
     if (additionalPrompt.trim()) {
@@ -446,13 +425,18 @@ function ToolCreateView(): JSX.Element {
 }
 
 function ToolRegistryView(): JSX.Element {
-  const tools = useHookstate(getState(ToolRegistry).tools)
+  const tools = useHookstate(getMutableState(ToolRegistry).tools)
+
+  const handleForgetSchema = (hash: string) => {
+    ToolRegistry.forget(hash)
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <h2 className="mb-4 text-xl font-semibold">Tool Library</h2>
       <ul className="space-y-4">
         {Object.values(tools.get(NO_PROXY)).map((tool: Tool) => (
-          <ToolCard key={tool.hash} tool={tool} />
+          <ToolCard key={tool.hash} tool={tool} onForget={handleForgetSchema} />
         ))}
       </ul>
     </div>

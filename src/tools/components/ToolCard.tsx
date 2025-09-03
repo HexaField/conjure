@@ -5,14 +5,24 @@ import { JsonDisplay } from './JsonDisplay'
 interface ToolCardProps {
   tool: Tool
   onUse?: (tool: Tool) => void
+  onForget?: (hash: string) => void
 }
 
-export const ToolCard = ({ tool, onUse }: ToolCardProps) => {
+export const ToolCard = ({ tool, onUse, onForget }: ToolCardProps) => {
   return (
     <li key={tool.hash} className="flex flex-col rounded border bg-gray-50 p-3">
       <div className="flex items-center justify-between">
         <span className="font-semibold text-gray-800">{tool.label}</span>
         <span className="text-xs text-gray-500">{tool.hash.slice(0, 8)}...</span>
+        {onForget && (
+          <button
+            onClick={() => onForget(tool.hash)}
+            className="rounded bg-gray-500 px-2 py-1 text-xs text-white hover:bg-red-600"
+            title="Remove tool"
+          >
+            Forget
+          </button>
+        )}
       </div>
       <div className="text-xs text-gray-600">{tool.description}</div>
       <JsonDisplay

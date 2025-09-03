@@ -54,8 +54,7 @@ export interface CodingModel {
   id: string
   name: string
   description: string
-  size: string
-  parameters: string
+  info: string
   provider: 'mlc' | 'openai' | 'anthropic' | 'google' | 'ollama'
   apiUrl?: string // For remote models
   apiKeyEnvVar?: string // For remote models
@@ -74,35 +73,40 @@ export interface LLMInitOptions {
  */
 export const CODING_MODELS: CodingModel[] = [
   {
+    id: 'gpt-oss:20b',
+    name: 'Ollama gpt-oss:20b (LAN)',
+    description: `gpt-oss:20b via Ollama)`,
+    info: `Must run Ollama with \`OLLAMA_ORIGINS='https://conjure.world' ollama serve\``,
+    provider: 'ollama',
+    apiUrl: 'http://localhost:11434/api/chat', // Default, user can override
+    apiKeyEnvVar: ''
+  },
+  {
     id: 'Hermes-3-Llama-3.1-8B-q4f32_1-MLC',
     name: 'Hermes 3 Llama 8B',
     description: 'Excellent instruction following and code reasoning',
-    size: 'Medium-Large',
-    provider: 'mlc',
-    parameters: '8B'
+    info: 'Medium-Large | 8B',
+    provider: 'mlc'
   },
   {
     id: 'Qwen2.5-Coder-14B-Instruct-q4f32_1-MLC',
     name: 'Qwen2.5 Coder 14B',
     description: 'High-quality code generation for complex tasks',
-    size: 'Large',
-    provider: 'mlc',
-    parameters: '14B'
+    info: 'Large | 14B',
+    provider: 'mlc'
   },
   {
     id: 'DeepSeek-R1-Distill-Qwen-7B-q4f32_1-MLC',
     name: 'DeepSeek R1 Distill 7B',
     description: 'Advanced reasoning capabilities for complex coding problems',
-    size: 'Medium',
-    provider: 'mlc',
-    parameters: '7B'
+    info: 'Medium | 7B',
+    provider: 'mlc'
   },
   {
     id: 'openai-o3-mini-high',
     name: 'OpenAI o3-mini-high',
     description: 'OpenAI GPT-4o (o3-mini-high) for high-quality code generation',
-    size: 'Cloud',
-    parameters: 'Proprietary',
+    info: 'Cloud | Proprietary',
     provider: 'openai',
     apiUrl: 'https://api.openai.com/v1/chat/completions',
     apiKeyEnvVar: 'OPENAI_API_KEY'
@@ -111,8 +115,7 @@ export const CODING_MODELS: CodingModel[] = [
     id: 'claude-sonnet-3.7',
     name: 'Claude Sonnet 3.7',
     description: 'Anthropic Claude Sonnet 3.7 for advanced reasoning',
-    size: 'Cloud',
-    parameters: 'Proprietary',
+    info: 'Cloud | Proprietary',
     provider: 'anthropic',
     apiUrl: 'https://api.anthropic.com/v1/messages',
     apiKeyEnvVar: 'ANTHROPIC_API_KEY'
@@ -121,21 +124,10 @@ export const CODING_MODELS: CodingModel[] = [
     id: 'gemini-2.5',
     name: 'Gemini 2.5',
     description: 'Google Gemini 2.5 for code and reasoning',
-    size: 'Cloud',
-    parameters: 'Proprietary',
+    info: 'Cloud | Proprietary',
     provider: 'google',
     apiUrl: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent',
     apiKeyEnvVar: 'GOOGLE_API_KEY'
-  },
-  {
-    id: 'gpt-oss:20b',
-    name: 'Ollama gpt-oss:20b (LAN)',
-    description: 'gpt-oss:20b via Ollama running on your LAN',
-    size: 'LAN',
-    parameters: 'gpt-oss:20b',
-    provider: 'ollama',
-    apiUrl: 'http://localhost:11434/api/chat', // Default, user can override
-    apiKeyEnvVar: ''
   }
 ]
 
@@ -208,10 +200,8 @@ function extractJavascript(text: string): unknown {
 /**
  * Call the LLM with a prompt and JSON schema for structured output
  */
-async function callLLM<T = unknown>(engine: MLCEngineInterface, options: LLMCallOptions): Promise<LLMResponse<T>> {
+async function callMLC<T = unknown>(engine: MLCEngineInterface, options: LLMCallOptions): Promise<LLMResponse<T>> {
   const { prompt, temperature = 0.7, maxTokens = 1000 } = options
-
-  console.log('calling prompt:', prompt)
 
   try {
     const response = await engine.chat.completions.create({
@@ -227,7 +217,6 @@ async function callLLM<T = unknown>(engine: MLCEngineInterface, options: LLMCall
 
     const rawResponse = response.choices[0]?.message?.content || ''
 
-    console.log('rawResponse:', rawResponse)
     if (!rawResponse) {
       throw new Error('Empty response from LLM')
     }
@@ -368,6 +357,7 @@ async function callRemoteLLM<T = unknown>(
     }
     return { data: parsedData as T, rawResponse, isValid: true }
   }
+
   return { data: rawResponse as T, rawResponse, isValid: true }
 }
 
@@ -430,7 +420,7 @@ export function useLLM(options: LLMInitOptions & { apiKey?: string; ollamaUrl?: 
       if (!selectedModel) throw new Error('No model selected')
       if (selectedModel.provider === 'mlc') {
         if (!llm.engine.value) throw new Error('LLM not initialized')
-        return callLLM(llm.engine.value as MLCEngineInterface, options)
+        return callMLC(llm.engine.value as MLCEngineInterface, options)
       } else {
         // For remote models, require apiKey or ollamaUrl as needed
         if (selectedModel.provider === 'ollama') {
@@ -447,4 +437,33 @@ export function useLLM(options: LLMInitOptions & { apiKey?: string; ollamaUrl?: 
     }),
     progress
   }
+}
+
+export const callLLM = async (
+  callOptions: LLMCallOptions,
+  options: LLMInitOptions & { apiKey?: string; ollamaUrl?: string } = {}
+) => {
+  const { modelId } = options
+  const selectedModel = CODING_MODELS.find((m) => m.id === modelId)
+
+  if (!selectedModel) return
+
+  /** @todo handle multiple promises */
+  if (!llm.engine.value && selectedModel.provider === 'mlc') {
+    const llmInstance = await initializeEngine()
+    llm.engine.set(llmInstance)
+    llm.currentModelId.set(modelId || 'Llama-3.2-3B-Instruct-q4f32_1-MLC')
+    llm.initializing.set(false)
+  }
+
+  if (selectedModel.provider === 'mlc') {
+    return callMLC(llm.engine.value as MLCEngineInterface, callOptions)
+  }
+
+  if (selectedModel.provider === 'ollama') {
+    return callRemoteLLM(selectedModel, callOptions, '', options.ollamaUrl)
+  }
+
+  if (!options.apiKey) throw new Error('API key required for remote LLM')
+  return callRemoteLLM(selectedModel, callOptions, options.apiKey, options.ollamaUrl)
 }

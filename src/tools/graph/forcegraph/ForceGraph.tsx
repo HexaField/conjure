@@ -28,16 +28,14 @@ import { MeshComponent } from '@ir-engine/spatial/src/renderer/components/MeshCo
 import { ObjectComponent } from '@ir-engine/spatial/src/renderer/components/ObjectComponent'
 import { setVisibleComponent } from '@ir-engine/spatial/src/renderer/components/VisibleComponent'
 import * as dat from 'dat.gui'
+import { FromSchema, JSONSchema } from 'json-schema-to-ts'
 import React, { useEffect } from 'react'
 import {
-  BackSide,
   BufferAttribute,
   BufferGeometry,
   CircleGeometry,
   Color,
-  DataTexture,
   DoubleSide,
-  InstancedBufferAttribute,
   InstancedMesh,
   Line,
   Matrix4,
@@ -46,11 +44,9 @@ import {
   Quaternion,
   RawShaderMaterial,
   Sphere,
-  SRGBColorSpace,
   Vector3
 } from 'three'
 import { stringToColor } from '../../../utils/stringToColor'
-import { JSONSchemaType } from '../../json-schema/JSONSchema'
 import { TargetRegistry, TargetSchemaDefinition } from '../../registries/TargetRegistry'
 import { startWebworker } from './createWorker'
 
@@ -58,14 +54,15 @@ export interface Node {
   id: string | number
   label: string
   group: string
-  imageSrc: string
+  [key: string]: any
 }
 
 export interface Edge {
-  id: number
   source: number
   target: number
+  type: string
   weight: number
+  [key: string]: any
 }
 
 export interface NodeData {
@@ -501,32 +498,38 @@ export const ControlHelper = () => {
   )
 }
 
-const forcegraphSchema: JSONSchemaType<SerializedForceGraphShape> = {
+const forcegraphSchema = {
   type: 'object',
+  description: 'Data format for a rich force graph, with support for parameterized layout and styling options.',
   required: ['nodes', 'edges'],
   properties: {
     nodes: {
       type: 'array',
       items: {
         type: 'object',
+        description:
+          'A node in the force graph. Can accept additional arbitrary data per node, such as images, descriptions or URLs.',
         required: ['id', 'label'],
         properties: {
-          id: { type: 'string' },
-          label: { type: 'string' },
-          group: { type: 'string', nullable: true, default: '' },
-          image: { type: 'string', nullable: true, default: '' }
-        }
+          id: { type: 'number', description: 'The unique identifier for the node.' },
+          label: { type: 'string', description: 'The label of the node.' },
+          group: { type: 'string', description: 'The group to which the node belongs.' }
+        },
+        additionalProperties: true
       }
     },
     edges: {
       type: 'array',
       items: {
         type: 'object',
+        description: 'An edge between two nodes in the force graph. Can accept additional arbitrary data per edge.',
         required: ['source', 'target'],
         properties: {
-          source: { type: 'string' },
-          target: { type: 'string' },
-          weight: { type: 'number', nullable: true, default: 1 }
+          source: { type: 'number', description: 'The ID of the source node.' },
+          target: { type: 'number', description: 'The ID of the target node.' },
+          type: { type: 'string', description: 'The type of the edge.' },
+          weight: { type: 'number', nullable: true, default: 1, description: 'The weight of the edge.' },
+          additionalProperties: true
         }
       }
     }
@@ -536,93 +539,41 @@ const forcegraphSchema: JSONSchemaType<SerializedForceGraphShape> = {
     //   default: 1
     // }
   }
-}
+} as const satisfies JSONSchema
 
-type SerializedForceGraphShape = {
-  nodes: Array<{
-    id: string | number
-    label: string
-    group?: string
-    image?: string
-  }>
-  edges: Array<{
-    source: string | number
-    target: string | number
-    weight?: number
-  }>
-}
+type SerializedForceGraphShape = FromSchema<typeof forcegraphSchema>
 
 export const ForceGraphSchema: TargetSchemaDefinition<SerializedForceGraphShape> = {
   label: 'Force Graph',
-  value: forcegraphSchema,
+  value: forcegraphSchema as any, // @todo unify json schema typing
   deserialize: (data) => {
-    const finalData: SerializedForceGraphShape = { nodes: [], edges: [] }
-    const seenLabels = new Map<string, { source: string; id: number | string }>()
-    const replacedNodes = {} as Record<string, Map<number | string, number | string>>
+    console.log(data)
     let maxWeight = 0
-    for (const sourceID in data) {
-      const source = data[sourceID]
-      if (typeof source !== 'object') continue
-      //sum the various data sources together, distinguishing different sources by the 'category' field on nodes
-      /** @todo this should be a configurable field in the mapping UI - need support for a 'literal' either at the source or overall level */
-      if (Array.isArray(source.nodes)) {
-        for (let i = 0; i < source.nodes.length; i++) {
-          const node = source.nodes[i]
-          const seenNode = seenLabels.get(node.label)
-          if (seenNode) {
-            if (!replacedNodes[sourceID]) {
-              replacedNodes[sourceID] = new Map()
-            }
-            replacedNodes[sourceID].set(node.id, seenNode.id)
-          } else {
-            seenLabels.set(node.label, { source: sourceID, id: node.id })
-            finalData.nodes.push({
-              ...node,
-              group: sourceID
-            })
-          }
-        }
-      }
-      if (Array.isArray(source.edges)) {
-        for (const edge of source.edges) {
-          finalData.edges.push({
-            source: replacedNodes[sourceID]?.get(edge.source) ?? edge.source,
-            target: replacedNodes[sourceID]?.get(edge.target) ?? edge.target,
-            weight: edge.weight
-          })
-        }
-      }
-    }
+
     // ensure all edges have a weight
-    for (const edge of finalData.edges) {
+    for (const edge of data.edges) {
       edge.weight = edge.weight || 1
       maxWeight = Math.max(maxWeight, edge.weight)
     }
 
-    const minConnections = 1
-
     // quick hack, remove all nodes that only have one edge
-    const nodeCounts = new Map<string | number, number>()
-    for (const edge of finalData.edges) {
-      nodeCounts.set(edge.source, (nodeCounts.get(edge.source) || 0) + 1)
-      nodeCounts.set(edge.target, (nodeCounts.get(edge.target) || 0) + 1)
+    for (const edge of data.edges) {
       // scale all weights between 0 and 1
       edge.weight = edge.weight! / maxWeight
     }
-    finalData.nodes = finalData.nodes.filter(
-      (node) => nodeCounts.get(node.id) && nodeCounts.get(node.id)! >= minConnections
-    )
     // and now remove all edges that don't have both nodes
-    finalData.edges = finalData.edges.filter(
-      (edge) =>
-        finalData.nodes.find((node) => node.id === edge.source) &&
-        finalData.nodes.find((node) => node.id === edge.target)
-    )
+    data.edges = data.edges.filter((edge) => {
+      if (data.nodes.find((node) => node.id === edge.source) && data.nodes.find((node) => node.id === edge.target)) {
+        return true
+      }
+      console.warn('removing edge', edge)
+      return false
+    })
 
-    if (!finalData.nodes.length) return null!
+    if (!data.nodes.length) return null!
 
-    getMutableState(d3State).nodes.set(finalData.nodes as NodeData['nodes'])
-    getMutableState(d3State).links.set(finalData.edges as NodeData['edges'])
+    getMutableState(d3State).nodes.set(data.nodes as NodeData['nodes'])
+    getMutableState(d3State).links.set(data.edges as NodeData['edges'])
   }
 }
 
@@ -638,73 +589,73 @@ export const ForceGraphSchema: TargetSchemaDefinition<SerializedForceGraphShape>
 //   ...dataset.nodes
 // ]
 
-const atlasImages = async (nodesWithDefaultImage: NodeData['nodes']) => {
-  const images = await Promise.all(
-    nodesWithDefaultImage.map((node) => {
-      return new Promise<HTMLImageElement | null>((resolve) => {
-        if (!node.imageSrc) return resolve(null)
-        const image = new Image()
-        image.onload = () => {
-          resolve(image)
-        }
-        image.crossOrigin = 'Anonymous'
-        image.onerror = (e) => {
-          resolve(null!)
-          console.log('failed to load image', node.imageSrc, e)
-        }
-        image.src = `https://cors-anywhere.herokuapp.com/${node.imageSrc!}`
-      })
-      // take loaded images and convert them into an atlas map. assume the images are the square and the same size
-    })
-  )
+// const atlasImages = async (nodesWithDefaultImage: NodeData['nodes']) => {
+//   const images = await Promise.all(
+//     nodesWithDefaultImage.map((node) => {
+//       return new Promise<HTMLImageElement | null>((resolve) => {
+//         if (!node.imageSrc) return resolve(null)
+//         const image = new Image()
+//         image.onload = () => {
+//           resolve(image)
+//         }
+//         image.crossOrigin = 'Anonymous'
+//         image.onerror = (e) => {
+//           resolve(null!)
+//           console.log('failed to load image', node.imageSrc, e)
+//         }
+//         image.src = `https://cors-anywhere.herokuapp.com/${node.imageSrc!}`
+//       })
+//       // take loaded images and convert them into an atlas map. assume the images are the square and the same size
+//     })
+//   )
 
-  const imagesLoaded = images.filter((i) => !!i)
-  const atlasSize = Math.ceil(Math.sqrt(imagesLoaded.length))
-  const atlas = document.createElement('canvas')
-  const resolution = 128
-  atlas.width = atlasSize * resolution
-  atlas.height = atlasSize * resolution
-  const ctx = atlas.getContext('2d')!
-  const indicies = new Set<number>()
-  imagesLoaded.forEach((image, i) => {
-    // flip image
-    const x = i % atlasSize
-    const y = Math.floor(i / atlasSize)
-    ctx.drawImage(image!, x * resolution, y * resolution, resolution, resolution)
-    indicies.add(i)
-  })
-  //convert the atlas to imagedata and then a blob
-  const imageData = ctx.getImageData(0, 0, atlas.width, atlas.height)
+//   const imagesLoaded = images.filter((i) => !!i)
+//   const atlasSize = Math.ceil(Math.sqrt(imagesLoaded.length))
+//   const atlas = document.createElement('canvas')
+//   const resolution = 128
+//   atlas.width = atlasSize * resolution
+//   atlas.height = atlasSize * resolution
+//   const ctx = atlas.getContext('2d')!
+//   const indicies = new Set<number>()
+//   imagesLoaded.forEach((image, i) => {
+//     // flip image
+//     const x = i % atlasSize
+//     const y = Math.floor(i / atlasSize)
+//     ctx.drawImage(image!, x * resolution, y * resolution, resolution, resolution)
+//     indicies.add(i)
+//   })
+//   //convert the atlas to imagedata and then a blob
+//   const imageData = ctx.getImageData(0, 0, atlas.width, atlas.height)
 
-  const texture = new DataTexture(imageData.data, atlas.width, atlas.height)
-  texture.colorSpace = SRGBColorSpace
-  texture.needsUpdate = true
-  // texture.flipY = true
-  const material = new MeshBasicMaterial({ map: texture, side: BackSide })
-  const circleGeom = new CircleGeometry(graphScale, 16).scale(1, -1, 1) // unflip y
+//   const texture = new DataTexture(imageData.data, atlas.width, atlas.height)
+//   texture.colorSpace = SRGBColorSpace
+//   texture.needsUpdate = true
+//   // texture.flipY = true
+//   const material = new MeshBasicMaterial({ map: texture, side: BackSide })
+//   const circleGeom = new CircleGeometry(graphScale, 16).scale(1, -1, 1) // unflip y
 
-  const uvOffset = new Float32Array(images.length * 2)
-  // set the uv offset for each image, accounting for images that are not loaded
-  for (let i = 0; i < images.length; i++) {
-    const isLoaded = indicies.has(i)
-    if (!isLoaded) continue
-    // start from top left
-    const x = i % atlasSize
-    const y = Math.floor(i / atlasSize)
-    uvOffset[i * 2] = x / atlasSize
-    uvOffset[i * 2 + 1] = y / atlasSize
-  }
-  circleGeom.setAttribute('uvOffset', new InstancedBufferAttribute(uvOffset, 2))
+//   const uvOffset = new Float32Array(images.length * 2)
+//   // set the uv offset for each image, accounting for images that are not loaded
+//   for (let i = 0; i < images.length; i++) {
+//     const isLoaded = indicies.has(i)
+//     if (!isLoaded) continue
+//     // start from top left
+//     const x = i % atlasSize
+//     const y = Math.floor(i / atlasSize)
+//     uvOffset[i * 2] = x / atlasSize
+//     uvOffset[i * 2 + 1] = y / atlasSize
+//   }
+//   circleGeom.setAttribute('uvOffset', new InstancedBufferAttribute(uvOffset, 2))
 
-  material.onBeforeCompile = function (shader) {
-    shader.vertexShader = shader.vertexShader.replace('void main() {', 'attribute vec2 uvOffset;\n' + 'void main() {')
+//   material.onBeforeCompile = function (shader) {
+//     shader.vertexShader = shader.vertexShader.replace('void main() {', 'attribute vec2 uvOffset;\n' + 'void main() {')
 
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <uv_vertex>',
-      '#include <uv_vertex>\n' + `vMapUv = (uv * ${1 / atlasSize}) + uvOffset;`
-    )
-  }
+//     shader.vertexShader = shader.vertexShader.replace(
+//       '#include <uv_vertex>',
+//       '#include <uv_vertex>\n' + `vMapUv = (uv * ${1 / atlasSize}) + uvOffset;`
+//     )
+//   }
 
-  const mesh = new InstancedMesh(circleGeom, material, images.length)
-  mesh.frustumCulled = false
-}
+//   const mesh = new InstancedMesh(circleGeom, material, images.length)
+//   mesh.frustumCulled = false
+// }

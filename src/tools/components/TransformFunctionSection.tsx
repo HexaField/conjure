@@ -104,15 +104,11 @@ export function TransformFunctionSection({
         >
           {CODING_MODELS.map((model) => (
             <option key={model.id} value={model.id}>
-              {model.name} ({model.parameters}) - {model.description}
+              {model.name} - {model.description}
             </option>
           ))}
         </select>
-        {selectedModelInfo && (
-          <p className="mt-1 text-xs text-gray-500">
-            Size: {selectedModelInfo.size} | Parameters: {selectedModelInfo.parameters}
-          </p>
-        )}
+        {selectedModelInfo && <p className="mt-1 text-xs text-gray-500">{selectedModelInfo.info}</p>}
         {/* Remote LLM API key or URL input */}
         {selectedModelInfo?.provider === 'openai' && (
           <div className="mt-2">

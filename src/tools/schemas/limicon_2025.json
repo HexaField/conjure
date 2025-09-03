@@ -1,0 +1,257 @@
+{
+  "type": "object",
+  "properties": {
+    "connections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "integer"
+          },
+          "From": {
+            "type": "integer"
+          },
+          "To": {
+            "type": "integer"
+          },
+          "Name From": {
+            "type": "string"
+          },
+          "Name To": {
+            "type": "string"
+          },
+          "Initial Date": {
+            "type": "string"
+          },
+          "Last Date": {
+            "type": "string"
+          },
+          "Type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null",
+                "nullable": true
+              }
+            ]
+          },
+          "Weight": {
+            "type": "integer"
+          },
+          "Connection strength": {
+            "type": "string"
+          },
+          "Met through Limicon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "Id",
+          "From",
+          "To",
+          "Name From",
+          "Name To",
+          "Initial Date",
+          "Last Date",
+          "Type",
+          "Weight",
+          "Connection strength",
+          "Met through Limicon"
+        ]
+      }
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "integer"
+          },
+          "Type": {
+            "type": "string"
+          },
+          "Label": {
+            "type": "string"
+          },
+          "First Name": {
+            "type": "string"
+          },
+          "Last Name": {
+            "type": "string"
+          },
+          "Description": {
+            "type": "string"
+          },
+          "Segment": {
+            "type": "string"
+          },
+          "Image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null",
+                "nullable": true
+              }
+            ]
+          },
+          "Project Name": {
+            "type": "string"
+          },
+          "Mailchimp Opt-In": {
+            "type": "boolean"
+          },
+          "Terms and Conditions": {
+            "type": "boolean"
+          },
+          "Initial Date": {
+            "type": "string"
+          },
+          "Last Date": {
+            "type": "string"
+          },
+          "Creation date": {
+            "type": "string"
+          },
+          "1. What I'd like to share about myself": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "2. How to connect with me": {
+            "type": "string"
+          },
+          "3. Where to check out my work": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "4. The city, country I am currently living in": {
+            "type": "string"
+          },
+          "5. I feel most connected with these topics (choose up to 3)": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "5. Other": {
+            "type": "string"
+          },
+          "6a. Needs that this network could help me with": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "6b. Elaborate on any needs you'd like": {
+            "type": "string"
+          },
+          "7a. Things I can offer to this network": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "7b. Elaborate on any offers you'd like": {
+            "type": "string"
+          },
+          "8. A question I would like to explore at Limicon": {
+            "type": "string"
+          },
+          "9. Something I want to add to this space": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "Id",
+          "Type",
+          "Label",
+          "First Name",
+          "Last Name",
+          "Description",
+          "Segment",
+          "Image",
+          "Project Name",
+          "Mailchimp Opt-In",
+          "Terms and Conditions",
+          "Initial Date",
+          "Last Date",
+          "Creation date",
+          "1. What I'd like to share about myself",
+          "2. How to connect with me",
+          "3. Where to check out my work",
+          "4. The city, country I am currently living in",
+          "5. I feel most connected with these topics (choose up to 3)",
+          "5. Other",
+          "6a. Needs that this network could help me with",
+          "6b. Elaborate on any needs you'd like",
+          "7a. Things I can offer to this network",
+          "7b. Elaborate on any offers you'd like",
+          "8. A question I would like to explore at Limicon",
+          "9. Something I want to add to this space"
+        ]
+      }
+    },
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "connections",
+    "elements",
+    "name"
+  ]
+}

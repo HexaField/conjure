@@ -1,0 +1,213 @@
+{
+  "type": "object",
+  "properties": {
+    "connections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "integer"
+          },
+          "From": {
+            "type": "integer"
+          },
+          "To": {
+            "type": "integer"
+          },
+          "Name From": {
+            "type": "string"
+          },
+          "Name To": {
+            "type": "string"
+          },
+          "Initial Date": {
+            "type": "string"
+          },
+          "Last Date": {
+            "type": "string"
+          },
+          "Type": {
+            "type": "string"
+          },
+          "Weight": {
+            "type": "integer"
+          },
+          "Connection Strength": {
+            "type": "string"
+          },
+          "Anything to add about this relationship?": {
+            "type": "string"
+          },
+          "Did you meet at Limicon?": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "Id",
+          "From",
+          "To",
+          "Name From",
+          "Name To",
+          "Initial Date",
+          "Last Date",
+          "Type",
+          "Weight",
+          "Connection Strength",
+          "Anything to add about this relationship?",
+          "Did you meet at Limicon?"
+        ]
+      }
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Id": {
+            "type": "integer"
+          },
+          "Type": {
+            "type": "string"
+          },
+          "Label": {
+            "type": "string"
+          },
+          "First Name": {
+            "type": "string"
+          },
+          "Last Name": {
+            "type": "string"
+          },
+          "Description": {
+            "type": "string"
+          },
+          "Segment": {
+            "type": "string"
+          },
+          "Image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null",
+                "nullable": true
+              }
+            ]
+          },
+          "Project Name": {
+            "type": "string"
+          },
+          "Mailchimp Opt-In": {
+            "type": "boolean"
+          },
+          "Terms and Conditions": {
+            "type": "boolean"
+          },
+          "Initial Date": {
+            "type": "string"
+          },
+          "Last Date": {
+            "type": "string"
+          },
+          "Creation date": {
+            "type": "string"
+          },
+          "What I'd like to share about myself:": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "What city, region, country are you currently living?": {
+            "type": "string"
+          },
+          "How to connect:": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "A question I would like to explore at Limicon:": {
+            "type": "string"
+          },
+          "Share up to 3 parts of the field that you feel yourself to be most connected with:": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "What I may offer into Limicon:": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "A few wishes I may have for Limicon:": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "Id",
+          "Type",
+          "Label",
+          "First Name",
+          "Last Name",
+          "Description",
+          "Segment",
+          "Image",
+          "Project Name",
+          "Mailchimp Opt-In",
+          "Terms and Conditions",
+          "Initial Date",
+          "Last Date",
+          "Creation date",
+          "What I'd like to share about myself:",
+          "What city, region, country are you currently living?",
+          "How to connect:",
+          "A question I would like to explore at Limicon:",
+          "Share up to 3 parts of the field that you feel yourself to be most connected with:",
+          "What I may offer into Limicon:",
+          "A few wishes I may have for Limicon:"
+        ]
+      }
+    },
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "connections",
+    "elements",
+    "name"
+  ]
+}

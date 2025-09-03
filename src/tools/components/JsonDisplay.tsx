@@ -133,6 +133,36 @@ export function JsonDisplay({
     navigator.clipboard.writeText(format === 'json' ? JSON.stringify(data, null, 2) : (data ?? '').toString())
   }
 
+  const handleSaveToFile = () => {
+    const editor = editorRef.current
+    const currentText = editor && isEditing ? editor.getValue() : initialText
+
+    // Determine filename and mime type from format
+    const slug = (title || 'data')
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9\-_.]/g, '')
+    const ext = format === 'json' ? 'json' : format === 'javascript' ? 'js' : format === 'xml' ? 'xml' : 'txt'
+    const mime =
+      format === 'json'
+        ? 'application/json;charset=utf-8'
+        : format === 'javascript'
+        ? 'application/javascript;charset=utf-8'
+        : format === 'xml'
+        ? 'application/xml;charset=utf-8'
+        : 'text/plain;charset=utf-8'
+
+    const blob = new Blob([currentText ?? ''], { type: mime })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${slug || 'data'}.${ext}`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   const handleEdit = () => {
     setIsEditing(true)
     setValidationError(null)
@@ -195,6 +225,14 @@ export function JsonDisplay({
               className="rounded bg-blue-100 px-3 py-1 text-sm text-blue-700 transition-colors hover:bg-blue-200"
             >
               Edit
+            </button>
+          )}
+          {data && (
+            <button
+              onClick={handleSaveToFile}
+              className="rounded bg-green-100 px-3 py-1 text-sm text-green-700 transition-colors hover:bg-green-200"
+            >
+              Save
             </button>
           )}
           <button
