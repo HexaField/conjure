@@ -1,18 +1,14 @@
 import transform from '@hexafield/jsonpath-object-transform'
-import {
-  defineState,
-  getMutableState,
-  getState,
-  none,
-  syncStateWithLocalStorage,
-  useHookstate
-} from '@ir-engine/hyperflux'
-import { useEffect } from 'react'
+import { defineState, getMutableState, getState, NO_PROXY, none, useMutableState } from '@ir-engine/hyperflux'
+import React, { useEffect } from 'react'
+import { P2P_API } from '../../api/CRUD'
 import { JSONSchemaType } from '../json-schema/JSONSchema'
-import { contentHash } from '../json-schema/contentHash'
+import { contentHash, contentHashJSONSchema } from '../json-schema/contentHash'
 import { createDynamicWebworker } from '../utils/createDynamicWebworker'
 import { hashFunctionSource } from '../utils/hashFunction'
 import { SchemaRegistry, SHA256Hash } from './SchemaRegistry'
+
+export const TOOL_PREDICATE = 'conjure://tool'
 
 export type Stringify<Signature = unknown> = string & {
   __fnSignature: Signature
@@ -39,8 +35,8 @@ export const ToolRegistry = defineState({
   create: async (tool: Omit<Tool, 'hash' | 'inputHash' | 'outputHash' | 'transformationHash'>): Promise<SHA256Hash> => {
     const { label, description, input, output, transformation } = tool
 
-    const inputHash = contentHash(input) as SHA256Hash
-    const outputHash = contentHash(output) as SHA256Hash
+    const inputHash = contentHashJSONSchema(input as any /**@todo unify json schema types */) as SHA256Hash
+    const outputHash = contentHashJSONSchema(output as any /**@todo unify json schema types */) as SHA256Hash
     const transformationHash =
       typeof transformation === 'string'
         ? ((await hashFunctionSource(transformation)) as FunctionHash)
@@ -63,6 +59,8 @@ export const ToolRegistry = defineState({
       transformationHash
     }
 
+    console.log('Registered tool:', label)
+
     getMutableState(ToolRegistry).tools[serializedTool.hash].set(serializedTool)
 
     return serializedTool.hash
@@ -70,6 +68,11 @@ export const ToolRegistry = defineState({
 
   forget: (hash: SHA256Hash) => {
     getMutableState(ToolRegistry).tools[hash].set(none)
+
+    if (!P2P_API.client) return
+    P2P_API.client.delete({ source: hash, predicate: TOOL_PREDICATE }).then(async () => {
+      console.log('deleted:', hash)
+    })
   },
 
   run: async <Input, Output>(hash: SHA256Hash, input: Input): Promise<Output> => {
@@ -102,21 +105,92 @@ export const ToolRegistry = defineState({
     }
   },
 
-  extension: syncStateWithLocalStorage(['tools']),
-
   reactor: () => {
-    const state = useHookstate(getMutableState(ToolRegistry).tools)
+    const toolState = useMutableState(ToolRegistry).tools
+    const apiReady = useMutableState(P2P_API).ready.value
 
     useEffect(() => {
-      const tools = getState(ToolRegistry).tools
-      for (const [hash, tool] of Object.entries(tools)) {
-        if (!getState(SchemaRegistry).schemas[tool.inputHash])
-          SchemaRegistry.register(tool.input, tool.label, tool.description)
-        if (!getState(SchemaRegistry).schemas[tool.outputHash])
-          SchemaRegistry.register(tool.output, tool.label, tool.description)
-      }
-    }, [state])
+      if (!apiReady) return
+      P2P_API.client.find({ predicate: TOOL_PREDICATE }).then((sources) => {
+        sources.forEach(async (source) => {
+          P2P_API.client
+            .get({ source, predicate: TOOL_PREDICATE })
+            .then(async (response: object) => {
+              if (!response) return
+              const { label, description, input, output, transformation } = response as Tool
+              ToolRegistry.create({
+                label,
+                description,
+                input,
+                output,
+                transformation
+              })
+            })
+            .catch((e) => {
+              console.error('Failed to retrieve schema:', e)
+            })
+        })
+      })
+    }, [apiReady])
+
+    return (
+      <>
+        {toolState.keys.map((key) => (
+          <SyncTool key={key} hash={key} />
+        ))}
+      </>
+    )
   }
 })
+
+const SyncTool = ({ hash }: { hash: string }) => {
+  const tool = useMutableState(ToolRegistry).tools[hash].get(NO_PROXY)
+  const apiReady = useMutableState(P2P_API).ready.value
+
+  useEffect(() => {
+    if (!getState(SchemaRegistry).schemas[tool.inputHash])
+      SchemaRegistry.register(tool.input as JSONSchemaType<unknown>, tool.label, tool.description)
+    if (!getState(SchemaRegistry).schemas[tool.outputHash])
+      SchemaRegistry.register(tool.output as JSONSchemaType<unknown>, tool.label, tool.description)
+
+    if (!apiReady) return
+
+    P2P_API.client.has({ source: hash, predicate: TOOL_PREDICATE }).then(async (exists) => {
+      if (exists) return
+      P2P_API.client
+        .create({
+          predicate: TOOL_PREDICATE,
+          source: hash,
+          target: {
+            hash: tool.hash,
+            label: tool.label,
+            description: tool.description,
+            input: tool.input,
+            output: tool.output,
+            transformation: tool.transformation,
+            inputHash: tool.inputHash,
+            outputHash: tool.outputHash,
+            transformationHash: tool.transformationHash
+          }
+        })
+        .catch((e) => {
+          console.error('Failed to create tool:', e)
+        })
+    })
+  }, [
+    apiReady,
+    tool.inputHash,
+    tool.outputHash,
+    tool.input,
+    tool.output,
+    tool.label,
+    tool.description,
+    tool.hash,
+    tool.transformation,
+    tool.transformationHash
+  ])
+
+  return null
+}
 
 const workers = {} as Record<SHA256Hash, Awaited<ReturnType<typeof createDynamicWebworker>>>

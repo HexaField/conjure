@@ -200,10 +200,8 @@ function extractJavascript(text: string): unknown {
 /**
  * Call the LLM with a prompt and JSON schema for structured output
  */
-async function callLLM<T = unknown>(engine: MLCEngineInterface, options: LLMCallOptions): Promise<LLMResponse<T>> {
+async function callMLC<T = unknown>(engine: MLCEngineInterface, options: LLMCallOptions): Promise<LLMResponse<T>> {
   const { prompt, temperature = 0.7, maxTokens = 1000 } = options
-
-  console.log('calling prompt:', prompt)
 
   try {
     const response = await engine.chat.completions.create({
@@ -219,7 +217,6 @@ async function callLLM<T = unknown>(engine: MLCEngineInterface, options: LLMCall
 
     const rawResponse = response.choices[0]?.message?.content || ''
 
-    console.log('rawResponse:', rawResponse)
     if (!rawResponse) {
       throw new Error('Empty response from LLM')
     }
@@ -360,6 +357,7 @@ async function callRemoteLLM<T = unknown>(
     }
     return { data: parsedData as T, rawResponse, isValid: true }
   }
+
   return { data: rawResponse as T, rawResponse, isValid: true }
 }
 
@@ -422,7 +420,7 @@ export function useLLM(options: LLMInitOptions & { apiKey?: string; ollamaUrl?: 
       if (!selectedModel) throw new Error('No model selected')
       if (selectedModel.provider === 'mlc') {
         if (!llm.engine.value) throw new Error('LLM not initialized')
-        return callLLM(llm.engine.value as MLCEngineInterface, options)
+        return callMLC(llm.engine.value as MLCEngineInterface, options)
       } else {
         // For remote models, require apiKey or ollamaUrl as needed
         if (selectedModel.provider === 'ollama') {
@@ -439,4 +437,33 @@ export function useLLM(options: LLMInitOptions & { apiKey?: string; ollamaUrl?: 
     }),
     progress
   }
+}
+
+export const callLLM = async (
+  callOptions: LLMCallOptions,
+  options: LLMInitOptions & { apiKey?: string; ollamaUrl?: string } = {}
+) => {
+  const { modelId } = options
+  const selectedModel = CODING_MODELS.find((m) => m.id === modelId)
+
+  if (!selectedModel) return
+
+  /** @todo handle multiple promises */
+  if (!llm.engine.value && selectedModel.provider === 'mlc') {
+    const llmInstance = await initializeEngine()
+    llm.engine.set(llmInstance)
+    llm.currentModelId.set(modelId || 'Llama-3.2-3B-Instruct-q4f32_1-MLC')
+    llm.initializing.set(false)
+  }
+
+  if (selectedModel.provider === 'mlc') {
+    return callMLC(llm.engine.value as MLCEngineInterface, callOptions)
+  }
+
+  if (selectedModel.provider === 'ollama') {
+    return callRemoteLLM(selectedModel, callOptions, '', options.ollamaUrl)
+  }
+
+  if (!options.apiKey) throw new Error('API key required for remote LLM')
+  return callRemoteLLM(selectedModel, callOptions, options.apiKey, options.ollamaUrl)
 }
