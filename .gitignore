@@ -116,3 +116,4 @@ public/projects/*
 public/data/*
 
 storage/
+yarn.lock
