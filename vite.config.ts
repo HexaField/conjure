@@ -108,16 +108,6 @@ export default defineConfig(async ({ command, mode }) => {
         include: ['use-sync-external-store']
       })
     ],
-    resolve: {
-      alias: {
-        'react-json-tree': 'react-json-tree/lib/umd/react-json-tree',
-        buffer: 'buffer',
-        // process: 'process/browser',
-        stream: 'stream-browserify',
-        crypto: 'crypto-browserify',
-        util: 'util'
-      }
-    },
     build: {
       target: 'esnext',
       sourcemap: process.env.VITE_SOURCEMAPS === 'true',
